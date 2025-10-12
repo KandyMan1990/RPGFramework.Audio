@@ -11,5 +11,12 @@
   "author": {
     "name": "Elliott Armstrong",
     "url": "https://github.com/KandyMan1990/RPGFramework.Audio"
-  }
+  },
+  "samples": [
+	{
+		"displayName": "Music Sample",
+		"description": "Contains an example of how to set up a music asset with multiple stems, each with their own reverb level and looping based on the tempo and start/end bars",
+		"path": "Samples~/Music Sample"
+	}
+  ]
 }

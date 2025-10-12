@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a8bb781cc215bd749ad491914796912d, type: 3}
+  m_Name: Music Sample
+  m_EditorClassIdentifier: RPGFramework.Audio::RPGFramework.Audio.Music.MusicAsset
+  m_BPM: 104
+  m_LoopStartBar: 5
+  m_LoopEndBar: 21
+  m_BeatsPerBar: 4
+  m_Tracks:
+  - m_AudioClip: {fileID: 8300000, guid: c93f6cb4f4df6214dbbda31b1f7d4671, type: 3}
+    m_ReverbSendLevel: 0.3
+  - m_AudioClip: {fileID: 8300000, guid: 170d98c2b0e6ba4498c551c19537546e, type: 3}
+    m_ReverbSendLevel: 0.5
+  - m_AudioClip: {fileID: 8300000, guid: 2100fb028f6b77b4bb063e955acdd535, type: 3}
+    m_ReverbSendLevel: 0.7
+  - m_AudioClip: {fileID: 8300000, guid: 360e11fe379096e4b9733963fbc382e4, type: 3}
+    m_ReverbSendLevel: 0.8
+  m_Loop: 1
