@@ -1,0 +1,15 @@
+{
+  "name": "com.rpgframework.audio",
+  "version": "0.1.0",
+  "displayName": "RPG Framework Audio",
+  "description": "Audio functionality for the RPG Framework",
+  "unity": "6000.0",
+ "keywords": [
+    "RPG Framework",
+    "Audio"
+  ],
+  "author": {
+    "name": "Elliott Armstrong",
+    "url": "https://github.com/KandyMan1990/RPGFramework.Audio"
+  }
+}
