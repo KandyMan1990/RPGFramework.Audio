@@ -9,7 +9,7 @@ using UnityEngine.Audio;
 
 namespace RPGFramework.Audio.Music
 {
-    public class UnityAudioPlayer : IMusicPlayer, IUpdatable
+    public class UnityMusicPlayer : IMusicPlayer, IUpdatable
     {
         private int    m_CurrentSongId  = -1;
         private int    m_PausedSongId   = -1;
@@ -31,7 +31,7 @@ namespace RPGFramework.Audio.Music
                                                                                { true, 1 }
                                                                        };
 
-        public UnityAudioPlayer(Transform parent)
+        public UnityMusicPlayer(Transform parent)
         {
             m_Parent = parent;
         }
@@ -89,7 +89,10 @@ namespace RPGFramework.Audio.Music
 
                 foreach (AudioSource source in m_CurrentSources)
                 {
-                    source.time = (float)newTime;
+                    if (source.isPlaying)
+                    {
+                        source.time = (float)newTime;
+                    }
                 }
             }
         }

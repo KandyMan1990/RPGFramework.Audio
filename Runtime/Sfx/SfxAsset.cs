@@ -1,26 +1,9 @@
 using System.Collections.Generic;
 using RPGFramework.Core.Shared;
 using UnityEngine;
+
 namespace RPGFramework.Audio.Sfx
 {
-    [System.Serializable]
-    public class SfxEventData : ISfxEventData
-    {
-        [SerializeField]
-        private string m_EventName;
-        [SerializeField]
-        private float m_EventTriggerTime;
-
-        public string EventName        => m_EventName;
-        public float  EventTriggerTime => m_EventTriggerTime;
-
-        public SfxEventData(string eventName, float eventTriggerTime)
-        {
-            m_EventName        = eventName;
-            m_EventTriggerTime = eventTriggerTime;
-        }
-    }
-
     [CreateAssetMenu(fileName = "SFX Asset", menuName = "RPG Framework/SFX Asset")]
     public class SfxAsset : ScriptableObject, ISfxAsset
     {

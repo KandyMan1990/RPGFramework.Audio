@@ -20,10 +20,10 @@ namespace RPGFramework.Audio.Music
         private int m_BeatsPerBar = 4;
 
         [SerializeField]
-        private List<Stem> m_Tracks;
+        private bool m_Loop;
 
         [SerializeField]
-        private bool m_Loop;
+        private List<Stem> m_Tracks;
 
         public double LoopStartTime { get; private set; }
         public double LoopEndTime   { get; private set; }
