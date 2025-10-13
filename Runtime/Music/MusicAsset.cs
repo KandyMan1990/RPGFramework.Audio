@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using RPGFramework.Core.Shared;
 using UnityEngine;
 
 namespace RPGFramework.Audio.Music
