@@ -17,7 +17,7 @@ namespace RPGFramework.Audio.Music_Sample
 
         private void Start()
         {
-            m_MusicPlayer = new UnityMusicPlayer(transform);
+            m_MusicPlayer = new UnityMusicPlayer();
             m_MusicPlayer.SetMusicAssetProvider(m_MusicAssetProvider);
             m_MusicPlayer.SetStemMixerGroups(m_MusicMixerGroups);
         }

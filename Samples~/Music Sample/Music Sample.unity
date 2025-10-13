@@ -267,7 +267,7 @@ GameObject:
   - component: {fileID: 1415833481}
   - component: {fileID: 1415833482}
   m_Layer: 0
-  m_Name: Music Player
+  m_Name: Music Player Bootstrapper
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
