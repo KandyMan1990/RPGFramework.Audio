@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using RPGFramework.Core.PlayerLoop;
-using RPGFramework.Core.Shared;
+using RPGFramework.Core;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Audio;
