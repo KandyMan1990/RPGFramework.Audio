@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using RPGFramework.Audio.Music;
-using RPGFramework.Core.Shared;
 using UnityEngine;
 using UnityEngine.Audio;
 using UnityEngine.InputSystem;
