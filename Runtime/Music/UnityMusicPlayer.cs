@@ -22,20 +22,13 @@ namespace RPGFramework.Audio.Music
         private AudioMixer              m_AudioMixer;
         private CancellationTokenSource m_CancellationTokenSource;
 
-        private readonly Transform m_Parent;
-
         private const string SEND_SUFFIX = "_Send";
         private static readonly Dictionary<bool, int> TRANSITION_MAP = new Dictionary<bool, int>
                                                                        {
                                                                                { false, 0 },
                                                                                { true, 1 }
                                                                        };
-
-        public UnityMusicPlayer(Transform parent)
-        {
-            m_Parent = parent;
-        }
-
+        
         public void Play(int id)
         {
             if (m_CurrentSongId == id)
@@ -104,13 +97,13 @@ namespace RPGFramework.Audio.Music
 
             m_CurrentSources = new AudioSource[m_StemMixerGroups.Length];
 
-            GameObject musicParent = new GameObject("Music");
-            musicParent.transform.parent = m_Parent;
+            GameObject musicPlayer = new GameObject("MusicPlayer");
+            Object.DontDestroyOnLoad(musicPlayer);
 
             for (int i = 0; i < m_CurrentSources.Length; i++)
             {
                 GameObject go = new GameObject(m_StemMixerGroups[i].name);
-                go.transform.parent                       = musicParent.transform;
+                go.transform.parent                       = musicPlayer.transform;
                 m_CurrentSources[i]                       = go.AddComponent<AudioSource>();
                 m_CurrentSources[i].outputAudioMixerGroup = m_StemMixerGroups[i];
             }

@@ -16,14 +16,12 @@ namespace RPGFramework.Audio.Sfx
         private AudioMixerGroup[] m_StemMixerGroups;
         private AudioMixer        m_AudioMixer;
 
-        private readonly Transform           m_Parent;
         private readonly List<ISfxReference> m_SfxReferences;
 
         private const string SEND_SUFFIX = "_Send";
 
-        public UnitySfxPlayer(Transform parent)
+        public UnitySfxPlayer()
         {
-            m_Parent        = parent;
             m_SfxReferences = new List<ISfxReference>();
 
             UpdateManager.RegisterUpdatable(this);
@@ -133,13 +131,13 @@ namespace RPGFramework.Audio.Sfx
 
             m_CurrentSources = new AudioSource[m_StemMixerGroups.Length];
 
-            GameObject sfxParent = new GameObject("Sfx");
-            sfxParent.transform.parent = m_Parent;
+            GameObject sfxPlayer = new GameObject("SfxPlayer");
+            UnityEngine.Object.DontDestroyOnLoad(sfxPlayer);
 
             for (int i = 0; i < m_CurrentSources.Length; i++)
             {
                 GameObject go = new GameObject(m_StemMixerGroups[i].name);
-                go.transform.parent                       = sfxParent.transform;
+                go.transform.parent                       = sfxPlayer.transform;
                 m_CurrentSources[i]                       = go.AddComponent<AudioSource>();
                 m_CurrentSources[i].outputAudioMixerGroup = m_StemMixerGroups[i];
             }
