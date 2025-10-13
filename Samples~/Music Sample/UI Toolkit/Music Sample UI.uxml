@@ -1,0 +1,11 @@
+<ui:UXML xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <ui:VisualElement name="Container" style="flex-grow: 1;">
+        <ui:Button text="Play Demo Music" name="PlayMusicButton" />
+        <ui:Button text="Play Demo Music with a muted stem" name="PlayMusicMutedButton" />
+        <ui:Button text="Transition to different muted stems" name="TransitionButton" />
+        <ui:Button text="Transition to all stems audible" name="TransitionAllStemsButton" />
+        <ui:Button text="Pause Demo Music" name="PauseMusicButton" />
+        <ui:Button text="Stop Demo Music" name="StopMusicButton" />
+        <ui:Button text="Stop Demo Music with fade out" name="StopMusicWithFadeButton" />
+    </ui:VisualElement>
+</ui:UXML>

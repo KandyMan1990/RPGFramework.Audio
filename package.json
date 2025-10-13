@@ -15,7 +15,7 @@
   "samples": [
 	{
 		"displayName": "Music Sample",
-		"description": "Contains an example of how to set up a music asset with multiple stems, each with their own reverb level and looping based on the tempo and start/end bars",
+		"description": "Contains an example of how to set up a music asset with multiple stems, each with their own reverb level and looping based on the tempo and start/end bars.  The buttons in the UI will enable/disable depending on the action taken.  This is not automatic in the system, merely a representation of how the system should be used, i.e. if you call Play while the system is already playing, you can get strange behaviour as the system expects you to have called Pause or Stop before hand, therefore the buttons are greyed out in the sample to show how to use the system correctly.",
 		"path": "Samples~/Music Sample"
 	}
   ]
