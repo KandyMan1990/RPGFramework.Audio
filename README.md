@@ -1,7 +1,7 @@
 # RPGFramework.Audio
 Audio functionality for the RPG Framework
 
-Audio is played using Unity's built in audio systems.  16 channels are reserved for playing music, 16 channels for sound effects.
+Audio is played using Unity's built in audio systems.  The provided mixer asset has 16 channels reserved for playing music and 16 channels for sound effects, however this is just an example, a mixer could have 2 channels, it could have 200 channels, 16 and 16 just seemed like a reasonable number that would cover the vast majority of use cases.
 
 ## Music
 
