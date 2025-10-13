@@ -58,7 +58,7 @@ namespace RPGFramework.Audio.Music
             m_PausedPosition = m_CurrentSources[0].time;
 
             m_CancellationTokenSource?.Cancel();
-            ClearCurrentSong(true);
+            ClearCurrentSong();
         }
 
         public void Stop(float fadeTime = 0.001f)
@@ -175,7 +175,7 @@ namespace RPGFramework.Audio.Music
                 await Awaitable.NextFrameAsync();
             }
 
-            ClearCurrentSong(false);
+            ClearCurrentSong();
         }
 
         private void ScheduleCurrentSong(float startTime)
@@ -207,7 +207,7 @@ namespace RPGFramework.Audio.Music
             }
         }
 
-        private void ClearCurrentSong(bool pause)
+        private void ClearCurrentSong()
         {
             foreach (AudioSource source in m_CurrentSources)
             {
