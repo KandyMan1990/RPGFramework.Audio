@@ -30,6 +30,7 @@ namespace RPGFramework.Audio
         void Play(int id);
         void Pause();
         void Stop(float                                    fadeTime = 0f);
+        void ClearPausedMusic();
         void SetMusicAssetProvider(IMusicAssetProvider     provider);
         void SetStemMixerGroups(AudioMixerGroup[]          groups);
         void SetActiveStemsFade(Dictionary<int, bool>      stemValues, float transitionLength);

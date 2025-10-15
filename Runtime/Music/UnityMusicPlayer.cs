@@ -42,8 +42,7 @@ namespace RPGFramework.Audio.Music
             {
                 startTime = (float)m_PausedPosition;
 
-                m_PausedSongId   = -1;
-                m_PausedPosition = 0.0;
+                ClearPausedMusic();
             }
 
             ScheduleCurrentSong(startTime);
@@ -65,6 +64,12 @@ namespace RPGFramework.Audio.Music
         {
             m_CancellationTokenSource?.Cancel();
             _ = FadeOutAndStopAsync(fadeTime);
+        }
+
+        public void ClearPausedMusic()
+        {
+            m_PausedSongId   = -1;
+            m_PausedPosition = 0.0;
         }
 
         public void SetMusicAssetProvider(IMusicAssetProvider provider)
