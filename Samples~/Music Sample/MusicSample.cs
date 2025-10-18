@@ -15,32 +15,32 @@ namespace RPGFramework.Audio.Music_Sample
         private AudioMixerGroup[] m_MusicMixerGroups;
         [SerializeField]
         private UIDocument m_UIDocument;
-        
+
         private IMusicPlayer m_MusicPlayer;
-        
-        private Button PlayMusicButton;
-        private Button PlayMusicMutedButton;
-        private Button TransitionButton;
-        private Button TransitionAllStemsButton;
-        private Button PauseMusicButton;
-        private Button StopMusicButton;
-        private Button StopMusicWithFadeButton;
+
+        private Button m_PlayMusicButton;
+        private Button m_PlayMusicMutedButton;
+        private Button m_TransitionButton;
+        private Button m_TransitionAllStemsButton;
+        private Button m_PauseMusicButton;
+        private Button m_StopMusicButton;
+        private Button m_StopMusicWithFadeButton;
 
         private void Awake()
         {
-            PlayMusicButton          = m_UIDocument.rootVisualElement.Q<Button>(nameof(PlayMusicButton));
-            PlayMusicMutedButton     = m_UIDocument.rootVisualElement.Q<Button>(nameof(PlayMusicMutedButton));
-            TransitionButton         = m_UIDocument.rootVisualElement.Q<Button>(nameof(TransitionButton));
-            TransitionAllStemsButton = m_UIDocument.rootVisualElement.Q<Button>(nameof(TransitionAllStemsButton));
-            PauseMusicButton         = m_UIDocument.rootVisualElement.Q<Button>(nameof(PauseMusicButton));
-            StopMusicButton          = m_UIDocument.rootVisualElement.Q<Button>(nameof(StopMusicButton));
-            StopMusicWithFadeButton  = m_UIDocument.rootVisualElement.Q<Button>(nameof(StopMusicWithFadeButton));
-            
-            TransitionButton.SetEnabled(false);
-            TransitionAllStemsButton.SetEnabled(false);
-            PauseMusicButton.SetEnabled(false);
-            StopMusicButton.SetEnabled(false);
-            StopMusicWithFadeButton.SetEnabled(false);
+            m_PlayMusicButton          = m_UIDocument.rootVisualElement.Q<Button>("PlayMusicButton");
+            m_PlayMusicMutedButton     = m_UIDocument.rootVisualElement.Q<Button>("PlayMusicMutedButton");
+            m_TransitionButton         = m_UIDocument.rootVisualElement.Q<Button>("TransitionButton");
+            m_TransitionAllStemsButton = m_UIDocument.rootVisualElement.Q<Button>("TransitionAllStemsButton");
+            m_PauseMusicButton         = m_UIDocument.rootVisualElement.Q<Button>("PauseMusicButton");
+            m_StopMusicButton          = m_UIDocument.rootVisualElement.Q<Button>("StopMusicButton");
+            m_StopMusicWithFadeButton  = m_UIDocument.rootVisualElement.Q<Button>("StopMusicWithFadeButton");
+
+            m_TransitionButton.SetEnabled(false);
+            m_TransitionAllStemsButton.SetEnabled(false);
+            m_PauseMusicButton.SetEnabled(false);
+            m_StopMusicButton.SetEnabled(false);
+            m_StopMusicWithFadeButton.SetEnabled(false);
         }
 
         private void Start()
@@ -49,41 +49,43 @@ namespace RPGFramework.Audio.Music_Sample
             m_MusicPlayer.SetMusicAssetProvider(m_MusicAssetProvider);
             m_MusicPlayer.SetStemMixerGroups(m_MusicMixerGroups);
 
-            PlayMusicButton.clicked          += OnPlayMusicButton;
-            PlayMusicMutedButton.clicked     += OnPlayMusicMutedButton;
-            TransitionButton.clicked         += OnTransitionButton;
-            TransitionAllStemsButton.clicked += OnTransitionAllStemsButton;
-            PauseMusicButton.clicked         += OnPauseMusicButton;
-            StopMusicButton.clicked          += OnStopMusicButton;
-            StopMusicWithFadeButton.clicked  += OnStopMusicWithFadeButton;
+            m_PlayMusicButton.clicked          += OnPlayMusicButton;
+            m_PlayMusicMutedButton.clicked     += OnPlayMusicMutedButton;
+            m_TransitionButton.clicked         += OnTransitionButton;
+            m_TransitionAllStemsButton.clicked += OnTransitionAllStemsButton;
+            m_PauseMusicButton.clicked         += OnPauseMusicButton;
+            m_StopMusicButton.clicked          += OnStopMusicButton;
+            m_StopMusicWithFadeButton.clicked  += OnStopMusicWithFadeButton;
         }
 
         private void OnDestroy()
         {
-            PlayMusicButton.clicked          -= OnPlayMusicButton;
-            PlayMusicMutedButton.clicked     -= OnPlayMusicMutedButton;
-            TransitionButton.clicked         -= OnTransitionButton;
-            TransitionAllStemsButton.clicked -= OnTransitionAllStemsButton;
-            PauseMusicButton.clicked         -= OnPauseMusicButton;
-            StopMusicButton.clicked          -= OnStopMusicButton;
-            StopMusicWithFadeButton.clicked  -= OnStopMusicWithFadeButton;
+            m_PlayMusicButton.clicked          -= OnPlayMusicButton;
+            m_PlayMusicMutedButton.clicked     -= OnPlayMusicMutedButton;
+            m_TransitionButton.clicked         -= OnTransitionButton;
+            m_TransitionAllStemsButton.clicked -= OnTransitionAllStemsButton;
+            m_PauseMusicButton.clicked         -= OnPauseMusicButton;
+            m_StopMusicButton.clicked          -= OnStopMusicButton;
+            m_StopMusicWithFadeButton.clicked  -= OnStopMusicWithFadeButton;
         }
 
         private void OnPlayMusicButton()
         {
+            // await if needed
             m_MusicPlayer.Play(0);
-            
-            PlayMusicButton.SetEnabled(false);
-            PlayMusicMutedButton.SetEnabled(false);
-            TransitionButton.SetEnabled(true);
-            TransitionAllStemsButton.SetEnabled(true);
-            PauseMusicButton.SetEnabled(true);
-            StopMusicButton.SetEnabled(true);
-            StopMusicWithFadeButton.SetEnabled(true);
+
+            m_PlayMusicButton.SetEnabled(false);
+            m_PlayMusicMutedButton.SetEnabled(false);
+            m_TransitionButton.SetEnabled(true);
+            m_TransitionAllStemsButton.SetEnabled(true);
+            m_PauseMusicButton.SetEnabled(true);
+            m_StopMusicButton.SetEnabled(true);
+            m_StopMusicWithFadeButton.SetEnabled(true);
         }
-        
+
         private void OnPlayMusicMutedButton()
         {
+            // await if needed
             m_MusicPlayer.Play(0);
             m_MusicPlayer.SetActiveStemsImmediate(new Dictionary<int, bool>
                                                   {
@@ -92,16 +94,16 @@ namespace RPGFramework.Audio.Music_Sample
                                                           { 2, true },
                                                           { 3, true }
                                                   });
-            
-            PlayMusicButton.SetEnabled(false);
-            PlayMusicMutedButton.SetEnabled(false);
-            TransitionButton.SetEnabled(true);
-            TransitionAllStemsButton.SetEnabled(true);
-            PauseMusicButton.SetEnabled(true);
-            StopMusicButton.SetEnabled(true);
-            StopMusicWithFadeButton.SetEnabled(true);
+
+            m_PlayMusicButton.SetEnabled(false);
+            m_PlayMusicMutedButton.SetEnabled(false);
+            m_TransitionButton.SetEnabled(true);
+            m_TransitionAllStemsButton.SetEnabled(true);
+            m_PauseMusicButton.SetEnabled(true);
+            m_StopMusicButton.SetEnabled(true);
+            m_StopMusicWithFadeButton.SetEnabled(true);
         }
-        
+
         private void OnTransitionButton()
         {
             m_MusicPlayer.SetActiveStemsFade(new Dictionary<int, bool>
@@ -113,7 +115,7 @@ namespace RPGFramework.Audio.Music_Sample
                                              },
                                              2f);
         }
-        
+
         private void OnTransitionAllStemsButton()
         {
             m_MusicPlayer.SetActiveStemsFade(new Dictionary<int, bool>
@@ -125,53 +127,54 @@ namespace RPGFramework.Audio.Music_Sample
                                              },
                                              2f);
         }
-        
+
         private void OnPauseMusicButton()
         {
             m_MusicPlayer.Pause();
-            
-            PlayMusicButton.SetEnabled(true);
-            PlayMusicMutedButton.SetEnabled(true);
-            TransitionButton.SetEnabled(false);
-            TransitionAllStemsButton.SetEnabled(false);
-            PauseMusicButton.SetEnabled(false);
-            StopMusicButton.SetEnabled(false);
-            StopMusicWithFadeButton.SetEnabled(false);
+
+            m_PlayMusicButton.SetEnabled(true);
+            m_PlayMusicMutedButton.SetEnabled(true);
+            m_TransitionButton.SetEnabled(false);
+            m_TransitionAllStemsButton.SetEnabled(false);
+            m_PauseMusicButton.SetEnabled(false);
+            m_StopMusicButton.SetEnabled(false);
+            m_StopMusicWithFadeButton.SetEnabled(false);
         }
-        
+
         private void OnStopMusicButton()
         {
+            // await if needed
             m_MusicPlayer.Stop();
-            
-            PlayMusicButton.SetEnabled(true);
-            PlayMusicMutedButton.SetEnabled(true);
-            TransitionButton.SetEnabled(false);
-            TransitionAllStemsButton.SetEnabled(false);
-            PauseMusicButton.SetEnabled(false);
-            StopMusicButton.SetEnabled(false);
-            StopMusicWithFadeButton.SetEnabled(false);
+
+            m_PlayMusicButton.SetEnabled(true);
+            m_PlayMusicMutedButton.SetEnabled(true);
+            m_TransitionButton.SetEnabled(false);
+            m_TransitionAllStemsButton.SetEnabled(false);
+            m_PauseMusicButton.SetEnabled(false);
+            m_StopMusicButton.SetEnabled(false);
+            m_StopMusicWithFadeButton.SetEnabled(false);
         }
-        
+
         private void OnStopMusicWithFadeButton()
         {
-            m_MusicPlayer.Stop(2f);
-            
-            PlayMusicButton.SetEnabled(false);
-            PlayMusicMutedButton.SetEnabled(false);
-            TransitionButton.SetEnabled(false);
-            TransitionAllStemsButton.SetEnabled(false);
-            PauseMusicButton.SetEnabled(false);
-            StopMusicButton.SetEnabled(false);
-            StopMusicWithFadeButton.SetEnabled(false);
+            m_PlayMusicButton.SetEnabled(false);
+            m_PlayMusicMutedButton.SetEnabled(false);
+            m_TransitionButton.SetEnabled(false);
+            m_TransitionAllStemsButton.SetEnabled(false);
+            m_PauseMusicButton.SetEnabled(false);
+            m_StopMusicButton.SetEnabled(false);
+            m_StopMusicWithFadeButton.SetEnabled(false);
 
+            // async void bad, but button callbacks have to be void
+            // _ = means "I don't want to await this task"
             _ = Run();
 
             async Task Run()
             {
-                await Awaitable.WaitForSecondsAsync(2f);
-                
-                PlayMusicButton.SetEnabled(true);
-                PlayMusicMutedButton.SetEnabled(true);
+                await m_MusicPlayer.Stop(2f);
+
+                m_PlayMusicButton.SetEnabled(true);
+                m_PlayMusicMutedButton.SetEnabled(true);
             }
         }
     }
