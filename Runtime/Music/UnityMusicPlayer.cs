@@ -23,16 +23,16 @@ namespace RPGFramework.Audio.Music
         private CancellationTokenSource m_CancellationTokenSource;
 
         private const string SEND_SUFFIX = "_Send";
-        private static readonly Dictionary<bool, int> TRANSITION_MAP = new Dictionary<bool, int>
-                                                                       {
-                                                                               { false, 0 },
-                                                                               { true, 1 }
-                                                                       };
-        
-        public void Play(int id)
+        private static readonly Dictionary<bool, int> m_TransitionMap = new Dictionary<bool, int>
+                                                                        {
+                                                                                { false, 0 },
+                                                                                { true, 1 }
+                                                                        };
+
+        public Task Play(int id)
         {
             if (m_CurrentSongId == id)
-                return;
+                return Task.CompletedTask;
 
             m_CurrentSongId = id;
 
@@ -45,7 +45,7 @@ namespace RPGFramework.Audio.Music
                 ClearPausedMusic();
             }
 
-            ScheduleCurrentSong(startTime);
+            return ScheduleCurrentSong(startTime);
         }
 
         public void Pause()
@@ -60,10 +60,10 @@ namespace RPGFramework.Audio.Music
             ClearCurrentSong();
         }
 
-        public void Stop(float fadeTime = 0.001f)
+        public Task Stop(float fadeTime = 0.001f)
         {
             m_CancellationTokenSource?.Cancel();
-            _ = FadeOutAndStopAsync(fadeTime);
+            return FadeOutAndStopAsync(fadeTime);
         }
 
         public void ClearPausedMusic()
@@ -120,7 +120,7 @@ namespace RPGFramework.Audio.Music
 
             foreach (KeyValuePair<int, bool> kvp in stemValues)
             {
-                m_CurrentSources[kvp.Key].volume = TRANSITION_MAP[kvp.Value];
+                m_CurrentSources[kvp.Key].volume = m_TransitionMap[kvp.Value];
             }
         }
 
@@ -145,7 +145,7 @@ namespace RPGFramework.Audio.Music
                     foreach (KeyValuePair<int, bool> kvp in stemValues)
                     {
                         float start  = startVolumes[kvp.Key];
-                        float target = TRANSITION_MAP[kvp.Value];
+                        float target = m_TransitionMap[kvp.Value];
 
                         m_CurrentSources[kvp.Key].volume = math.lerp(start, target, progress);
                     }
@@ -183,9 +183,30 @@ namespace RPGFramework.Audio.Music
             ClearCurrentSong();
         }
 
-        private void ScheduleCurrentSong(float startTime)
+        private static async Task EnsureAudioClipLoaded(AudioClip audioClip)
+        {
+            if (!audioClip.preloadAudioData && audioClip.loadState != AudioDataLoadState.Loaded)
+            {
+                audioClip.LoadAudioData();
+                while (audioClip.loadState != AudioDataLoadState.Loaded)
+                {
+                    await Awaitable.NextFrameAsync();
+                }
+            }
+        }
+
+        private async Task ScheduleCurrentSong(float startTime)
         {
             m_CurrentMusicAsset = m_MusicAssetProvider.GetMusicAsset(m_CurrentSongId);
+
+            Task[] tasks = new Task[m_CurrentMusicAsset.Tracks.Count];
+            for (int i = 0; i < m_CurrentMusicAsset.Tracks.Count; i++)
+            {
+                IStem stem = m_CurrentMusicAsset.Tracks[i];
+                tasks[i] = EnsureAudioClipLoaded(stem.Clip);
+            }
+
+            await Task.WhenAll(tasks);
 
             double scheduledStartTime = AudioSettings.dspTime + Time.deltaTime;
 
@@ -223,6 +244,11 @@ namespace RPGFramework.Audio.Music
             if (m_CurrentMusicAsset.Loop)
             {
                 UpdateManager.UnregisterUpdatable(this);
+            }
+
+            foreach (IStem stem in m_CurrentMusicAsset.Tracks)
+            {
+                stem.Clip.UnloadAudioData();
             }
 
             m_CurrentMusicAsset = null;

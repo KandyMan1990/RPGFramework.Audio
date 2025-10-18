@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Audio;
 
@@ -27,9 +28,9 @@ namespace RPGFramework.Audio
 
     public interface IMusicPlayer
     {
-        void Play(int id);
+        Task Play(int id);
         void Pause();
-        void Stop(float                                    fadeTime = 0f);
+        Task Stop(float fadeTime = 0f);
         void ClearPausedMusic();
         void SetMusicAssetProvider(IMusicAssetProvider     provider);
         void SetStemMixerGroups(AudioMixerGroup[]          groups);
