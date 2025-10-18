@@ -1,7 +1,7 @@
 # RPGFramework.Audio
 Audio functionality for the RPG Framework
 
-Audio is played using Unity's built in audio systems.  The provided mixer asset has 16 channels reserved for playing music and 16 channels for sound effects, however this is just an example, a mixer could have 2 channels, it could have 200 channels, 16 and 16 just seemed like a reasonable number that would cover the vast majority of use cases.
+Audio is played using Unity's built in audio systems.  The samples contain a mixer asset that has 16 channels reserved for playing music and 16 channels for sound effects, however this is just an example, a mixer could have 2 channels, it could have 200 channels, 16 and 16 just seemed like a reasonable number that would cover the vast majority of use cases.
 
 ## Music
 
@@ -10,6 +10,9 @@ The 16 channels give the option of playing music via stems instead of a bounced 
 Music can also have stems fade in and out should something happen in game where a transition would be preferred instead of starting a different track.
 
 Music can be looped by specifying the tempo, beats per bar, and the start/end bar to loop
+
+Pausing music does not prevent a different track from playing. For example, pause music ID 1, play music ID 2, then when wanting to return to music A, just call Stop() then Play(1) and it will resume from where it was paused.
+If you want a previously paused music to start from scratch, you can call ClearPausedMusic() before calling Play and it will ensure the track starts from the beginning.
 
 ## Sfx
 
