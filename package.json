@@ -4,7 +4,7 @@
   "displayName": "RPG Framework Audio",
   "description": "Audio functionality for the RPG Framework",
   "dependencies": {
-    "com.rpgframework.core": "https://github.com/KandyMan1990/RPGFramework.Core.git#v0.1.0"
+    "com.rpgframework.core": "0.1.0"
   },
   "unity": "6000.0",
  "keywords": [
