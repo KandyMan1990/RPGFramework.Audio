@@ -1,0 +1,16 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f30dc21c25dc48e8a1c5670281bf9708, type: 3}
+  m_Name: SFX Asset Provider
+  m_EditorClassIdentifier: RPGFramework.Audio::RPGFramework.Audio.Sfx.SfxAssetProvider
+  m_SfxAssets:
+  - {fileID: 11400000, guid: 8be0f8286db739e44843d1676a687c12, type: 2}

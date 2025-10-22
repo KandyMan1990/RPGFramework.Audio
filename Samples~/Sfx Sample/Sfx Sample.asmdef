@@ -1,0 +1,17 @@
+{
+    "name": "SfxSample",
+    "rootNamespace": "RPGFramework.Audio.Sfx_Sample",
+    "references": [
+        "GUID:8eb229671350982448ab31380729443f",
+        "GUID:13af680cbd4f2db4a8c7ef02b9003e0f"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

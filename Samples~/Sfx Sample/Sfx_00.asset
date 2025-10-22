@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0bd71118d5034842b9b15f73fe888dbc, type: 3}
+  m_Name: Sfx_00
+  m_EditorClassIdentifier: RPGFramework.Audio::RPGFramework.Audio.Sfx.SfxAsset
+  m_Tracks:
+  - m_AudioClip: {fileID: 8300000, guid: 57cf726dbd423084bb2de25890653784, type: 3}
+    m_ReverbSendLevel: 0.8
+  m_Events:
+  - m_EventName: LoopStart
+    m_EventTriggerTime: 48676
+  - m_EventName: LoopEnd
+    m_EventTriggerTime: 61105
+  m_Loop: 1
+  m_LoopStart: 48676
+  m_LoopEnd: 61105
