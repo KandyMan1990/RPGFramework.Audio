@@ -14,3 +14,4 @@ MonoBehaviour:
   m_EditorClassIdentifier: RPGFramework.Audio::RPGFramework.Audio.Sfx.SfxAssetProvider
   m_SfxAssets:
   - {fileID: 11400000, guid: 8be0f8286db739e44843d1676a687c12, type: 2}
+  - {fileID: 11400000, guid: a92675a9a3a4623418267a1d2fd4cbd5, type: 2}

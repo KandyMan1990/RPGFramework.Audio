@@ -18,7 +18,7 @@ namespace RPGFramework.Audio.Sfx_Sample
 
         private ISfxPlayer m_SfxPlayer;
 
-        private Button m_PlaySfx0Button;
+        private Button m_PlaySfx1Button;
         private Button m_PlaySfx0ButtonWithReference;
         // private Button m_TransitionButton;
         // private Button m_TransitionAllStemsButton;
@@ -28,7 +28,7 @@ namespace RPGFramework.Audio.Sfx_Sample
 
         private void Awake()
         {
-            m_PlaySfx0Button              = m_UIDocument.rootVisualElement.Q<Button>("PlaySfx0Button");
+            m_PlaySfx1Button              = m_UIDocument.rootVisualElement.Q<Button>("PlaySfx1Button");
             m_PlaySfx0ButtonWithReference = m_UIDocument.rootVisualElement.Q<Button>("PlaySfx0ButtonWithReference");
             // m_TransitionButton         = m_UIDocument.rootVisualElement.Q<Button>("TransitionButton");
             // m_TransitionAllStemsButton = m_UIDocument.rootVisualElement.Q<Button>("TransitionAllStemsButton");
@@ -49,7 +49,7 @@ namespace RPGFramework.Audio.Sfx_Sample
             m_SfxPlayer.SetSfxAssetProvider(m_SfxAssetProvider);
             m_SfxPlayer.SetStemMixerGroups(m_SfxMixerGroups);
 
-            m_PlaySfx0Button.clicked              += OnPlaySfx0Button;
+            m_PlaySfx1Button.clicked              += OnPlaySfx1Button;
             m_PlaySfx0ButtonWithReference.clicked += OnPlaySfx0ButtonWithReference;
             // m_TransitionButton.clicked         += OnTransitionButton;
             // m_TransitionAllStemsButton.clicked += OnTransitionAllStemsButton;
@@ -60,7 +60,7 @@ namespace RPGFramework.Audio.Sfx_Sample
 
         private void OnDestroy()
         {
-            m_PlaySfx0Button.clicked              -= OnPlaySfx0Button;
+            m_PlaySfx1Button.clicked              -= OnPlaySfx1Button;
             m_PlaySfx0ButtonWithReference.clicked -= OnPlaySfx0ButtonWithReference;
             // m_TransitionButton.clicked         -= OnTransitionButton;
             // m_TransitionAllStemsButton.clicked -= OnTransitionAllStemsButton;
@@ -69,10 +69,10 @@ namespace RPGFramework.Audio.Sfx_Sample
             // m_StopMusicWithFadeButton.clicked  -= OnStopMusicWithFadeButton;
         }
 
-        private void OnPlaySfx0Button()
+        private void OnPlaySfx1Button()
         {
             // trigger a sound
-            m_SfxPlayer.Play(0);
+            m_SfxPlayer.Play(1);
         }
 
         private void OnPlaySfx0ButtonWithReference()
@@ -100,7 +100,7 @@ namespace RPGFramework.Audio.Sfx_Sample
         //                                                   { 3, true }
         //                                           });
         //
-        //     m_PlaySfx0Button.SetEnabled(false);
+        //     m_PlaySfx1Button.SetEnabled(false);
         //     m_PlaySfx0ButtonWithReference.SetEnabled(false);
         //     m_TransitionButton.SetEnabled(true);
         //     m_TransitionAllStemsButton.SetEnabled(true);
@@ -137,7 +137,7 @@ namespace RPGFramework.Audio.Sfx_Sample
         // {
         //     m_MusicPlayer.Pause();
         //
-        //     m_PlaySfx0Button.SetEnabled(true);
+        //     m_PlaySfx1Button.SetEnabled(true);
         //     m_PlaySfx0ButtonWithReference.SetEnabled(true);
         //     m_TransitionButton.SetEnabled(false);
         //     m_TransitionAllStemsButton.SetEnabled(false);
@@ -151,7 +151,7 @@ namespace RPGFramework.Audio.Sfx_Sample
         //     // await if needed
         //     m_MusicPlayer.Stop();
         //
-        //     m_PlaySfx0Button.SetEnabled(true);
+        //     m_PlaySfx1Button.SetEnabled(true);
         //     m_PlaySfx0ButtonWithReference.SetEnabled(true);
         //     m_TransitionButton.SetEnabled(false);
         //     m_TransitionAllStemsButton.SetEnabled(false);
@@ -162,7 +162,7 @@ namespace RPGFramework.Audio.Sfx_Sample
         //
         // private void OnStopMusicWithFadeButton()
         // {
-        //     m_PlaySfx0Button.SetEnabled(false);
+        //     m_PlaySfx1Button.SetEnabled(false);
         //     m_PlaySfx0ButtonWithReference.SetEnabled(false);
         //     m_TransitionButton.SetEnabled(false);
         //     m_TransitionAllStemsButton.SetEnabled(false);
@@ -178,7 +178,7 @@ namespace RPGFramework.Audio.Sfx_Sample
         //     {
         //         await m_MusicPlayer.Stop(2f);
         //
-        //         m_PlaySfx0Button.SetEnabled(true);
+        //         m_PlaySfx1Button.SetEnabled(true);
         //         m_PlaySfx0ButtonWithReference.SetEnabled(true);
         //     }
         // }

@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0bd71118d5034842b9b15f73fe888dbc, type: 3}
+  m_Name: Sfx_01
+  m_EditorClassIdentifier: RPGFramework.Audio::RPGFramework.Audio.Sfx.SfxAsset
+  m_Tracks:
+  - m_AudioClip: {fileID: 8300000, guid: 0efaa9e1a5074a54bbb6b2ebeb9caaa1, type: 3}
+    m_ReverbSendLevel: 0.6
+  - m_AudioClip: {fileID: 8300000, guid: 79035794e479dec4fa7b57036695961b, type: 3}
+    m_ReverbSendLevel: 0.8
+  m_Events: []
+  m_Loop: 0
+  m_LoopStart: 0
+  m_LoopEnd: 0

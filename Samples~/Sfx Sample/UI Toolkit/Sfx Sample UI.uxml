@@ -1,6 +1,6 @@
 <ui:UXML xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
     <ui:VisualElement name="Container" style="flex-grow: 1;">
-        <ui:Button text="Play a looping sound" name="PlaySfx0Button" />
+        <ui:Button text="Play a sound" name="PlaySfx1Button" />
         <ui:Button text="Play a looping sound wth an event" name="PlaySfx0ButtonWithReference" />
     </ui:VisualElement>
 </ui:UXML>
