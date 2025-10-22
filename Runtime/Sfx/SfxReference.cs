@@ -23,7 +23,7 @@ namespace RPGFramework.Audio.Sfx
             m_SfxAsset     = sfxAsset;
             m_EventData = new List<ISfxEventData>(sfxAsset.Events)
                           {
-                                  new SfxEventData(SFX_COMPLETE, sfxAsset.Tracks[0].Clip.length)
+                                  new SfxEventData(SFX_COMPLETE, sfxAsset.Tracks[0].Clip.samples)
                           };
 
             Events = new List<ISfxEventData>(m_EventData);
@@ -37,7 +37,7 @@ namespace RPGFramework.Audio.Sfx
 
             foreach (ISfxEventData sfxEventData in m_EventData)
             {
-                if (m_AudioSources[0].time >= sfxEventData.EventTriggerTime)
+                if (m_AudioSources[0].timeSamples >= sfxEventData.EventTriggerTime)
                 {
                     eventsToRemove.Add(sfxEventData);
                     OnEvent?.Invoke(sfxEventData.EventName, this);
