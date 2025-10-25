@@ -57,8 +57,9 @@ namespace RPGFramework.Audio
     {
         event Action<string, ISfxReference> OnEvent;
         IReadOnlyList<ISfxEventData>        Events { get; }
-        void                                CheckForLoop();
-        void                                CheckForEventToRaise();
+        internal void                       CheckForLoop();
+        internal void                       CheckForEventToRaise();
+        internal void                       Stop();
     }
 
     public interface ISfxAssetProvider
@@ -73,7 +74,8 @@ namespace RPGFramework.Audio
         void          PauseAll();
         void          Resume(int id);
         void          ResumeAll();
-        void          Stop(int id);
+        void          Stop(int           id);
+        void          Stop(ISfxReference sfxReference);
         void          StopAll();
         void          SetSfxAssetProvider(ISfxAssetProvider provider);
         void          SetStemMixerGroups(AudioMixerGroup[]  groups);

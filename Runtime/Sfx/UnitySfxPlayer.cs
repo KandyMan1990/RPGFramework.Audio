@@ -108,6 +108,11 @@ namespace RPGFramework.Audio.Sfx
             }
         }
 
+        public void Stop(ISfxReference sfxReference)
+        {
+            sfxReference.Stop();
+        }
+
         public void StopAll()
         {
             foreach (AudioSource source in m_CurrentSources)

@@ -31,7 +31,7 @@ namespace RPGFramework.Audio.Sfx
             m_OnAllEventsCompleted = onAllEventsCompleted;
         }
 
-        public void CheckForEventToRaise()
+        void ISfxReference.CheckForEventToRaise()
         {
             List<ISfxEventData> eventsToRemove = new List<ISfxEventData>();
 
@@ -62,7 +62,7 @@ namespace RPGFramework.Audio.Sfx
             m_OnAllEventsCompleted(this);
         }
 
-        public void CheckForLoop()
+        void ISfxReference.CheckForLoop()
         {
             if (!m_SfxAsset.Loop)
             {
@@ -78,6 +78,29 @@ namespace RPGFramework.Audio.Sfx
                 foreach (AudioSource source in m_AudioSources)
                 {
                     source.timeSamples = newTime;
+                }
+            }
+        }
+        void ISfxReference.Stop()
+        {
+            // sfx has already finished playing
+            if (m_EventData.Count == 0)
+            {
+                return;
+            }
+            
+            foreach (IStem stem in m_SfxAsset.Tracks)
+            {
+                foreach (AudioSource audioSource in m_AudioSources)
+                {
+                    if (audioSource.clip == stem.Clip)
+                    {
+                        continue;
+                    }
+
+                    audioSource.Stop();
+                    audioSource.clip = null;
+                    break;
                 }
             }
         }
