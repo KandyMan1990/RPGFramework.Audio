@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using RPGFramework.Audio.Sfx;
 using UnityEngine;
 using UnityEngine.Audio;
@@ -19,28 +17,18 @@ namespace RPGFramework.Audio.Sfx_Sample
         private ISfxPlayer m_SfxPlayer;
 
         private Button m_PlaySfx1Button;
-        private Button m_PlaySfx0ButtonWithReference;
-        // private Button m_TransitionButton;
-        // private Button m_TransitionAllStemsButton;
-        // private Button m_PauseMusicButton;
-        // private Button m_StopMusicButton;
-        // private Button m_StopMusicWithFadeButton;
+        private Button m_StopSfx1Button;
+        private Button m_PlaySfx0ButtonWithLoopAndEvent;
+        private Button m_StopAllSfxButton;
+
+        private ISfxReference m_SfxReference0;
 
         private void Awake()
         {
-            m_PlaySfx1Button              = m_UIDocument.rootVisualElement.Q<Button>("PlaySfx1Button");
-            m_PlaySfx0ButtonWithReference = m_UIDocument.rootVisualElement.Q<Button>("PlaySfx0ButtonWithReference");
-            // m_TransitionButton         = m_UIDocument.rootVisualElement.Q<Button>("TransitionButton");
-            // m_TransitionAllStemsButton = m_UIDocument.rootVisualElement.Q<Button>("TransitionAllStemsButton");
-            // m_PauseMusicButton         = m_UIDocument.rootVisualElement.Q<Button>("PauseMusicButton");
-            // m_StopMusicButton          = m_UIDocument.rootVisualElement.Q<Button>("StopMusicButton");
-            // m_StopMusicWithFadeButton  = m_UIDocument.rootVisualElement.Q<Button>("StopMusicWithFadeButton");
-
-            // m_TransitionButton.SetEnabled(false);
-            // m_TransitionAllStemsButton.SetEnabled(false);
-            // m_PauseMusicButton.SetEnabled(false);
-            // m_StopMusicButton.SetEnabled(false);
-            // m_StopMusicWithFadeButton.SetEnabled(false);
+            m_PlaySfx1Button                 = m_UIDocument.rootVisualElement.Q<Button>("PlaySfx1Button");
+            m_StopSfx1Button                 = m_UIDocument.rootVisualElement.Q<Button>("StopSfx1Button");
+            m_PlaySfx0ButtonWithLoopAndEvent = m_UIDocument.rootVisualElement.Q<Button>("PlaySfx0ButtonWithLoopAndEvent");
+            m_StopAllSfxButton               = m_UIDocument.rootVisualElement.Q<Button>("StopAllSfxButton");
         }
 
         private void Start()
@@ -49,33 +37,33 @@ namespace RPGFramework.Audio.Sfx_Sample
             m_SfxPlayer.SetSfxAssetProvider(m_SfxAssetProvider);
             m_SfxPlayer.SetStemMixerGroups(m_SfxMixerGroups);
 
-            m_PlaySfx1Button.clicked              += OnPlaySfx1Button;
-            m_PlaySfx0ButtonWithReference.clicked += OnPlaySfx0ButtonWithReference;
-            // m_TransitionButton.clicked         += OnTransitionButton;
-            // m_TransitionAllStemsButton.clicked += OnTransitionAllStemsButton;
-            // m_PauseMusicButton.clicked         += OnPauseMusicButton;
-            // m_StopMusicButton.clicked          += OnStopMusicButton;
-            // m_StopMusicWithFadeButton.clicked  += OnStopMusicWithFadeButton;
+            m_PlaySfx1Button.clicked                 += OnPlaySfx1Button;
+            m_StopSfx1Button.clicked                 += OnStopSfx1Button;
+            m_PlaySfx0ButtonWithLoopAndEvent.clicked += OnPlaySfx0ButtonWithLoopAndEvent;
+            m_StopAllSfxButton.clicked               += OnStopAllSfxButton;
         }
 
         private void OnDestroy()
         {
-            m_PlaySfx1Button.clicked              -= OnPlaySfx1Button;
-            m_PlaySfx0ButtonWithReference.clicked -= OnPlaySfx0ButtonWithReference;
-            // m_TransitionButton.clicked         -= OnTransitionButton;
-            // m_TransitionAllStemsButton.clicked -= OnTransitionAllStemsButton;
-            // m_PauseMusicButton.clicked         -= OnPauseMusicButton;
-            // m_StopMusicButton.clicked          -= OnStopMusicButton;
-            // m_StopMusicWithFadeButton.clicked  -= OnStopMusicWithFadeButton;
+            m_PlaySfx1Button.clicked                 -= OnPlaySfx1Button;
+            m_StopSfx1Button.clicked                 -= OnStopSfx1Button;
+            m_PlaySfx0ButtonWithLoopAndEvent.clicked -= OnPlaySfx0ButtonWithLoopAndEvent;
+            m_StopAllSfxButton.clicked               -= OnStopAllSfxButton;
         }
 
         private void OnPlaySfx1Button()
         {
             // trigger a sound
-            m_SfxPlayer.Play(1);
+            m_SfxReference0 = m_SfxPlayer.Play(1);
         }
 
-        private void OnPlaySfx0ButtonWithReference()
+        private void OnStopSfx1Button()
+        {
+            // stop a sound
+            m_SfxPlayer.Stop(m_SfxReference0);
+        }
+
+        private void OnPlaySfx0ButtonWithLoopAndEvent()
         {
             // trigger a sound
             ISfxReference sfxReference = m_SfxPlayer.Play(0);
@@ -88,99 +76,9 @@ namespace RPGFramework.Audio.Sfx_Sample
             }
         }
 
-        // private void OnPlayMusicMutedButton()
-        // {
-        //     // await if needed
-        //     m_MusicPlayer.Play(0);
-        //     m_MusicPlayer.SetActiveStemsImmediate(new Dictionary<int, bool>
-        //                                           {
-        //                                                   { 0, false },
-        //                                                   { 1, true },
-        //                                                   { 2, true },
-        //                                                   { 3, true }
-        //                                           });
-        //
-        //     m_PlaySfx1Button.SetEnabled(false);
-        //     m_PlaySfx0ButtonWithReference.SetEnabled(false);
-        //     m_TransitionButton.SetEnabled(true);
-        //     m_TransitionAllStemsButton.SetEnabled(true);
-        //     m_PauseMusicButton.SetEnabled(true);
-        //     m_StopMusicButton.SetEnabled(true);
-        //     m_StopMusicWithFadeButton.SetEnabled(true);
-        // }
-        //
-        // private void OnTransitionButton()
-        // {
-        //     m_MusicPlayer.SetActiveStemsFade(new Dictionary<int, bool>
-        //                                      {
-        //                                              { 0, true },
-        //                                              { 1, false },
-        //                                              { 2, true },
-        //                                              { 3, true }
-        //                                      },
-        //                                      2f);
-        // }
-        //
-        // private void OnTransitionAllStemsButton()
-        // {
-        //     m_MusicPlayer.SetActiveStemsFade(new Dictionary<int, bool>
-        //                                      {
-        //                                              { 0, true },
-        //                                              { 1, true },
-        //                                              { 2, true },
-        //                                              { 3, true }
-        //                                      },
-        //                                      2f);
-        // }
-        //
-        // private void OnPauseMusicButton()
-        // {
-        //     m_MusicPlayer.Pause();
-        //
-        //     m_PlaySfx1Button.SetEnabled(true);
-        //     m_PlaySfx0ButtonWithReference.SetEnabled(true);
-        //     m_TransitionButton.SetEnabled(false);
-        //     m_TransitionAllStemsButton.SetEnabled(false);
-        //     m_PauseMusicButton.SetEnabled(false);
-        //     m_StopMusicButton.SetEnabled(false);
-        //     m_StopMusicWithFadeButton.SetEnabled(false);
-        // }
-        //
-        // private void OnStopMusicButton()
-        // {
-        //     // await if needed
-        //     m_MusicPlayer.Stop();
-        //
-        //     m_PlaySfx1Button.SetEnabled(true);
-        //     m_PlaySfx0ButtonWithReference.SetEnabled(true);
-        //     m_TransitionButton.SetEnabled(false);
-        //     m_TransitionAllStemsButton.SetEnabled(false);
-        //     m_PauseMusicButton.SetEnabled(false);
-        //     m_StopMusicButton.SetEnabled(false);
-        //     m_StopMusicWithFadeButton.SetEnabled(false);
-        // }
-        //
-        // private void OnStopMusicWithFadeButton()
-        // {
-        //     m_PlaySfx1Button.SetEnabled(false);
-        //     m_PlaySfx0ButtonWithReference.SetEnabled(false);
-        //     m_TransitionButton.SetEnabled(false);
-        //     m_TransitionAllStemsButton.SetEnabled(false);
-        //     m_PauseMusicButton.SetEnabled(false);
-        //     m_StopMusicButton.SetEnabled(false);
-        //     m_StopMusicWithFadeButton.SetEnabled(false);
-        //
-        //     // async void bad, but button callbacks have to be void
-        //     // _ = means "I don't want to await this task"
-        //     _ = Run();
-        //
-        //     async Task Run()
-        //     {
-        //         await m_MusicPlayer.Stop(2f);
-        //
-        //         m_PlaySfx1Button.SetEnabled(true);
-        //         m_PlaySfx0ButtonWithReference.SetEnabled(true);
-        //     }
-        // }
+        private void OnStopAllSfxButton()
+        {
+            m_SfxPlayer.StopAll();
+        }
     }
 }
