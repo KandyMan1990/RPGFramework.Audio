@@ -3,6 +3,8 @@ Audio functionality for the RPG Framework
 
 Audio is played using Unity's built in audio systems.  The samples contain a mixer asset that has 16 channels reserved for playing music and 16 channels for sound effects, however this is just an example, a mixer could have 2 channels, it could have 200 channels, 16 and 16 just seemed like a reasonable number that would cover the vast majority of use cases.
 
+When it comes to looping, be it music or sfx, there should be trailing sound after the loop point in case Unity's audio system overruns the buffer size when processing, e.g. if Unity processes audio in say 64 byte chunks but your audio clip isn't divisible by 64, it could cause noise/pops/clicks or it could cause Unity to think the audio has finished playing and stop looping.  For music, I've found an additional bar of music generally covers the overflow, and for sfx, at least 1 second past the loop point has stopped any errors occurring.
+
 ## Music
 
 The 16 channels give the option of playing music via stems instead of a bounced track, where each stem can send to a realtime reverb bus for live processing of reverb with varying send amounts per stem.
@@ -15,12 +17,12 @@ Pausing music does not prevent a different track from playing. For example, paus
 If you want a previously paused music to start from scratch, you can call ClearPausedMusic() before calling Play and it will ensure the track starts from the beginning.
 
 Ideally, music stems should be imported with the following settings:
-Load In Background checked
-Load Type: Compressed in Memory
-Preload Audio Data unchecked
-Compression Format: Vorbis
-Quality: 60-70
-Sample Rate Setting: Preserve Sample Rate
+* Load In Background checked
+* Load Type: Compressed in Memory
+* Preload Audio Data unchecked
+* Compression Format: Vorbis
+* Quality: 60-70
+* Sample Rate Setting: Preserve Sample Rate
 
 An existing preset exists to copy/paste into the folder where music is stored to automatically apply these settings when music is imported
 
@@ -32,10 +34,10 @@ Events can also be specified in the sfx asset, with a name and time to raise the
 For example, if you have an enemy death sfx and you want to tie animationn starting to a sudden change in the sfx like an explosion, raise an event at that point in the sfx asset and listen for it in code
 
 Ideally, sfx stems should be imported with the following settings:
-Load In Background unchecked
-Load Type: Decompress on Load
-Preload Audio Data checked
-Compression Format: PCM
-Sample Rate Setting: Preserve Sample Rate
+* Load In Background unchecked
+* Load Type: Decompress on Load
+* Preload Audio Data checked
+* Compression Format: PCM
+* Sample Rate Setting: Preserve Sample Rate
 
 An existing preset exists to copy/paste into the folder where sfx are stored to automatically apply these settings when sfx are imported
