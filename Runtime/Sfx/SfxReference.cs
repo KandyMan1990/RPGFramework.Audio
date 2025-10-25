@@ -81,6 +81,41 @@ namespace RPGFramework.Audio.Sfx
                 }
             }
         }
+
+        void ISfxReference.Pause()
+        {
+            foreach (IStem stem in m_SfxAsset.Tracks)
+            {
+                foreach (AudioSource audioSource in m_AudioSources)
+                {
+                    if (audioSource.clip != stem.Clip)
+                    {
+                        continue;
+                    }
+
+                    audioSource.Pause();
+                    break;
+                }
+            }
+        }
+
+        void ISfxReference.Resume()
+        {
+            foreach (IStem stem in m_SfxAsset.Tracks)
+            {
+                foreach (AudioSource audioSource in m_AudioSources)
+                {
+                    if (audioSource.clip != stem.Clip)
+                    {
+                        continue;
+                    }
+
+                    audioSource.UnPause();
+                    break;
+                }
+            }
+        }
+
         void ISfxReference.Stop()
         {
             // sfx has already finished playing
@@ -88,12 +123,12 @@ namespace RPGFramework.Audio.Sfx
             {
                 return;
             }
-            
+
             foreach (IStem stem in m_SfxAsset.Tracks)
             {
                 foreach (AudioSource audioSource in m_AudioSources)
                 {
-                    if (audioSource.clip == stem.Clip)
+                    if (audioSource.clip != stem.Clip)
                     {
                         continue;
                     }

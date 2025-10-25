@@ -59,6 +59,8 @@ namespace RPGFramework.Audio
         IReadOnlyList<ISfxEventData>        Events { get; }
         internal void                       CheckForLoop();
         internal void                       CheckForEventToRaise();
+        internal void                       Pause();
+        internal void                       Resume();
         internal void                       Stop();
     }
 
@@ -69,12 +71,11 @@ namespace RPGFramework.Audio
 
     public interface ISfxPlayer
     {
-        ISfxReference Play(int  id);
-        void          Pause(int id);
+        ISfxReference Play(int            id);
+        void          Pause(ISfxReference sfxReference);
         void          PauseAll();
-        void          Resume(int id);
+        void          Resume(ISfxReference sfxReference);
         void          ResumeAll();
-        void          Stop(int           id);
         void          Stop(ISfxReference sfxReference);
         void          StopAll();
         void          SetSfxAssetProvider(ISfxAssetProvider provider);

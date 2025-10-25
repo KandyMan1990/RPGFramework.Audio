@@ -32,104 +32,64 @@ namespace RPGFramework.Audio.Sfx
             UpdateManager.UnregisterUpdatable(this);
         }
 
-        public ISfxReference Play(int id)
+        ISfxReference ISfxPlayer.Play(int id)
         {
             return ScheduleSfx(id, 0f);
         }
 
-        public void Pause(int id)
+        void ISfxPlayer.Pause(ISfxReference sfxReference)
         {
-            ISfxAsset sfxAsset = m_SfxAssetProvider.GetSfxAsset(id);
+            sfxReference.Pause();
+        }
 
-            foreach (IStem stem in sfxAsset.Tracks)
+        void ISfxPlayer.PauseAll()
+        {
+            foreach (ISfxReference sfxReference in m_SfxReferences)
             {
-                foreach (AudioSource audioSource in m_CurrentSources)
-                {
-                    if (audioSource.clip == stem.Clip)
-                    {
-                        audioSource.Pause();
-                        break;
-                    }
-                }
+                sfxReference.Pause();
             }
         }
 
-        public void PauseAll()
+        void ISfxPlayer.Resume(ISfxReference sfxReference)
         {
-            foreach (AudioSource source in m_CurrentSources)
+            sfxReference.Resume();
+        }
+
+        void ISfxPlayer.ResumeAll()
+        {
+            foreach (ISfxReference sfxReference in m_SfxReferences)
             {
-                source.Pause();
+                sfxReference.Resume();
             }
         }
 
-        public void Resume(int id)
+        void ISfxPlayer.Stop(ISfxReference sfxReference)
         {
-            ISfxAsset sfxAsset = m_SfxAssetProvider.GetSfxAsset(id);
-
-            foreach (IStem stem in sfxAsset.Tracks)
+            if (!m_SfxReferences.Contains(sfxReference))
             {
-                foreach (AudioSource audioSource in m_CurrentSources)
-                {
-                    if (audioSource.clip == stem.Clip)
-                    {
-                        audioSource.UnPause();
-                        break;
-                    }
-                }
+                return;
             }
-        }
 
-        public void ResumeAll()
-        {
-            foreach (AudioSource source in m_CurrentSources)
-            {
-                source.UnPause();
-            }
-        }
-
-        public void Stop(int id)
-        {
-            ISfxAsset sfxAsset = m_SfxAssetProvider.GetSfxAsset(id);
-
-            foreach (IStem stem in sfxAsset.Tracks)
-            {
-                foreach (AudioSource audioSource in m_CurrentSources)
-                {
-                    if (audioSource.clip == stem.Clip)
-                    {
-                        continue;
-                    }
-
-                    audioSource.Stop();
-                    audioSource.clip = null;
-                    break;
-
-                }
-            }
-        }
-
-        public void Stop(ISfxReference sfxReference)
-        {
             sfxReference.Stop();
+            RemoveSfxReference(sfxReference);
         }
 
-        public void StopAll()
+        void ISfxPlayer.StopAll()
         {
-            foreach (AudioSource source in m_CurrentSources)
+            foreach (ISfxReference sfxReference in m_SfxReferences)
             {
-                source.Stop();
-                source.clip = null;
+                sfxReference.Stop();
             }
 
             m_SfxReferences.Clear();
         }
 
-        public void SetSfxAssetProvider(ISfxAssetProvider provider)
+        void ISfxPlayer.SetSfxAssetProvider(ISfxAssetProvider provider)
         {
             m_SfxAssetProvider = provider;
         }
 
-        public void SetStemMixerGroups(AudioMixerGroup[] groups)
+        void ISfxPlayer.SetStemMixerGroups(AudioMixerGroup[] groups)
         {
             m_StemMixerGroups = groups;
             m_AudioMixer      = m_StemMixerGroups[0].audioMixer;
@@ -148,7 +108,7 @@ namespace RPGFramework.Audio.Sfx
             }
         }
 
-        public void Update()
+        void IUpdatable.Update()
         {
             if (m_SfxReferences.Count == 0)
             {
@@ -159,8 +119,8 @@ namespace RPGFramework.Audio.Sfx
 
             foreach (ISfxReference sfxReference in sfxReferences)
             {
-                sfxReference.CheckForLoop();
                 sfxReference.CheckForEventToRaise();
+                sfxReference.CheckForLoop();
             }
         }
 
