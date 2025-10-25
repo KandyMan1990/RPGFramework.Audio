@@ -11,7 +11,7 @@ namespace RPGFramework.Audio
         [Range(0f, 1f)]
         private float m_ReverbSendLevel;
 
-        public AudioClip Clip            => m_AudioClip;
-        public float     ReverbSendLevel => m_ReverbSendLevel;
+        AudioClip IStem.Clip            => m_AudioClip;
+        float IStem.    ReverbSendLevel => m_ReverbSendLevel;
     }
 }

@@ -29,7 +29,7 @@ namespace RPGFramework.Audio.Music
                                                                                 { true, 1 }
                                                                         };
 
-        public Task Play(int id)
+        Task IMusicPlayer.Play(int id)
         {
             if (m_CurrentSongId == id)
                 return Task.CompletedTask;
@@ -42,13 +42,13 @@ namespace RPGFramework.Audio.Music
             {
                 startTime = (float)m_PausedPosition;
 
-                ClearPausedMusic();
+                ((IMusicPlayer)this).ClearPausedMusic();
             }
 
             return ScheduleCurrentSong(startTime);
         }
 
-        public void Pause()
+        void IMusicPlayer.Pause()
         {
             if (m_CurrentSongId < 0)
                 return;
@@ -60,42 +60,24 @@ namespace RPGFramework.Audio.Music
             ClearCurrentSong();
         }
 
-        public Task Stop(float fadeTime = 0.001f)
+        Task IMusicPlayer.Stop(float fadeTime)
         {
             m_CancellationTokenSource?.Cancel();
             return FadeOutAndStopAsync(fadeTime);
         }
 
-        public void ClearPausedMusic()
+        void IMusicPlayer.ClearPausedMusic()
         {
             m_PausedSongId   = -1;
             m_PausedPosition = 0.0;
         }
 
-        public void SetMusicAssetProvider(IMusicAssetProvider provider)
+        void IMusicPlayer.SetMusicAssetProvider(IMusicAssetProvider provider)
         {
             m_MusicAssetProvider = provider;
         }
 
-        public void Update()
-        {
-            double currentTime = m_CurrentSources[0].time;
-
-            if (currentTime >= m_CurrentMusicAsset.LoopEndTime)
-            {
-                double newTime = currentTime - (m_CurrentMusicAsset.LoopEndTime - m_CurrentMusicAsset.LoopStartTime);
-
-                foreach (AudioSource source in m_CurrentSources)
-                {
-                    if (source.isPlaying)
-                    {
-                        source.time = (float)newTime;
-                    }
-                }
-            }
-        }
-
-        public void SetStemMixerGroups(AudioMixerGroup[] groups)
+        void IMusicPlayer.SetStemMixerGroups(AudioMixerGroup[] groups)
         {
             m_StemMixerGroups = groups;
             m_AudioMixer      = m_StemMixerGroups[0].audioMixer;
@@ -114,7 +96,7 @@ namespace RPGFramework.Audio.Music
             }
         }
 
-        public void SetActiveStemsImmediate(Dictionary<int, bool> stemValues)
+        void IMusicPlayer.SetActiveStemsImmediate(Dictionary<int, bool> stemValues)
         {
             m_CancellationTokenSource?.Cancel();
 
@@ -124,7 +106,7 @@ namespace RPGFramework.Audio.Music
             }
         }
 
-        public void SetActiveStemsFade(Dictionary<int, bool> stemValues, float transitionLength)
+        void IMusicPlayer.SetActiveStemsFade(Dictionary<int, bool> stemValues, float transitionLength)
         {
             async Task Transition()
             {
@@ -155,11 +137,29 @@ namespace RPGFramework.Audio.Music
                     await Awaitable.NextFrameAsync();
                 }
 
-                SetActiveStemsImmediate(stemValues);
+                ((IMusicPlayer)this).SetActiveStemsImmediate(stemValues);
             }
 
             m_CancellationTokenSource = new CancellationTokenSource();
             _                         = Transition();
+        }
+        
+        void IUpdatable.Update()
+        {
+            double currentTime = m_CurrentSources[0].time;
+
+            if (currentTime >= m_CurrentMusicAsset.LoopEndTime)
+            {
+                double newTime = currentTime - (m_CurrentMusicAsset.LoopEndTime - m_CurrentMusicAsset.LoopStartTime);
+
+                foreach (AudioSource source in m_CurrentSources)
+                {
+                    if (source.isPlaying)
+                    {
+                        source.time = (float)newTime;
+                    }
+                }
+            }
         }
 
         private async Task FadeOutAndStopAsync(float duration)

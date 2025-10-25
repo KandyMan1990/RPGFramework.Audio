@@ -8,29 +8,29 @@ namespace RPGFramework.Audio
 {
     public interface IStem
     {
-        public AudioClip Clip            { get; }
-        public float     ReverbSendLevel { get; }
+        internal AudioClip Clip            { get; }
+        internal float     ReverbSendLevel { get; }
     }
 
     public interface IMusicAsset
     {
-        double               LoopStartTime { get; }
-        double               LoopEndTime   { get; }
-        bool                 Loop          { get; }
-        IReadOnlyList<IStem> Tracks        { get; }
-        void                 CalculateLoopPoints();
+        internal double               LoopStartTime { get; }
+        internal double               LoopEndTime   { get; }
+        internal bool                 Loop          { get; }
+        internal IReadOnlyList<IStem> Tracks        { get; }
+        internal void                 CalculateLoopPoints();
     }
 
     public interface IMusicAssetProvider
     {
-        IMusicAsset GetMusicAsset(int id);
+        internal IMusicAsset GetMusicAsset(int id);
     }
 
     public interface IMusicPlayer
     {
         Task Play(int id);
         void Pause();
-        Task Stop(float fadeTime = 0f);
+        Task Stop(float fadeTime = 0.001f);
         void ClearPausedMusic();
         void SetMusicAssetProvider(IMusicAssetProvider     provider);
         void SetStemMixerGroups(AudioMixerGroup[]          groups);
@@ -46,11 +46,11 @@ namespace RPGFramework.Audio
 
     public interface ISfxAsset
     {
-        IReadOnlyList<IStem>         Tracks    { get; }
-        IReadOnlyList<ISfxEventData> Events    { get; }
-        bool                         Loop      { get; }
-        int                          LoopStart { get; }
-        int                          LoopEnd   { get; }
+        internal IReadOnlyList<IStem>         Tracks    { get; }
+        internal IReadOnlyList<ISfxEventData> Events    { get; }
+        internal bool                         Loop      { get; }
+        internal int                          LoopStart { get; }
+        internal int                          LoopEnd   { get; }
     }
 
     public interface ISfxReference
@@ -66,7 +66,7 @@ namespace RPGFramework.Audio
 
     public interface ISfxAssetProvider
     {
-        ISfxAsset GetSfxAsset(int id);
+        internal ISfxAsset GetSfxAsset(int id);
     }
 
     public interface ISfxPlayer

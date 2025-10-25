@@ -9,7 +9,7 @@ namespace RPGFramework.Audio.Music
         [SerializeField]
         private List<MusicAsset> m_MusicAssets = new List<MusicAsset>();
 
-        public IMusicAsset GetMusicAsset(int id)
+        IMusicAsset IMusicAssetProvider.GetMusicAsset(int id)
         {
             IMusicAsset musicAsset = m_MusicAssets[id];
             musicAsset.CalculateLoopPoints();

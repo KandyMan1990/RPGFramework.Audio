@@ -10,8 +10,8 @@ namespace RPGFramework.Audio.Sfx
         [SerializeField]
         private float m_EventTriggerTime;
 
-        public string EventName        => m_EventName;
-        public float  EventTriggerTime => m_EventTriggerTime;
+        string ISfxEventData.EventName        => m_EventName;
+        float ISfxEventData. EventTriggerTime => m_EventTriggerTime;
 
         public SfxEventData(string eventName, float eventTriggerTime)
         {

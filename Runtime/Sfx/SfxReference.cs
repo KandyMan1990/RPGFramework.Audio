@@ -21,10 +21,12 @@ namespace RPGFramework.Audio.Sfx
         {
             m_AudioSources = audioSources;
             m_SfxAsset     = sfxAsset;
-            m_EventData = new List<ISfxEventData>(sfxAsset.Events)
-                          {
-                                  new SfxEventData(SFX_COMPLETE, sfxAsset.Tracks[0].Clip.samples)
-                          };
+            m_EventData    = new List<ISfxEventData>(sfxAsset.Events);
+
+            if (!sfxAsset.Loop)
+            {
+                m_EventData.Add(new SfxEventData(SFX_COMPLETE, sfxAsset.Tracks[0].Clip.samples));
+            }
 
             Events = new List<ISfxEventData>(m_EventData);
 
@@ -49,7 +51,7 @@ namespace RPGFramework.Audio.Sfx
                 m_EventData.Remove(sfxEventData);
             }
 
-            if (m_EventData.Count != 0)
+            if (m_EventData.Count != 0 || m_SfxAsset.Loop)
             {
                 return;
             }

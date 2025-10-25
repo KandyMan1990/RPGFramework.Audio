@@ -24,16 +24,19 @@ namespace RPGFramework.Audio.Music
         [SerializeField]
         private List<Stem> m_Tracks;
 
-        public double LoopStartTime { get; private set; }
-        public double LoopEndTime   { get; private set; }
-        public bool   Loop          => m_Loop;
+        private double m_LoopStartTime;
+        private double m_LoopEndTime;
 
-        public IReadOnlyList<IStem> Tracks => m_Tracks;
+        double IMusicAsset.LoopStartTime => m_LoopStartTime;
+        double IMusicAsset.LoopEndTime   => m_LoopEndTime;
+        bool IMusicAsset.  Loop          => m_Loop;
 
-        public void CalculateLoopPoints()
+        IReadOnlyList<IStem> IMusicAsset.Tracks => m_Tracks;
+
+        void IMusicAsset.CalculateLoopPoints()
         {
-            LoopStartTime = BarToSeconds(m_LoopStartBar - 1, m_BPM, m_BeatsPerBar);
-            LoopEndTime   = BarToSeconds(m_LoopEndBar   - 1, m_BPM, m_BeatsPerBar);
+            m_LoopStartTime = BarToSeconds(m_LoopStartBar - 1, m_BPM, m_BeatsPerBar);
+            m_LoopEndTime   = BarToSeconds(m_LoopEndBar   - 1, m_BPM, m_BeatsPerBar);
         }
 
         private static double BarToSeconds(int bar, float bpm, int beatsPerBar)

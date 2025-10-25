@@ -9,7 +9,7 @@ namespace RPGFramework.Audio.Sfx
         [SerializeField]
         private List<SfxAsset> m_SfxAssets = new List<SfxAsset>();
 
-        public ISfxAsset GetSfxAsset(int id)
+        ISfxAsset ISfxAssetProvider.GetSfxAsset(int id)
         {
             ISfxAsset sfxAsset = m_SfxAssets[id];
 
