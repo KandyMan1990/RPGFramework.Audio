@@ -35,11 +35,11 @@ namespace RPGFramework.Audio.Sfx
 
         void ISfxReference.CheckForEventToRaise()
         {
-            List<ISfxEventData> eventsToRemove = new List<ISfxEventData>();
+            List<ISfxEventData> eventsToRemove = new List<ISfxEventData>(m_EventData.Count);
 
             foreach (ISfxEventData sfxEventData in m_EventData)
             {
-                if (m_AudioSources[0].timeSamples >= sfxEventData.EventTriggerTime)
+                if (m_AudioSources[0].timeSamples >= sfxEventData.EventTriggerTimeInSamples)
                 {
                     eventsToRemove.Add(sfxEventData);
                     OnEvent?.Invoke(sfxEventData.EventName, this);
@@ -121,7 +121,7 @@ namespace RPGFramework.Audio.Sfx
         void ISfxReference.Stop()
         {
             // sfx has already finished playing
-            if (m_EventData.Count == 0)
+            if (m_EventData.Count == 0 && !m_SfxAsset.Loop)
             {
                 return;
             }

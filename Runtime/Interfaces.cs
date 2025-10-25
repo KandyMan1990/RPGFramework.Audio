@@ -40,8 +40,9 @@ namespace RPGFramework.Audio
 
     public interface ISfxEventData
     {
-        string EventName        { get; }
-        float  EventTriggerTime { get; }
+        string       EventName                 { get; }
+        float        EventTriggerTime          { get; }
+        internal int EventTriggerTimeInSamples { get; }
     }
 
     public interface ISfxAsset

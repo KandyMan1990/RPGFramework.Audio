@@ -46,7 +46,7 @@ namespace RPGFramework.Audio.Sfx
         {
             foreach (ISfxReference sfxReference in m_SfxReferences)
             {
-                sfxReference.Pause();
+                ((ISfxPlayer)this).Pause(sfxReference);
             }
         }
 
@@ -59,7 +59,7 @@ namespace RPGFramework.Audio.Sfx
         {
             foreach (ISfxReference sfxReference in m_SfxReferences)
             {
-                sfxReference.Resume();
+                ((ISfxPlayer)this).Resume(sfxReference);
             }
         }
 
@@ -76,9 +76,11 @@ namespace RPGFramework.Audio.Sfx
 
         void ISfxPlayer.StopAll()
         {
-            foreach (ISfxReference sfxReference in m_SfxReferences)
+            List<ISfxReference> sfxReferences = new List<ISfxReference>(m_SfxReferences);
+
+            foreach (ISfxReference sfxReference in sfxReferences)
             {
-                sfxReference.Stop();
+                ((ISfxPlayer)this).Stop(sfxReference);
             }
 
             m_SfxReferences.Clear();
