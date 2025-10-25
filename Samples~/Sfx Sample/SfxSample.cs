@@ -68,6 +68,12 @@ namespace RPGFramework.Audio.Sfx_Sample
             // trigger a sound
             ISfxReference sfxReference = m_SfxPlayer.Play(0);
 
+            // see when each event will be triggered in seconds
+            foreach (ISfxEventData sfxEventData in sfxReference.Events)
+            {
+                Debug.Log($"{sfxEventData.EventName} {sfxEventData.EventTriggerTime}");
+            }
+
             sfxReference.OnEvent += SfxReferenceOnEvent;
 
             void SfxReferenceOnEvent(string eventName, ISfxReference sfxRef)
