@@ -43,6 +43,7 @@ namespace RPGFramework.Audio
         string       EventName                 { get; }
         float        EventTriggerTime          { get; }
         internal int EventTriggerTimeInSamples { get; }
+        void         SetSampleRate(int sampleRate);
     }
 
     public interface ISfxAsset

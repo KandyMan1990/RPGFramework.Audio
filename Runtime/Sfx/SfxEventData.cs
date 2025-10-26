@@ -10,20 +10,27 @@ namespace RPGFramework.Audio.Sfx
         [SerializeField]
         private int m_EventTriggerTime;
 
+        private int m_SampleRate;
+
         string ISfxEventData.EventName                 => m_EventName;
         float ISfxEventData. EventTriggerTime          => SamplesToSeconds(m_EventTriggerTime);
         int ISfxEventData.   EventTriggerTimeInSamples => m_EventTriggerTime;
 
-        public SfxEventData(string eventName, int eventTriggerTime)
+        public SfxEventData(string eventName, int eventTriggerTimeInSamples, int sampleRate)
         {
             m_EventName        = eventName;
-            m_EventTriggerTime = eventTriggerTime;
+            m_EventTriggerTime = eventTriggerTimeInSamples;
+            m_SampleRate       = sampleRate;
         }
 
-        private static float SamplesToSeconds(int value)
+        void ISfxEventData.SetSampleRate(int sampleRate)
         {
-            // TODO: make this based on the sample rate of the clip playing
-            return (float)value / 44100;
+            m_SampleRate = sampleRate;
+        }
+
+        private float SamplesToSeconds(int value)
+        {
+            return (float)value / m_SampleRate;
         }
     }
 }
