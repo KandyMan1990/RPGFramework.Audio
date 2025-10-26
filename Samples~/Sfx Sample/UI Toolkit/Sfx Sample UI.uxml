@@ -3,6 +3,7 @@
         <ui:Button text="Play a sound" name="PlaySfx1Button" />
         <ui:Button text="Stop a sound" name="StopSfx1Button" />
         <ui:Button text="Play a looping sound wth an event" name="PlaySfx0ButtonWithLoopAndEvent" />
+        <ui:Button text="Play an ambient sound" name="PlayAmbienceButton" />
         <ui:Button text="Stop all sounds" name="StopAllSfxButton" />
     </ui:VisualElement>
 </ui:UXML>

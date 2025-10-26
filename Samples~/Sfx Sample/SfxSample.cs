@@ -19,6 +19,7 @@ namespace RPGFramework.Audio.Sfx_Sample
         private Button m_PlaySfx1Button;
         private Button m_StopSfx1Button;
         private Button m_PlaySfx0ButtonWithLoopAndEvent;
+        private Button m_PlayAmbienceButton;
         private Button m_StopAllSfxButton;
 
         private ISfxReference m_SfxReference0;
@@ -28,6 +29,7 @@ namespace RPGFramework.Audio.Sfx_Sample
             m_PlaySfx1Button                 = m_UIDocument.rootVisualElement.Q<Button>("PlaySfx1Button");
             m_StopSfx1Button                 = m_UIDocument.rootVisualElement.Q<Button>("StopSfx1Button");
             m_PlaySfx0ButtonWithLoopAndEvent = m_UIDocument.rootVisualElement.Q<Button>("PlaySfx0ButtonWithLoopAndEvent");
+            m_PlayAmbienceButton             = m_UIDocument.rootVisualElement.Q<Button>("PlayAmbienceButton");
             m_StopAllSfxButton               = m_UIDocument.rootVisualElement.Q<Button>("StopAllSfxButton");
         }
 
@@ -40,6 +42,7 @@ namespace RPGFramework.Audio.Sfx_Sample
             m_PlaySfx1Button.clicked                 += OnPlaySfx1Button;
             m_StopSfx1Button.clicked                 += OnStopSfx1Button;
             m_PlaySfx0ButtonWithLoopAndEvent.clicked += OnPlaySfx0ButtonWithLoopAndEvent;
+            m_PlayAmbienceButton.clicked             += OnPlayAmbienceButton;
             m_StopAllSfxButton.clicked               += OnStopAllSfxButton;
         }
 
@@ -48,6 +51,7 @@ namespace RPGFramework.Audio.Sfx_Sample
             m_PlaySfx1Button.clicked                 -= OnPlaySfx1Button;
             m_StopSfx1Button.clicked                 -= OnStopSfx1Button;
             m_PlaySfx0ButtonWithLoopAndEvent.clicked -= OnPlaySfx0ButtonWithLoopAndEvent;
+            m_PlayAmbienceButton.clicked             -= OnPlayAmbienceButton;
             m_StopAllSfxButton.clicked               -= OnStopAllSfxButton;
         }
 
@@ -80,6 +84,12 @@ namespace RPGFramework.Audio.Sfx_Sample
             {
                 Debug.Log($"{eventName} event triggered");
             }
+        }
+
+        private void OnPlayAmbienceButton()
+        {
+            // trigger ambience
+            m_SfxReference0 = m_SfxPlayer.Play(2);
         }
 
         private void OnStopAllSfxButton()
