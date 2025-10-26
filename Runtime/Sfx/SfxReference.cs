@@ -16,12 +16,14 @@ namespace RPGFramework.Audio.Sfx
         private readonly List<ISfxEventData>   m_EventData;
         private readonly Action<ISfxReference> m_OnAllEventsCompleted;
         private readonly ISfxAsset             m_SfxAsset;
+        private readonly List<ISfxEventData>   m_EventsTriggered;
 
         public SfxReference(AudioSource[] audioSources, ISfxAsset sfxAsset, Action<ISfxReference> onAllEventsCompleted)
         {
-            m_AudioSources = audioSources;
-            m_SfxAsset     = sfxAsset;
-            m_EventData    = new List<ISfxEventData>(sfxAsset.Events);
+            m_AudioSources    = audioSources;
+            m_SfxAsset        = sfxAsset;
+            m_EventData       = new List<ISfxEventData>(sfxAsset.Events);
+            m_EventsTriggered = new List<ISfxEventData>();
 
             foreach (ISfxEventData sfxEventData in m_EventData)
             {
@@ -48,7 +50,20 @@ namespace RPGFramework.Audio.Sfx
             {
                 if (m_AudioSources[0].timeSamples >= sfxEventData.EventTriggerTimeInSamples)
                 {
-                    eventsToRemove.Add(sfxEventData);
+                    if (sfxEventData.RemoveEventOnceTriggered)
+                    {
+                        eventsToRemove.Add(sfxEventData);
+                    }
+                    else
+                    {
+                        if (m_EventsTriggered.Contains(sfxEventData))
+                        {
+                            continue;
+                        }
+
+                        m_EventsTriggered.Add(sfxEventData);
+                    }
+
                     OnEvent?.Invoke(sfxEventData.EventName, this);
                 }
             }
@@ -88,6 +103,8 @@ namespace RPGFramework.Audio.Sfx
                 {
                     source.timeSamples = newTime;
                 }
+
+                m_EventsTriggered.Clear();
             }
         }
 

@@ -9,12 +9,15 @@ namespace RPGFramework.Audio.Sfx
         private string m_EventName;
         [SerializeField]
         private int m_EventTriggerTime;
+        [SerializeField]
+        private bool m_RemoveEventOnceTriggered;
 
         private int m_SampleRate;
 
         string ISfxEventData.EventName                 => m_EventName;
         float ISfxEventData. EventTriggerTime          => SamplesToSeconds(m_EventTriggerTime);
         int ISfxEventData.   EventTriggerTimeInSamples => m_EventTriggerTime;
+        bool ISfxEventData.  RemoveEventOnceTriggered  => m_RemoveEventOnceTriggered;
 
         public SfxEventData(string eventName, int eventTriggerTimeInSamples, int sampleRate)
         {
