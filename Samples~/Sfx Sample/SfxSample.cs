@@ -55,6 +55,11 @@ namespace RPGFramework.Audio.Sfx_Sample
             m_StopAllSfxButton.clicked               -= OnStopAllSfxButton;
         }
 
+        private static void SfxReferenceOnEvent(string eventName, ISfxReference sfxRef)
+        {
+            Debug.Log($"{eventName} event triggered");
+        }
+
         private void OnPlaySfx1Button()
         {
             // trigger a sound
@@ -79,17 +84,14 @@ namespace RPGFramework.Audio.Sfx_Sample
             }
 
             sfxReference.OnEvent += SfxReferenceOnEvent;
-
-            void SfxReferenceOnEvent(string eventName, ISfxReference sfxRef)
-            {
-                Debug.Log($"{eventName} event triggered");
-            }
         }
 
         private void OnPlayAmbienceButton()
         {
             // trigger ambience
-            m_SfxReference0 = m_SfxPlayer.Play(2);
+            ISfxReference sfxReference = m_SfxReference0 = m_SfxPlayer.Play(2);
+
+            sfxReference.OnEvent += SfxReferenceOnEvent;
         }
 
         private void OnStopAllSfxButton()

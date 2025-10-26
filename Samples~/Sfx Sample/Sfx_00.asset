@@ -18,8 +18,10 @@ MonoBehaviour:
   m_Events:
   - m_EventName: LoopStart
     m_EventTriggerTime: 48676
+    m_RemoveEventOnceTriggered: 1
   - m_EventName: LoopEnd
     m_EventTriggerTime: 61105
+    m_RemoveEventOnceTriggered: 1
   m_Loop: 1
   m_LoopStart: 48676
   m_LoopEnd: 61105
