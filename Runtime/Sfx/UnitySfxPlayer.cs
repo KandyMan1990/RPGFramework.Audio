@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using RPGFramework.Core.PlayerLoop;
 using RPGFramework.Core;
 using Unity.Mathematics;
@@ -15,21 +14,16 @@ namespace RPGFramework.Audio.Sfx
         private AudioSource[]     m_CurrentSources;
         private AudioMixerGroup[] m_StemMixerGroups;
         private AudioMixer        m_AudioMixer;
+        private bool              m_Disposed;
+        private string[]          m_SendParameterNames;
 
         private readonly List<ISfxReference> m_SfxReferences;
-
-        private const string SEND_SUFFIX = "_Send";
 
         public UnitySfxPlayer()
         {
             m_SfxReferences = new List<ISfxReference>();
 
             UpdateManager.RegisterUpdatable(this);
-        }
-
-        ~UnitySfxPlayer()
-        {
-            UpdateManager.UnregisterUpdatable(this);
         }
 
         ISfxReference ISfxPlayer.Play(int id)
@@ -76,10 +70,9 @@ namespace RPGFramework.Audio.Sfx
 
         void ISfxPlayer.StopAll()
         {
-            List<ISfxReference> sfxReferences = new List<ISfxReference>(m_SfxReferences);
-
-            foreach (ISfxReference sfxReference in sfxReferences)
+            for (int i = m_SfxReferences.Count - 1; i >= 0; i--)
             {
+                ISfxReference sfxReference = m_SfxReferences[i];
                 ((ISfxPlayer)this).Stop(sfxReference);
             }
 
@@ -96,7 +89,8 @@ namespace RPGFramework.Audio.Sfx
             m_StemMixerGroups = groups;
             m_AudioMixer      = m_StemMixerGroups[0].audioMixer;
 
-            m_CurrentSources = new AudioSource[m_StemMixerGroups.Length];
+            m_CurrentSources     = new AudioSource[m_StemMixerGroups.Length];
+            m_SendParameterNames = new string[m_StemMixerGroups.Length];
 
             GameObject sfxPlayer = new GameObject("SfxPlayer");
             UnityEngine.Object.DontDestroyOnLoad(sfxPlayer);
@@ -107,6 +101,8 @@ namespace RPGFramework.Audio.Sfx
                 go.transform.parent                       = sfxPlayer.transform;
                 m_CurrentSources[i]                       = go.AddComponent<AudioSource>();
                 m_CurrentSources[i].outputAudioMixerGroup = m_StemMixerGroups[i];
+
+                m_SendParameterNames[i] = $"{m_StemMixerGroups[i].name}_Send";
             }
         }
 
@@ -117,13 +113,29 @@ namespace RPGFramework.Audio.Sfx
                 return;
             }
 
-            List<ISfxReference> sfxReferences = new List<ISfxReference>(m_SfxReferences);
-
-            foreach (ISfxReference sfxReference in sfxReferences)
+            for (int i = m_SfxReferences.Count - 1; i >= 0; i--)
             {
+                ISfxReference sfxReference = m_SfxReferences[i];
                 sfxReference.CheckForEventToRaise();
                 sfxReference.CheckForLoop();
             }
+        }
+
+        void ISfxPlayer.Dispose()
+        {
+            Dispose();
+            GC.SuppressFinalize(this);
+        }
+
+        private void Dispose()
+        {
+            if (m_Disposed)
+            {
+                return;
+            }
+
+            m_Disposed = true;
+            UpdateManager.UnregisterUpdatable(this);
         }
 
         private void RemoveSfxReference(ISfxReference sfxReference)
@@ -140,8 +152,18 @@ namespace RPGFramework.Audio.Sfx
 
             for (int i = 0; i < sfxAsset.Tracks.Count; i++)
             {
-                AudioSource source          = m_CurrentSources.First(s => !s.isPlaying);
-                int         mixerGroupIndex = Array.IndexOf(m_CurrentSources, source);
+                AudioSource source          = m_CurrentSources[0];
+                int         mixerGroupIndex = 0;
+
+                for (int j = 0; j < m_CurrentSources.Length; j++)
+                {
+                    if (!m_CurrentSources[j].isPlaying)
+                    {
+                        source          = m_CurrentSources[j];
+                        mixerGroupIndex = j;
+                        break;
+                    }
+                }
 
                 audioSourceReferences[i] = source;
 
@@ -153,7 +175,7 @@ namespace RPGFramework.Audio.Sfx
                 source.outputAudioMixerGroup = m_StemMixerGroups[mixerGroupIndex];
 
                 float sendLevel = math.lerp(-10f, 0f, sfxAsset.Tracks[i].ReverbSendLevel);
-                m_AudioMixer.SetFloat($"{m_StemMixerGroups[mixerGroupIndex].name}{SEND_SUFFIX}", sendLevel);
+                m_AudioMixer.SetFloat(m_SendParameterNames[mixerGroupIndex], sendLevel);
 
                 source.PlayScheduled(scheduledStartTime);
             }

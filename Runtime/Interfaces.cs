@@ -83,5 +83,6 @@ namespace RPGFramework.Audio
         void          StopAll();
         void          SetSfxAssetProvider(ISfxAssetProvider provider);
         void          SetStemMixerGroups(AudioMixerGroup[]  groups);
+        void          Dispose();
     }
 }

@@ -21,13 +21,7 @@ namespace RPGFramework.Audio.Music
         private AudioMixerGroup[]       m_StemMixerGroups;
         private AudioMixer              m_AudioMixer;
         private CancellationTokenSource m_CancellationTokenSource;
-
-        private const string SEND_SUFFIX = "_Send";
-        private static readonly Dictionary<bool, int> m_TransitionMap = new Dictionary<bool, int>
-                                                                        {
-                                                                                { false, 0 },
-                                                                                { true, 1 }
-                                                                        };
+        private string[]                m_SendParameterNames;
 
         Task IMusicPlayer.Play(int id)
         {
@@ -56,13 +50,13 @@ namespace RPGFramework.Audio.Music
             m_PausedSongId   = m_CurrentSongId;
             m_PausedPosition = m_CurrentSources[0].time;
 
-            m_CancellationTokenSource?.Cancel();
+            CancelCts();
             ClearCurrentSong();
         }
 
         Task IMusicPlayer.Stop(float fadeTime)
         {
-            m_CancellationTokenSource?.Cancel();
+            CancelCts();
             return FadeOutAndStopAsync(fadeTime);
         }
 
@@ -82,7 +76,8 @@ namespace RPGFramework.Audio.Music
             m_StemMixerGroups = groups;
             m_AudioMixer      = m_StemMixerGroups[0].audioMixer;
 
-            m_CurrentSources = new AudioSource[m_StemMixerGroups.Length];
+            m_CurrentSources     = new AudioSource[m_StemMixerGroups.Length];
+            m_SendParameterNames = new string[m_StemMixerGroups.Length];
 
             GameObject musicPlayer = new GameObject("MusicPlayer");
             Object.DontDestroyOnLoad(musicPlayer);
@@ -93,22 +88,24 @@ namespace RPGFramework.Audio.Music
                 go.transform.parent                       = musicPlayer.transform;
                 m_CurrentSources[i]                       = go.AddComponent<AudioSource>();
                 m_CurrentSources[i].outputAudioMixerGroup = m_StemMixerGroups[i];
+
+                m_SendParameterNames[i] = $"{m_StemMixerGroups[i].name}_Send";
             }
         }
 
         void IMusicPlayer.SetActiveStemsImmediate(Dictionary<int, bool> stemValues)
         {
-            m_CancellationTokenSource?.Cancel();
+            CancelCts();
 
             foreach (KeyValuePair<int, bool> kvp in stemValues)
             {
-                m_CurrentSources[kvp.Key].volume = m_TransitionMap[kvp.Value];
+                m_CurrentSources[kvp.Key].volume = kvp.Value ? 1f : 0f;
             }
         }
 
         void IMusicPlayer.SetActiveStemsFade(Dictionary<int, bool> stemValues, float transitionLength)
         {
-            async Task Transition()
+            async Task Transition(CancellationToken token)
             {
                 float progress = 0f;
 
@@ -121,29 +118,34 @@ namespace RPGFramework.Audio.Music
 
                 while (progress < 1.0f)
                 {
-                    if (m_CancellationTokenSource.IsCancellationRequested)
+                    if (token.IsCancellationRequested)
                         return;
 
                     foreach (KeyValuePair<int, bool> kvp in stemValues)
                     {
                         float start  = startVolumes[kvp.Key];
-                        float target = m_TransitionMap[kvp.Value];
+                        float target = kvp.Value ? 1f : 0f;
 
                         m_CurrentSources[kvp.Key].volume = math.lerp(start, target, progress);
                     }
 
                     progress += Time.deltaTime / transitionLength;
 
-                    await Awaitable.NextFrameAsync();
+                    await Awaitable.NextFrameAsync(token);
                 }
 
                 ((IMusicPlayer)this).SetActiveStemsImmediate(stemValues);
             }
 
+            if (transitionLength <= 0f)
+            {
+                ((IMusicPlayer)this).SetActiveStemsImmediate(stemValues);
+            }
+
             m_CancellationTokenSource = new CancellationTokenSource();
-            _                         = Transition();
+            _                         = Transition(m_CancellationTokenSource.Token);
         }
-        
+
         void IUpdatable.Update()
         {
             double currentTime = m_CurrentSources[0].time;
@@ -222,7 +224,7 @@ namespace RPGFramework.Audio.Music
                 source.outputAudioMixerGroup = m_StemMixerGroups[i];
 
                 float sendLevel = math.lerp(-10f, 0f, m_CurrentMusicAsset.Tracks[i].ReverbSendLevel);
-                m_AudioMixer.SetFloat($"{m_StemMixerGroups[i].name}{SEND_SUFFIX}", sendLevel);
+                m_AudioMixer.SetFloat(m_SendParameterNames[i], sendLevel);
 
                 source.PlayScheduled(scheduledStartTime);
             }
@@ -253,6 +255,13 @@ namespace RPGFramework.Audio.Music
 
             m_CurrentMusicAsset = null;
             m_CurrentSongId     = -1;
+        }
+
+        private void CancelCts()
+        {
+            m_CancellationTokenSource?.Cancel();
+            m_CancellationTokenSource?.Dispose();
+            m_CancellationTokenSource = null;
         }
     }
 }
