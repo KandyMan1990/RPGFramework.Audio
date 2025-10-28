@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace RPGFramework.Audio.Sfx
 {
-    [CreateAssetMenu(fileName = "SFX Asset", menuName = "RPG Framework/SFX Asset")]
+    [CreateAssetMenu(fileName = "SFX Asset", menuName = "RPG Framework/Audio/SFX Asset")]
     public class SfxAsset : ScriptableObject, ISfxAsset
     {
         [SerializeField]

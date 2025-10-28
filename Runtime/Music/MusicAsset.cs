@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace RPGFramework.Audio.Music
 {
-    [CreateAssetMenu(fileName = "Music Asset", menuName = "RPG Framework/Music Asset")]
+    [CreateAssetMenu(fileName = "Music Asset", menuName = "RPG Framework/Audio/Music Asset")]
     public class MusicAsset : ScriptableObject, IMusicAsset
     {
         [SerializeField]
