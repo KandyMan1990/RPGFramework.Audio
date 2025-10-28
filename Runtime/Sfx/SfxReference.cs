@@ -18,7 +18,7 @@ namespace RPGFramework.Audio.Sfx
         private readonly ISfxAsset             m_SfxAsset;
         private readonly List<ISfxEventData>   m_EventsTriggered;
 
-        public SfxReference(AudioSource[] audioSources, ISfxAsset sfxAsset, Action<ISfxReference> onAllEventsCompleted)
+        internal SfxReference(AudioSource[] audioSources, ISfxAsset sfxAsset, Action<ISfxReference> onAllEventsCompleted)
         {
             m_AudioSources    = audioSources;
             m_SfxAsset        = sfxAsset;

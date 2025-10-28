@@ -19,7 +19,7 @@ namespace RPGFramework.Audio.Sfx
         int ISfxEventData.   EventTriggerTimeInSamples => m_EventTriggerTime;
         bool ISfxEventData.  RemoveEventOnceTriggered  => m_RemoveEventOnceTriggered;
 
-        public SfxEventData(string eventName, int eventTriggerTimeInSamples, int sampleRate)
+        internal SfxEventData(string eventName, int eventTriggerTimeInSamples, int sampleRate)
         {
             m_EventName        = eventName;
             m_EventTriggerTime = eventTriggerTimeInSamples;

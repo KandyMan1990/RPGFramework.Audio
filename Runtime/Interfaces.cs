@@ -6,13 +6,13 @@ using UnityEngine.Audio;
 
 namespace RPGFramework.Audio
 {
-    public interface IStem
+    internal interface IStem
     {
         internal AudioClip Clip            { get; }
         internal float     ReverbSendLevel { get; }
     }
 
-    public interface IMusicAsset
+    internal interface IMusicAsset
     {
         internal double               LoopStartTime { get; }
         internal double               LoopEndTime   { get; }
@@ -47,7 +47,7 @@ namespace RPGFramework.Audio
         void          SetSampleRate(int sampleRate);
     }
 
-    public interface ISfxAsset
+    internal interface ISfxAsset
     {
         internal IReadOnlyList<IStem>         Tracks    { get; }
         internal IReadOnlyList<ISfxEventData> Events    { get; }
