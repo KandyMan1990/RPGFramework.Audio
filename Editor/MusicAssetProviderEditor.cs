@@ -89,7 +89,7 @@ namespace RPGFramework.Audio.Editor
             sb.AppendLine($"namespace {namespaceForEnum}");
             sb.AppendLine("{");
 
-            sb.AppendLine($"\tpublic enum {enumFileName}");
+            sb.AppendLine($"\tpublic enum {enumFileName.Replace(" ", "")}");
             sb.AppendLine("\t{");
 
             for (int i = 0; i < enums.Length; i++)
