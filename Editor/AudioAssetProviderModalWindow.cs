@@ -5,29 +5,28 @@ using UnityEngine.UIElements;
 
 namespace RPGFramework.Audio.Editor
 {
-    public class MusicAssetProviderModalWindow : EditorWindow
+    public class AudioAssetProviderModalWindow : EditorWindow
     {
-        private TextField                      m_PathTextField;
-        private TextField                      m_FileNameTextField;
-        private TextField                      m_NamespaceTextField;
-        private Action<string, string, string> m_OnConfirm;
+        public event Action<string, string, string> OnConfirm;
+
+        private TextField m_PathTextField;
+        private TextField m_FileNameTextField;
+        private TextField m_NamespaceTextField;
 
         private string m_SelectedDirectory;
+        private string m_AssetType;
 
-        public static void ShowWindow(Action<string, string, string> onConfirm)
+        public void Init(string assetType)
         {
-            MusicAssetProviderModalWindow window = CreateInstance<MusicAssetProviderModalWindow>();
-
-            window.titleContent = new GUIContent("Generate Music Asset Enum's");
-            window.minSize      = new Vector2(600, 200);
-            window.m_OnConfirm  = onConfirm;
-            window.ShowModal();
+            m_AssetType         = assetType;
+            titleContent        = new GUIContent($"Generate {m_AssetType} Asset Enum's");
+            minSize             = new Vector2(600, 200);
+            m_SelectedDirectory = EditorPrefs.GetString($"{Application.productName}_SelectedDirectory_{m_AssetType}", Application.dataPath);
+            ShowModal();
         }
 
         public void CreateGUI()
         {
-            m_SelectedDirectory = EditorPrefs.GetString($"{Application.productName}_SelectedDirectory", Application.dataPath);
-
             VisualElement root = rootVisualElement;
 
             root.style.paddingTop    = 10;
@@ -62,12 +61,12 @@ namespace RPGFramework.Audio.Editor
 
             m_FileNameTextField = new TextField("File Name:")
                                   {
-                                          value = EditorPrefs.GetString($"{Application.productName}_FileName", "MusicEnum.cs")
+                                          value = EditorPrefs.GetString($"{Application.productName}_FileName_{m_AssetType}", $"{m_AssetType}Enum.cs")
                                   };
 
             m_NamespaceTextField = new TextField("Namespace:")
                                    {
-                                           value = EditorPrefs.GetString($"{Application.productName}_Namespace", "MyNamespace")
+                                           value = EditorPrefs.GetString($"{Application.productName}_Namespace_{m_AssetType}", "MyNamespace")
                                    };
 
             VisualElement buttonRow = new VisualElement
@@ -81,7 +80,7 @@ namespace RPGFramework.Audio.Editor
 
             Button continueButton = new Button(OnButtonConfirm)
                                     {
-                                            text = "Generate Music Asset Enum's"
+                                            text = $"Generate {m_AssetType} Asset Enum's"
                                     };
 
             buttonRow.Add(continueButton);
@@ -105,11 +104,11 @@ namespace RPGFramework.Audio.Editor
 
         private void OnButtonConfirm()
         {
-            EditorPrefs.SetString($"{Application.productName}_SelectedDirectory", m_SelectedDirectory);
-            EditorPrefs.SetString($"{Application.productName}_FileName",          m_FileNameTextField.value);
-            EditorPrefs.SetString($"{Application.productName}_Namespace",         m_NamespaceTextField.value);
+            EditorPrefs.SetString($"{Application.productName}_SelectedDirectory_{m_AssetType}", m_SelectedDirectory);
+            EditorPrefs.SetString($"{Application.productName}_FileName_{m_AssetType}",          m_FileNameTextField.value);
+            EditorPrefs.SetString($"{Application.productName}_Namespace_{m_AssetType}",         m_NamespaceTextField.value);
 
-            m_OnConfirm?.Invoke(m_SelectedDirectory, m_FileNameTextField.value, m_NamespaceTextField.value);
+            OnConfirm?.Invoke(m_SelectedDirectory, m_FileNameTextField.value, m_NamespaceTextField.value);
             Close();
         }
     }
