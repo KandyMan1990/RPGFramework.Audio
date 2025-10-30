@@ -85,16 +85,6 @@ namespace RPGFramework.Audio.Music_Sample
 
         private void OnPlayMusicMutedButton()
         {
-            // await if needed
-            m_MusicPlayer.Play(0);
-            m_MusicPlayer.SetActiveStemsImmediate(new Dictionary<int, bool>
-                                                  {
-                                                          { 0, false },
-                                                          { 1, true },
-                                                          { 2, true },
-                                                          { 3, true }
-                                                  });
-
             m_PlayMusicButton.SetEnabled(false);
             m_PlayMusicMutedButton.SetEnabled(false);
             m_TransitionButton.SetEnabled(true);
@@ -102,6 +92,24 @@ namespace RPGFramework.Audio.Music_Sample
             m_PauseMusicButton.SetEnabled(true);
             m_StopMusicButton.SetEnabled(true);
             m_StopMusicWithFadeButton.SetEnabled(true);
+            
+            // async void bad, but button callbacks have to be void
+            // _ = means "I don't want to await this task"
+            _ = Run();
+            
+            async Task Run()
+            {
+                await m_MusicPlayer.Play(0);
+                // await Play as it will set all clip volumes to 1
+                m_MusicPlayer.SetActiveStemsImmediate(new Dictionary<int, bool>
+                                                      {
+                                                              { 0, false },
+                                                              { 1, true },
+                                                              { 2, true },
+                                                              { 3, true }
+                                                      });
+            }
+
         }
 
         private void OnTransitionButton()
