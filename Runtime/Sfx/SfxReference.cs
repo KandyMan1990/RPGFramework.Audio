@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Pool;
 
 namespace RPGFramework.Audio.Sfx
 {
@@ -44,46 +45,53 @@ namespace RPGFramework.Audio.Sfx
 
         void ISfxReference.CheckForEventToRaise()
         {
-            List<ISfxEventData> eventsToRemove = new List<ISfxEventData>(m_EventData.Count);
+            List<ISfxEventData> eventsToRemove = ListPool<ISfxEventData>.Get();
 
-            foreach (ISfxEventData sfxEventData in m_EventData)
+            try
             {
-                if (m_AudioSources[0].timeSamples >= sfxEventData.EventTriggerTimeInSamples)
+                foreach (ISfxEventData sfxEventData in m_EventData)
                 {
-                    if (sfxEventData.RemoveEventOnceTriggered)
+                    if (m_AudioSources[0].timeSamples >= sfxEventData.EventTriggerTimeInSamples)
                     {
-                        eventsToRemove.Add(sfxEventData);
-                    }
-                    else
-                    {
-                        if (m_EventsTriggered.Contains(sfxEventData))
+                        if (sfxEventData.RemoveEventOnceTriggered)
                         {
-                            continue;
+                            eventsToRemove.Add(sfxEventData);
+                        }
+                        else
+                        {
+                            if (m_EventsTriggered.Contains(sfxEventData))
+                            {
+                                continue;
+                            }
+
+                            m_EventsTriggered.Add(sfxEventData);
                         }
 
-                        m_EventsTriggered.Add(sfxEventData);
+                        OnEvent?.Invoke(sfxEventData.EventName, this);
                     }
-
-                    OnEvent?.Invoke(sfxEventData.EventName, this);
                 }
-            }
 
-            foreach (ISfxEventData sfxEventData in eventsToRemove)
+                foreach (ISfxEventData sfxEventData in eventsToRemove)
+                {
+                    m_EventData.Remove(sfxEventData);
+                }
+
+                if (m_EventData.Count != 0 || m_SfxAsset.Loop)
+                {
+                    return;
+                }
+
+                foreach (AudioSource source in m_AudioSources)
+                {
+                    source.clip = null;
+                }
+
+                m_OnAllEventsCompleted(this);
+            }
+            finally
             {
-                m_EventData.Remove(sfxEventData);
+                ListPool<ISfxEventData>.Release(eventsToRemove);
             }
-
-            if (m_EventData.Count != 0 || m_SfxAsset.Loop)
-            {
-                return;
-            }
-
-            foreach (AudioSource source in m_AudioSources)
-            {
-                source.clip = null;
-            }
-
-            m_OnAllEventsCompleted(this);
         }
 
         void ISfxReference.CheckForLoop()
