@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using RPGFramework.Audio.Music;
+using RPGFramework.Core;
 using UnityEngine;
 using UnityEngine.Audio;
 using UnityEngine.UIElements;
@@ -71,8 +72,11 @@ namespace RPGFramework.Audio.Music_Sample
 
         private void OnPlayMusicButton()
         {
-            // await if needed
-            m_MusicPlayer.Play(0);
+            int musicId = 0;
+
+            // can be awaited if necessary, or can fire and forget like below
+            // fire and forget ensure any exceptions are caught and logged correctly
+            m_MusicPlayer.Play(musicId).FireAndForget();
 
             m_PlayMusicButton.SetEnabled(false);
             m_PlayMusicMutedButton.SetEnabled(false);
@@ -92,15 +96,17 @@ namespace RPGFramework.Audio.Music_Sample
             m_PauseMusicButton.SetEnabled(true);
             m_StopMusicButton.SetEnabled(true);
             m_StopMusicWithFadeButton.SetEnabled(true);
-            
-            // async void bad, but button callbacks have to be void
-            // _ = means "I don't want to await this task"
-            _ = Run();
-            
+
+            // async void is bad, but button callbacks have to be void
+            // We don't want to await so we call fire and forget to ensure any exceptions get captured
+            Run().FireAndForget();
+
             async Task Run()
             {
-                await m_MusicPlayer.Play(0);
-                // await Play as it will set all clip volumes to 1
+                int musicId = 0;
+
+                await m_MusicPlayer.Play(musicId);
+                // await Play first as it will set all clip volumes to 1
                 m_MusicPlayer.SetActiveStemsImmediate(new Dictionary<int, bool>
                                                       {
                                                               { 0, false },
@@ -109,31 +115,38 @@ namespace RPGFramework.Audio.Music_Sample
                                                               { 3, true }
                                                       });
             }
-
         }
 
         private void OnTransitionButton()
         {
-            m_MusicPlayer.SetActiveStemsFade(new Dictionary<int, bool>
-                                             {
-                                                     { 0, true },
-                                                     { 1, false },
-                                                     { 2, true },
-                                                     { 3, true }
-                                             },
-                                             2f);
+            float transitionLength = 2f;
+            Dictionary<int, bool> newActiveStems = new Dictionary<int, bool>
+                                                   {
+                                                           { 0, true },
+                                                           { 1, false },
+                                                           { 2, true },
+                                                           { 3, true }
+                                                   };
+
+            // can be awaited if necessary, or can fire and forget like below
+            // fire and forget ensure any exceptions are caught and logged correctly
+            m_MusicPlayer.SetActiveStemsFade(newActiveStems, transitionLength).FireAndForget();
         }
 
         private void OnTransitionAllStemsButton()
         {
-            m_MusicPlayer.SetActiveStemsFade(new Dictionary<int, bool>
-                                             {
-                                                     { 0, true },
-                                                     { 1, true },
-                                                     { 2, true },
-                                                     { 3, true }
-                                             },
-                                             2f);
+            float transitionLength = 2f;
+            Dictionary<int, bool> newActiveStems = new Dictionary<int, bool>
+                                                   {
+                                                           { 0, true },
+                                                           { 1, true },
+                                                           { 2, true },
+                                                           { 3, true }
+                                                   };
+
+            // can be awaited if necessary, or can fire and forget like below
+            // fire and forget ensure any exceptions are caught and logged correctly
+            m_MusicPlayer.SetActiveStemsFade(newActiveStems, transitionLength).FireAndForget();
         }
 
         private void OnPauseMusicButton()
@@ -151,8 +164,9 @@ namespace RPGFramework.Audio.Music_Sample
 
         private void OnStopMusicButton()
         {
-            // await if needed
-            m_MusicPlayer.Stop();
+            // can be awaited if necessary, or can fire and forget like below
+            // fire and forget ensure any exceptions are caught and logged correctly
+            m_MusicPlayer.Stop().FireAndForget();
 
             m_PlayMusicButton.SetEnabled(true);
             m_PlayMusicMutedButton.SetEnabled(true);
@@ -173,9 +187,9 @@ namespace RPGFramework.Audio.Music_Sample
             m_StopMusicButton.SetEnabled(false);
             m_StopMusicWithFadeButton.SetEnabled(false);
 
-            // async void bad, but button callbacks have to be void
-            // _ = means "I don't want to await this task"
-            _ = Run();
+            // async void is bad, but button callbacks have to be void
+            // We don't want to await so we call fire and forget to ensure any exceptions get captured
+            Run().FireAndForget();
 
             async Task Run()
             {
