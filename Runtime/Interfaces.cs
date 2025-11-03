@@ -34,7 +34,7 @@ namespace RPGFramework.Audio
         void ClearPausedMusic();
         void SetMusicAssetProvider(IMusicAssetProvider     provider);
         void SetStemMixerGroups(AudioMixerGroup[]          groups);
-        void SetActiveStemsFade(Dictionary<int, bool>      stemValues, float transitionLength);
+        Task SetActiveStemsFade(Dictionary<int, bool>      stemValues, float transitionLength);
         void SetActiveStemsImmediate(Dictionary<int, bool> stemValues);
     }
 

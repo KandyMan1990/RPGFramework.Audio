@@ -28,7 +28,9 @@ namespace RPGFramework.Audio.Music
         Task IMusicPlayer.Play(int id)
         {
             if (m_CurrentSongId == id)
+            {
                 return Task.CompletedTask;
+            }
 
             m_CurrentSongId = id;
 
@@ -47,7 +49,9 @@ namespace RPGFramework.Audio.Music
         void IMusicPlayer.Pause()
         {
             if (m_CurrentSongId < 0)
+            {
                 return;
+            }
 
             m_PausedSongId   = m_CurrentSongId;
             m_PausedPosition = m_CurrentSources[0].time;
@@ -105,10 +109,13 @@ namespace RPGFramework.Audio.Music
             }
         }
 
-        void IMusicPlayer.SetActiveStemsFade(Dictionary<int, bool> stemValues, float transitionLength)
+        async Task IMusicPlayer.SetActiveStemsFade(Dictionary<int, bool> stemValues, float transitionLength)
         {
-            async Task Transition(CancellationToken token)
+            if (transitionLength > 0f)
             {
+                CancelCts();
+                m_CancellationTokenSource = new CancellationTokenSource();
+
                 float progress = 0f;
 
                 Dictionary<int, float> startVolumes = new Dictionary<int, float>();
@@ -120,7 +127,7 @@ namespace RPGFramework.Audio.Music
 
                 while (progress < 1.0f)
                 {
-                    if (token.IsCancellationRequested)
+                    if (m_CancellationTokenSource.IsCancellationRequested)
                         return;
 
                     foreach (KeyValuePair<int, bool> kvp in stemValues)
@@ -133,20 +140,11 @@ namespace RPGFramework.Audio.Music
 
                     progress += Time.deltaTime / transitionLength;
 
-                    await Awaitable.NextFrameAsync(token);
+                    await Awaitable.NextFrameAsync(m_CancellationTokenSource.Token);
                 }
-
-                ((IMusicPlayer)this).SetActiveStemsImmediate(stemValues);
             }
 
-            if (transitionLength <= 0f)
-            {
-                ((IMusicPlayer)this).SetActiveStemsImmediate(stemValues);
-            }
-
-            CancelCts();
-            m_CancellationTokenSource = new CancellationTokenSource();
-            _                         = Transition(m_CancellationTokenSource.Token);
+            ((IMusicPlayer)this).SetActiveStemsImmediate(stemValues);
         }
 
         void IUpdatable.Update()
