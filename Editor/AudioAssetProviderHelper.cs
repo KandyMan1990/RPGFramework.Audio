@@ -12,7 +12,7 @@ namespace RPGFramework.Audio.Editor
         private string                        m_AssetList;
         private SerializedObject              m_SerializedObject;
 
-        internal void OpenModal(string assetType, string assetList, SerializedObject serializedObject)
+        internal void OpenModal(string assetType, string windowTitle, string filename, string assetList, SerializedObject serializedObject)
         {
             m_AssetList        = assetList;
             m_SerializedObject = serializedObject;
@@ -20,7 +20,7 @@ namespace RPGFramework.Audio.Editor
             m_Window           =  ScriptableObject.CreateInstance<AudioAssetProviderModalWindow>();
             m_Window.OnConfirm += OnGenerateEnums;
 
-            m_Window.Init(assetType);
+            m_Window.Init(assetType, windowTitle, filename);
         }
 
         private void OnGenerateEnums(string path, string filename, string namespaceForEnum)

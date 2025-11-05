@@ -29,7 +29,7 @@ namespace RPGFramework.Audio.Editor
         private void OnButtonClicked()
         {
             m_AudioAssetProviderHelper = new AudioAssetProviderHelper<MusicAsset>();
-            m_AudioAssetProviderHelper.OpenModal("Music", "m_MusicAssets", serializedObject);
+            m_AudioAssetProviderHelper.OpenModal("Music", "Generate Music Asset Enum's", "MusicEnum.cs", "m_MusicAssets", serializedObject);
         }
     }
 }

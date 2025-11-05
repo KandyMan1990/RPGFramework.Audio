@@ -15,11 +15,13 @@ namespace RPGFramework.Audio.Editor
 
         private string m_SelectedDirectory;
         private string m_AssetType;
+        private string m_FileName;
 
-        public void Init(string assetType)
+        public void Init(string assetType, string windowTitle, string filename)
         {
             m_AssetType         = assetType;
-            titleContent        = new GUIContent($"Generate {m_AssetType} Asset Enum's");
+            m_FileName          = filename;
+            titleContent        = new GUIContent(windowTitle);
             minSize             = new Vector2(600, 200);
             m_SelectedDirectory = EditorPrefs.GetString($"{Application.productName}_SelectedDirectory_{m_AssetType}", Application.dataPath);
             ShowModal();
@@ -61,7 +63,7 @@ namespace RPGFramework.Audio.Editor
 
             m_FileNameTextField = new TextField("File Name:")
                                   {
-                                          value = EditorPrefs.GetString($"{Application.productName}_FileName_{m_AssetType}", $"{m_AssetType}Enum.cs")
+                                          value = EditorPrefs.GetString($"{Application.productName}_FileName_{m_AssetType}", m_FileName)
                                   };
 
             m_NamespaceTextField = new TextField("Namespace:")
@@ -80,7 +82,7 @@ namespace RPGFramework.Audio.Editor
 
             Button continueButton = new Button(OnButtonConfirm)
                                     {
-                                            text = $"Generate {m_AssetType} Asset Enum's"
+                                            text = $"Generate"
                                     };
 
             buttonRow.Add(continueButton);
