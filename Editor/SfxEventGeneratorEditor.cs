@@ -14,15 +14,19 @@ namespace RPGFramework.Audio.Editor
     {
         private AudioAssetProviderModalWindow m_Window;
         private SerializedObject              m_SerializedObject;
+        private bool                          m_CombineToSingleClass;
 
-        internal void OpenModal(SerializedObject serializedObject)
+        internal void OpenModal(SerializedObject serializedObject, string assetType, bool combineToSingleClass)
         {
-            m_SerializedObject = serializedObject;
+            m_SerializedObject     = serializedObject;
+            m_CombineToSingleClass = combineToSingleClass;
 
             m_Window           =  ScriptableObject.CreateInstance<AudioAssetProviderModalWindow>();
             m_Window.OnConfirm += OnGenerate;
 
-            m_Window.Init("SfxEvents", "Generate Sfx Events class", "SfxEvents.cs");
+            string filename = combineToSingleClass ? $"{assetType}.cs" : null;
+
+            m_Window.Init(assetType, "Generate Sfx Events class", filename);
         }
 
         private void OnGenerate(string path, string filename, string namespaceForFile)
@@ -30,43 +34,48 @@ namespace RPGFramework.Audio.Editor
             m_Window.OnConfirm -= OnGenerate;
             m_Window           =  null;
 
+            SerializedProperty sfxAssets = m_SerializedObject.FindProperty("m_SfxAssets");
+
+            if (m_CombineToSingleClass)
+            {
+                GenerateCombinedClass(sfxAssets, path, filename, namespaceForFile);
+            }
+            else
+            {
+                GenerateIndividualClasses(sfxAssets, path, namespaceForFile);
+            }
+
+            AssetDatabase.Refresh();
+        }
+
+        private static void GenerateCombinedClass(SerializedProperty sfxAssetsSerializedProperty, string path, string filename, string namespaceForFile)
+        {
             OrderedDictionary sfxEvents = new OrderedDictionary();
 
-            SerializedProperty listOfSfxAssets = m_SerializedObject.FindProperty("m_SfxAssets");
+            SfxAsset[] sfxAssets = GetSfxAssets(sfxAssetsSerializedProperty);
 
-            for (int i = 0; i < listOfSfxAssets.arraySize; i++)
+            for (int i = 0; i < sfxAssets.Length; i++)
             {
-                SerializedProperty sfxAssetSerializedProperty = listOfSfxAssets.GetArrayElementAtIndex(i);
-                SfxAsset           sfxAsset                   = (SfxAsset)sfxAssetSerializedProperty.objectReferenceValue;
+                SfxAsset           sfxAsset      = sfxAssets[i];
+                ISfxEventData[]    sfxEventData  = GetSfxAssetEvents(sfxAsset);
+                (string, string)[] sfxEventNames = GetSfxAssetEventNames(sfxEventData);
 
-                SerializedObject   sfxAssetSerializedObject = new SerializedObject(sfxAsset);
-                SerializedProperty events                   = sfxAssetSerializedObject.FindProperty("m_Events");
-
-                for (int j = 0; j < events.arraySize; j++)
+                for (int j = 0; j < sfxEventNames.Length; j++)
                 {
-                    SerializedProperty sfxEventProperty = events.GetArrayElementAtIndex(j);
-                    ISfxEventData      sfxEventData     = (ISfxEventData)sfxEventProperty.boxedValue;
-                    string             eventName        = sfxEventData.EventName;
-                    string             key              = ToUpperSnakeCase(eventName);
+                    (string key, string value) = sfxEventNames[j];
 
                     if (!sfxEvents.Contains(key))
                     {
-                        sfxEvents.Add(key, eventName);
+                        sfxEvents.Add(key, value);
                     }
                 }
             }
 
-            if (!Directory.Exists(path))
-            {
-                Directory.CreateDirectory(path);
-            }
+            CreateDirectory(path);
 
             string filePath = Path.Combine(path, filename);
 
-            if (File.Exists(filePath))
-            {
-                File.Delete(filePath);
-            }
+            ClearFile(filePath);
 
             StringBuilder sb        = new StringBuilder();
             string        className = filename.Split('.')[0];
@@ -77,15 +86,101 @@ namespace RPGFramework.Audio.Editor
             GenerateEndOfFile(sb);
 
             File.WriteAllText(filePath, sb.ToString());
+        }
 
-            AssetDatabase.Refresh();
+        private static void GenerateIndividualClasses(SerializedProperty sfxAssetsSerializedProperty, string path, string namespaceForFile)
+        {
+            SfxAsset[] sfxAssets = GetSfxAssets(sfxAssetsSerializedProperty);
+
+            for (int i = 0; i < sfxAssets.Length; i++)
+            {
+                OrderedDictionary sfxEvents = new OrderedDictionary();
+
+                SfxAsset           sfxAsset      = sfxAssets[i];
+                ISfxEventData[]    sfxEventData  = GetSfxAssetEvents(sfxAsset);
+                (string, string)[] sfxEventNames = GetSfxAssetEventNames(sfxEventData);
+
+                for (int j = 0; j < sfxEventNames.Length; j++)
+                {
+                    (string key, string value) = sfxEventNames[j];
+
+                    if (!sfxEvents.Contains(key))
+                    {
+                        sfxEvents.Add(key, value);
+                    }
+                }
+
+                CreateDirectory(path);
+
+                string filePath = Path.Combine(path, $"{sfxAsset.name}.cs");
+
+                ClearFile(filePath);
+
+                StringBuilder sb        = new StringBuilder();
+                string        className = sfxAsset.name;
+
+                GenerateStartOfFile(sb, namespaceForFile);
+                GenerateEnumContents(sb, className, sfxEvents);
+                GenerateClassContents(sb, className, sfxEvents);
+                GenerateEndOfFile(sb);
+
+                File.WriteAllText(filePath, sb.ToString());
+            }
+        }
+
+        private static SfxAsset[] GetSfxAssets(SerializedProperty sfxAssets)
+        {
+            SfxAsset[] assets = new SfxAsset[sfxAssets.arraySize];
+
+            for (int i = 0; i < sfxAssets.arraySize; i++)
+            {
+                SerializedProperty sfxAssetSerializedProperty = sfxAssets.GetArrayElementAtIndex(i);
+                SfxAsset           sfxAsset                   = (SfxAsset)sfxAssetSerializedProperty.objectReferenceValue;
+
+                assets[i] = sfxAsset;
+            }
+
+            return assets;
+        }
+
+        private static ISfxEventData[] GetSfxAssetEvents(SfxAsset sfxAsset)
+        {
+            SerializedObject   sfxAssetSerializedObject = new SerializedObject(sfxAsset);
+            SerializedProperty events                   = sfxAssetSerializedObject.FindProperty("m_Events");
+
+            ISfxEventData[] sfxEventDataArray = new ISfxEventData[events.arraySize];
+
+            for (int i = 0; i < sfxEventDataArray.Length; i++)
+            {
+                SerializedProperty sfxEventProperty = events.GetArrayElementAtIndex(i);
+                ISfxEventData      sfxEventData     = (ISfxEventData)sfxEventProperty.boxedValue;
+
+                sfxEventDataArray[i] = sfxEventData;
+            }
+
+            return sfxEventDataArray;
+        }
+
+        private static (string key, string value)[] GetSfxAssetEventNames(ISfxEventData[] sfxEventData)
+        {
+            (string key, string value)[] names = new (string key, string value)[sfxEventData.Length];
+
+            for (int i = 0; i < sfxEventData.Length; i++)
+            {
+                string eventName = sfxEventData[i].EventName;
+                string key       = ToUpperSnakeCase(eventName);
+
+                names[i] = (key, eventName);
+            }
+
+            return names;
         }
 
         private static void GenerateStartOfFile(StringBuilder sb, string namespaceForFile)
         {
             sb.AppendLine("// THIS FILE IS AUTOGENERATED, DO NOT MODIFY");
             sb.AppendLine($"// Last generated at {DateTime.UtcNow}\n");
-            
+
             sb.AppendLine("using System;");
             sb.AppendLine();
 
@@ -130,15 +225,15 @@ namespace RPGFramework.Audio.Editor
             {
                 sb.AppendLine($"\t\t\t\t{className}Enum.{dictionaryEntry.Key} => {dictionaryEntry.Key},");
             }
-            
-            sb.AppendLine($"\t\t\t\t_ => throw new ArgumentOutOfRangeException(nameof(value), value, null)");
-            
+
+            sb.AppendLine("\t\t\t\t_ => throw new ArgumentOutOfRangeException(nameof(value), value, null)");
+
             sb.AppendLine("\t\t\t};");
 
             sb.AppendLine("\t\t}");
 
             sb.AppendLine("\t}");
-            
+
             //TODO: create static classes for each SfxAsset so we can do Sfx_00.LoopStart, gives us flexibility
             //TODO: add checkboxes to the modal to decide if we want the enum, the generic class with all strings in, the individual sfx classes, or any combination
         }
@@ -161,6 +256,22 @@ namespace RPGFramework.Audio.Editor
             result = Regex.Replace(result, @"_+",                   "_");
 
             return result.ToUpperInvariant();
+        }
+
+        private static void CreateDirectory(string path)
+        {
+            if (!Directory.Exists(path))
+            {
+                Directory.CreateDirectory(path);
+            }
+        }
+
+        private static void ClearFile(string path)
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
         }
     }
 }

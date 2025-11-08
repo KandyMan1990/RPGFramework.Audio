@@ -22,13 +22,19 @@ namespace RPGFramework.Audio.Editor
                                              text = "Generate enum for Sfx Asset Provider"
                                      };
 
-            Button generateSfxEventBtn = new Button(OnGenerateSfxEventsClicked)
-                                         {
-                                                 text = "Generate class for Sfx event data"
-                                         };
+            Button generateAllSfxEventsBtn = new Button(OnGenerateAllSfxEventsClicked)
+                                             {
+                                                     text = "Generate single class for all Sfx event data"
+                                             };
+
+            Button generateAllSfxEventsIndividuallyBtn = new Button(OnGenerateAllSfxEventsIndividuallyClicked)
+                                                         {
+                                                                 text = "Generate class per Sfx for its Sfx event data"
+                                                         };
 
             root.Add(generateEnumBtn);
-            root.Add(generateSfxEventBtn);
+            root.Add(generateAllSfxEventsBtn);
+            root.Add(generateAllSfxEventsIndividuallyBtn);
 
             return root;
         }
@@ -39,10 +45,16 @@ namespace RPGFramework.Audio.Editor
             m_AudioAssetProviderHelper.OpenModal("Sfx", "Generate Sfx Asset Enum's", "SfxEnum.cs", "m_SfxAssets", serializedObject);
         }
 
-        private void OnGenerateSfxEventsClicked()
+        private void OnGenerateAllSfxEventsClicked()
         {
             m_SfxEventGeneratorEditor = new SfxEventGeneratorEditor();
-            m_SfxEventGeneratorEditor.OpenModal(serializedObject);
+            m_SfxEventGeneratorEditor.OpenModal(serializedObject, "SfxEvents", true);
+        }
+
+        private void OnGenerateAllSfxEventsIndividuallyClicked()
+        {
+            m_SfxEventGeneratorEditor = new SfxEventGeneratorEditor();
+            m_SfxEventGeneratorEditor.OpenModal(serializedObject, "IndividualSfxEvents", false);
         }
     }
 }

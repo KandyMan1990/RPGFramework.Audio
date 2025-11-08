@@ -61,10 +61,13 @@ namespace RPGFramework.Audio.Editor
             pathRow.Add(m_PathTextField);
             pathRow.Add(browseButton);
 
-            m_FileNameTextField = new TextField("File Name:")
-                                  {
-                                          value = EditorPrefs.GetString($"{Application.productName}_FileName_{m_AssetType}", m_FileName)
-                                  };
+            if (m_FileName != null)
+            {
+                m_FileNameTextField = new TextField("File Name:")
+                                      {
+                                              value = EditorPrefs.GetString($"{Application.productName}_FileName_{m_AssetType}", m_FileName)
+                                      };
+            }
 
             m_NamespaceTextField = new TextField("Namespace:")
                                    {
@@ -82,13 +85,16 @@ namespace RPGFramework.Audio.Editor
 
             Button continueButton = new Button(OnButtonConfirm)
                                     {
-                                            text = $"Generate"
+                                            text = "Generate"
                                     };
 
             buttonRow.Add(continueButton);
 
             root.Add(pathRow);
-            root.Add(m_FileNameTextField);
+            if (m_FileName != null)
+            {
+                root.Add(m_FileNameTextField);
+            }
             root.Add(m_NamespaceTextField);
             root.Add(buttonRow);
         }
@@ -107,10 +113,13 @@ namespace RPGFramework.Audio.Editor
         private void OnButtonConfirm()
         {
             EditorPrefs.SetString($"{Application.productName}_SelectedDirectory_{m_AssetType}", m_SelectedDirectory);
-            EditorPrefs.SetString($"{Application.productName}_FileName_{m_AssetType}",          m_FileNameTextField.value);
+            if (m_FileName != null)
+            {
+                EditorPrefs.SetString($"{Application.productName}_FileName_{m_AssetType}", m_FileNameTextField.value);
+            }
             EditorPrefs.SetString($"{Application.productName}_Namespace_{m_AssetType}",         m_NamespaceTextField.value);
 
-            OnConfirm?.Invoke(m_SelectedDirectory, m_FileNameTextField.value, m_NamespaceTextField.value);
+            OnConfirm?.Invoke(m_SelectedDirectory, m_FileNameTextField?.value, m_NamespaceTextField.value);
             Close();
         }
     }
