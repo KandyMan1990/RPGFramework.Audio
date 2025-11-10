@@ -28,14 +28,16 @@ namespace RPGFramework.Audio
 
     public interface IMusicPlayer
     {
-        Task Play(int id);
-        void Pause();
-        Task Stop(float fadeTime = 0.001f);
-        void ClearPausedMusic();
-        void SetMusicAssetProvider(IMusicAssetProvider     provider);
-        void SetStemMixerGroups(AudioMixerGroup[]          groups);
-        Task SetActiveStemsFade(Dictionary<int, bool>      stemValues, float transitionLength);
-        void SetActiveStemsImmediate(Dictionary<int, bool> stemValues);
+        Task  Play(int id);
+        void  Pause();
+        Task  Stop(float fadeTime = 0.001f);
+        void  ClearPausedMusic();
+        void  SetMusicAssetProvider(IMusicAssetProvider     provider);
+        void  SetStemMixerGroups(AudioMixerGroup[]          groups);
+        Task  SetActiveStemsFade(Dictionary<int, bool>      stemValues, float transitionLength);
+        void  SetActiveStemsImmediate(Dictionary<int, bool> stemValues);
+        float GetVolume();
+        void  SetVolume(float percent);
     }
 
     public interface ISfxEventData
@@ -83,6 +85,8 @@ namespace RPGFramework.Audio
         void          StopAll();
         void          SetSfxAssetProvider(ISfxAssetProvider provider);
         void          SetStemMixerGroups(AudioMixerGroup[]  groups);
+        float         GetVolume();
+        void          SetVolume(float percent);
         void          Dispose();
     }
 }

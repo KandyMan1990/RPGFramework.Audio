@@ -884,6 +884,8 @@ AudioMixerController:
   m_EnableSuspend: 1
   m_UpdateMode: 0
   m_ExposedParameters:
+  - guid: 3cda3a09a35c2a04e877971ca9795db1
+    name: Music
   - guid: 6246e9a5f647e0a4daa8250e91355f89
     name: MusicTrack0_Send
   - guid: 169206645d4df3d46b090216b213dc79
@@ -916,6 +918,8 @@ AudioMixerController:
     name: MusicTrack8_Send
   - guid: 2b10d61a0f501494ebbaa07559242792
     name: MusicTrack9_Send
+  - guid: 50663971ddeab6444b733794e016ec7c
+    name: Sfx
   - guid: 38be6cfd79853134fa31521c44e7511b
     name: SfxTrack0_Send
   - guid: f5f0d21f659a6d14090cf4844bf7ad3d

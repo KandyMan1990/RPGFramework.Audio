@@ -10,6 +10,10 @@ namespace RPGFramework.Audio.Sfx
 {
     public class UnitySfxPlayer : ISfxPlayer, IUpdatable
     {
+        private const string SFX_BUS_NAME        = "Sfx";
+        private const float  MIN_DB              = -80f;
+        private const float  PERCEPTUAL_EXPONENT = 1.661f;
+        
         private ISfxAssetProvider m_SfxAssetProvider;
         private AudioSource[]     m_CurrentSources;
         private AudioMixerGroup[] m_StemMixerGroups;
@@ -106,6 +110,40 @@ namespace RPGFramework.Audio.Sfx
             }
         }
 
+        float ISfxPlayer.GetVolume()
+        {
+            m_AudioMixer.GetFloat(SFX_BUS_NAME, out float db);
+
+            if (db <= MIN_DB + 0.01f)
+            {
+                return 0f;
+            }
+
+            float amplitude = math.pow(10f, db / 20f);
+            return math.pow(amplitude, 1f / PERCEPTUAL_EXPONENT);
+        }
+
+        void ISfxPlayer.SetVolume(float slider)
+        {
+            float clamp = math.clamp(slider, 0f, 1f);
+
+            if (clamp <= 0f)
+            {
+                m_AudioMixer.SetFloat(SFX_BUS_NAME, MIN_DB);
+                return;
+            }
+
+            float amplitude = math.pow(clamp, PERCEPTUAL_EXPONENT);
+            float db        = 20f * math.log10(amplitude);
+            m_AudioMixer.SetFloat(SFX_BUS_NAME, db);
+        }
+        
+        void ISfxPlayer.Dispose()
+        {
+            Dispose();
+            GC.SuppressFinalize(this);
+        }
+
         void IUpdatable.Update()
         {
             if (m_SfxReferences.Count == 0)
@@ -120,13 +158,7 @@ namespace RPGFramework.Audio.Sfx
                 sfxReference.CheckForLoop();
             }
         }
-
-        void ISfxPlayer.Dispose()
-        {
-            Dispose();
-            GC.SuppressFinalize(this);
-        }
-
+        
         private void Dispose()
         {
             if (m_Disposed)

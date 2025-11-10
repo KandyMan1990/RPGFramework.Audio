@@ -13,6 +13,10 @@ namespace RPGFramework.Audio.Music
 {
     public class UnityMusicPlayer : IMusicPlayer, IUpdatable
     {
+        private const string MUSIC_BUS_NAME      = "Music";
+        private const float  MIN_DB              = -80f;
+        private const float  PERCEPTUAL_EXPONENT = 1.661f;
+
         private int    m_CurrentSongId  = -1;
         private int    m_PausedSongId   = -1;
         private double m_PausedPosition = 0.0;
@@ -145,6 +149,34 @@ namespace RPGFramework.Audio.Music
             }
 
             ((IMusicPlayer)this).SetActiveStemsImmediate(stemValues);
+        }
+
+        float IMusicPlayer.GetVolume()
+        {
+            m_AudioMixer.GetFloat(MUSIC_BUS_NAME, out float db);
+
+            if (db <= MIN_DB + 0.01f)
+            {
+                return 0f;
+            }
+
+            float amplitude = math.pow(10f, db / 20f);
+            return math.pow(amplitude, 1f / PERCEPTUAL_EXPONENT);
+        }
+
+        void IMusicPlayer.SetVolume(float slider)
+        {
+            float clamp = math.clamp(slider, 0f, 1f);
+
+            if (clamp <= 0f)
+            {
+                m_AudioMixer.SetFloat(MUSIC_BUS_NAME, MIN_DB);
+                return;
+            }
+
+            float amplitude = math.pow(clamp, PERCEPTUAL_EXPONENT);
+            float db        = 20f * math.log10(amplitude);
+            m_AudioMixer.SetFloat(MUSIC_BUS_NAME, db);
         }
 
         void IUpdatable.Update()
