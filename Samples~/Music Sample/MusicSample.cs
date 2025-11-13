@@ -26,6 +26,7 @@ namespace RPGFramework.Audio.Music_Sample
         private Button m_PauseMusicButton;
         private Button m_StopMusicButton;
         private Button m_StopMusicWithFadeButton;
+        private Slider m_MusicVolumeSlider;
 
         private void Awake()
         {
@@ -36,6 +37,7 @@ namespace RPGFramework.Audio.Music_Sample
             m_PauseMusicButton         = m_UIDocument.rootVisualElement.Q<Button>("PauseMusicButton");
             m_StopMusicButton          = m_UIDocument.rootVisualElement.Q<Button>("StopMusicButton");
             m_StopMusicWithFadeButton  = m_UIDocument.rootVisualElement.Q<Button>("StopMusicWithFadeButton");
+            m_MusicVolumeSlider        = m_UIDocument.rootVisualElement.Q<Slider>("MusicVolumeSlider");
 
             m_TransitionButton.SetEnabled(false);
             m_TransitionAllStemsButton.SetEnabled(false);
@@ -50,6 +52,9 @@ namespace RPGFramework.Audio.Music_Sample
             m_MusicPlayer.SetMusicAssetProvider(m_MusicAssetProvider);
             m_MusicPlayer.SetStemMixerGroups(m_MusicMixerGroups);
 
+            float volume = m_MusicPlayer.GetVolume();
+            m_MusicVolumeSlider.SetValueWithoutNotify(volume);
+
             m_PlayMusicButton.clicked          += OnPlayMusicButton;
             m_PlayMusicMutedButton.clicked     += OnPlayMusicMutedButton;
             m_TransitionButton.clicked         += OnTransitionButton;
@@ -57,17 +62,21 @@ namespace RPGFramework.Audio.Music_Sample
             m_PauseMusicButton.clicked         += OnPauseMusicButton;
             m_StopMusicButton.clicked          += OnStopMusicButton;
             m_StopMusicWithFadeButton.clicked  += OnStopMusicWithFadeButton;
+
+            m_MusicVolumeSlider.RegisterValueChangedCallback(OnVolumeSliderValueChanged);
         }
 
         private void OnDestroy()
         {
-            m_PlayMusicButton.clicked          -= OnPlayMusicButton;
-            m_PlayMusicMutedButton.clicked     -= OnPlayMusicMutedButton;
-            m_TransitionButton.clicked         -= OnTransitionButton;
-            m_TransitionAllStemsButton.clicked -= OnTransitionAllStemsButton;
-            m_PauseMusicButton.clicked         -= OnPauseMusicButton;
-            m_StopMusicButton.clicked          -= OnStopMusicButton;
+            m_MusicVolumeSlider.UnregisterValueChangedCallback(OnVolumeSliderValueChanged);
+
             m_StopMusicWithFadeButton.clicked  -= OnStopMusicWithFadeButton;
+            m_StopMusicButton.clicked          -= OnStopMusicButton;
+            m_PauseMusicButton.clicked         -= OnPauseMusicButton;
+            m_TransitionAllStemsButton.clicked -= OnTransitionAllStemsButton;
+            m_TransitionButton.clicked         -= OnTransitionButton;
+            m_PlayMusicMutedButton.clicked     -= OnPlayMusicMutedButton;
+            m_PlayMusicButton.clicked          -= OnPlayMusicButton;
         }
 
         private void OnPlayMusicButton()
@@ -198,6 +207,11 @@ namespace RPGFramework.Audio.Music_Sample
                 m_PlayMusicButton.SetEnabled(true);
                 m_PlayMusicMutedButton.SetEnabled(true);
             }
+        }
+
+        private void OnVolumeSliderValueChanged(ChangeEvent<float> value)
+        {
+            m_MusicPlayer.SetVolume(value.newValue);
         }
     }
 }

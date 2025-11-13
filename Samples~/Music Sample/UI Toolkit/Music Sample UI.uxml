@@ -7,5 +7,6 @@
         <ui:Button text="Pause Demo Music" name="PauseMusicButton" />
         <ui:Button text="Stop Demo Music" name="StopMusicButton" />
         <ui:Button text="Stop Demo Music with fade out" name="StopMusicWithFadeButton" />
+        <ui:Slider label="Volume" value="0.5" high-value="1" name="MusicVolumeSlider" fill="true" low-value="0" show-input-field="false" style="color: rgb(255, 255, 255);" />
     </ui:VisualElement>
 </ui:UXML>
