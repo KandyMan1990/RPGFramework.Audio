@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using RPGFramework.Core.PlayerLoop;
 using RPGFramework.Core;
-using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Audio;
 
@@ -10,10 +9,9 @@ namespace RPGFramework.Audio.Sfx
 {
     public class UnitySfxPlayer : ISfxPlayer, IUpdatable
     {
-        private const string SFX_BUS_NAME        = "Sfx";
-        private const float  MIN_DB              = -80f;
-        private const float  PERCEPTUAL_EXPONENT = 1.661f;
-        
+        private const string SFX_BUS_NAME    = "Sfx";
+        private const string SFX_REVERB_SEND = "SfxReverbSend";
+
         private ISfxAssetProvider m_SfxAssetProvider;
         private AudioSource[]     m_CurrentSources;
         private AudioMixerGroup[] m_StemMixerGroups;
@@ -110,71 +108,6 @@ namespace RPGFramework.Audio.Sfx
             }
         }
 
-        float ISfxPlayer.GetVolume()
-        {
-            m_AudioMixer.GetFloat(SFX_BUS_NAME, out float db);
-
-            if (db <= MIN_DB + 0.01f)
-            {
-                return 0f;
-            }
-
-            float amplitude = math.pow(10f, db / 20f);
-            return math.pow(amplitude, 1f / PERCEPTUAL_EXPONENT);
-        }
-
-        void ISfxPlayer.SetVolume(float slider)
-        {
-            float clamp = math.clamp(slider, 0f, 1f);
-
-            if (clamp <= 0f)
-            {
-                m_AudioMixer.SetFloat(SFX_BUS_NAME, MIN_DB);
-                return;
-            }
-
-            float amplitude = math.pow(clamp, PERCEPTUAL_EXPONENT);
-            float db        = 20f * math.log10(amplitude);
-            m_AudioMixer.SetFloat(SFX_BUS_NAME, db);
-        }
-        
-        void ISfxPlayer.Dispose()
-        {
-            Dispose();
-            GC.SuppressFinalize(this);
-        }
-
-        void IUpdatable.Update()
-        {
-            if (m_SfxReferences.Count == 0)
-            {
-                return;
-            }
-
-            for (int i = m_SfxReferences.Count - 1; i >= 0; i--)
-            {
-                ISfxReference sfxReference = m_SfxReferences[i];
-                sfxReference.CheckForEventToRaise();
-                sfxReference.CheckForLoop();
-            }
-        }
-        
-        private void Dispose()
-        {
-            if (m_Disposed)
-            {
-                return;
-            }
-
-            m_Disposed = true;
-            UpdateManager.UnregisterUpdatable(this);
-        }
-
-        private void RemoveSfxReference(ISfxReference sfxReference)
-        {
-            m_SfxReferences.Remove(sfxReference);
-        }
-
         private ISfxReference ScheduleSfx(int id, float startTime)
         {
             ISfxAsset sfxAsset = m_SfxAssetProvider.GetSfxAsset(id);
@@ -206,7 +139,7 @@ namespace RPGFramework.Audio.Sfx
                 source.time                  = startTime;
                 source.outputAudioMixerGroup = m_StemMixerGroups[mixerGroupIndex];
 
-                float sendLevel = math.lerp(-10f, 0f, sfxAsset.Tracks[i].ReverbSendLevel);
+                float sendLevel = AudioUtils.PercentToDb(sfxAsset.Tracks[i].ReverbSendLevel);
                 m_AudioMixer.SetFloat(m_SendParameterNames[mixerGroupIndex], sendLevel);
 
                 source.PlayScheduled(scheduledStartTime);
@@ -217,6 +150,59 @@ namespace RPGFramework.Audio.Sfx
             m_SfxReferences.Add(sfxRef);
 
             return sfxRef;
+        }
+
+        float ISfxPlayer.GetVolume()
+        {
+            return AudioUtils.GetVolume(m_AudioMixer, SFX_BUS_NAME);
+        }
+
+        void ISfxPlayer.SetVolume(float percent)
+        {
+            string[] busNames = new string[]
+                                {
+                                        SFX_BUS_NAME,
+                                        SFX_REVERB_SEND
+                                };
+
+            AudioUtils.SetVolume(m_AudioMixer, busNames, percent);
+        }
+
+        void ISfxPlayer.Dispose()
+        {
+            Dispose();
+            GC.SuppressFinalize(this);
+        }
+
+        void IUpdatable.Update()
+        {
+            if (m_SfxReferences.Count == 0)
+            {
+                return;
+            }
+
+            for (int i = m_SfxReferences.Count - 1; i >= 0; i--)
+            {
+                ISfxReference sfxReference = m_SfxReferences[i];
+                sfxReference.CheckForEventToRaise();
+                sfxReference.CheckForLoop();
+            }
+        }
+
+        private void Dispose()
+        {
+            if (m_Disposed)
+            {
+                return;
+            }
+
+            m_Disposed = true;
+            UpdateManager.UnregisterUpdatable(this);
+        }
+
+        private void RemoveSfxReference(ISfxReference sfxReference)
+        {
+            m_SfxReferences.Remove(sfxReference);
         }
     }
 }

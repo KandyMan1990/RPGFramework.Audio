@@ -1,6 +1,4 @@
-﻿using System.Buffers;
-using System.Collections.Generic;
-using System.Linq;
+﻿using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using RPGFramework.Core.PlayerLoop;
@@ -13,9 +11,8 @@ namespace RPGFramework.Audio.Music
 {
     public class UnityMusicPlayer : IMusicPlayer, IUpdatable
     {
-        private const string MUSIC_BUS_NAME      = "Music";
-        private const float  MIN_DB              = -80f;
-        private const float  PERCEPTUAL_EXPONENT = 1.661f;
+        private const string MUSIC_BUS_NAME    = "Music";
+        private const string MUSIC_REVERB_SEND = "MusicReverbSend";
 
         private int    m_CurrentSongId  = -1;
         private int    m_PausedSongId   = -1;
@@ -153,30 +150,18 @@ namespace RPGFramework.Audio.Music
 
         float IMusicPlayer.GetVolume()
         {
-            m_AudioMixer.GetFloat(MUSIC_BUS_NAME, out float db);
-
-            if (db <= MIN_DB + 0.01f)
-            {
-                return 0f;
-            }
-
-            float amplitude = math.pow(10f, db / 20f);
-            return math.pow(amplitude, 1f / PERCEPTUAL_EXPONENT);
+            return AudioUtils.GetVolume(m_AudioMixer, MUSIC_BUS_NAME);
         }
 
-        void IMusicPlayer.SetVolume(float slider)
+        void IMusicPlayer.SetVolume(float percent)
         {
-            float clamp = math.clamp(slider, 0f, 1f);
+            string[] busNames = new string[]
+                                {
+                                        MUSIC_BUS_NAME,
+                                        MUSIC_REVERB_SEND
+                                };
 
-            if (clamp <= 0f)
-            {
-                m_AudioMixer.SetFloat(MUSIC_BUS_NAME, MIN_DB);
-                return;
-            }
-
-            float amplitude = math.pow(clamp, PERCEPTUAL_EXPONENT);
-            float db        = 20f * math.log10(amplitude);
-            m_AudioMixer.SetFloat(MUSIC_BUS_NAME, db);
+            AudioUtils.SetVolume(m_AudioMixer, busNames, percent);
         }
 
         void IUpdatable.Update()
@@ -234,48 +219,39 @@ namespace RPGFramework.Audio.Music
         {
             m_CurrentMusicAsset = m_MusicAssetProvider.GetMusicAsset(m_CurrentSongId);
 
-            int trackCount = m_CurrentMusicAsset.Tracks.Count;
+            int    trackCount = m_CurrentMusicAsset.Tracks.Count;
+            Task[] tasks      = new Task[trackCount];
 
-            ArrayPool<Task> pool  = ArrayPool<Task>.Shared;
-            Task[]          tasks = pool.Rent(trackCount);
-
-            try
+            for (int i = 0; i < trackCount; i++)
             {
-                for (int i = 0; i < trackCount; i++)
-                {
-                    IStem stem = m_CurrentMusicAsset.Tracks[i];
-                    tasks[i] = EnsureAudioClipLoaded(stem.Clip);
-                }
-
-                await Task.WhenAll(tasks.Take(trackCount));
-
-                double scheduledStartTime = AudioSettings.dspTime + Time.deltaTime;
-
-                for (int i = 0; i < trackCount; i++)
-                {
-                    AudioSource source = m_CurrentSources[i];
-
-                    source.clip                  = m_CurrentMusicAsset.Tracks[i].Clip;
-                    source.playOnAwake           = false;
-                    source.loop                  = false;
-                    source.volume                = 1f;
-                    source.time                  = startTime;
-                    source.outputAudioMixerGroup = m_StemMixerGroups[i];
-
-                    float sendLevel = math.lerp(-10f, 0f, m_CurrentMusicAsset.Tracks[i].ReverbSendLevel);
-                    m_AudioMixer.SetFloat(m_SendParameterNames[i], sendLevel);
-
-                    source.PlayScheduled(scheduledStartTime);
-                }
-
-                if (m_CurrentMusicAsset.Loop)
-                {
-                    UpdateManager.RegisterUpdatable(this);
-                }
+                IStem stem = m_CurrentMusicAsset.Tracks[i];
+                tasks[i] = EnsureAudioClipLoaded(stem.Clip);
             }
-            finally
+
+            await Task.WhenAll(tasks);
+
+            double scheduledStartTime = AudioSettings.dspTime + Time.deltaTime;
+
+            for (int i = 0; i < trackCount; i++)
             {
-                pool.Return(tasks, true);
+                AudioSource source = m_CurrentSources[i];
+
+                source.clip                  = m_CurrentMusicAsset.Tracks[i].Clip;
+                source.playOnAwake           = false;
+                source.loop                  = false;
+                source.volume                = 1f;
+                source.time                  = startTime;
+                source.outputAudioMixerGroup = m_StemMixerGroups[i];
+
+                float sendLevel = AudioUtils.PercentToDb(m_CurrentMusicAsset.Tracks[i].ReverbSendLevel);
+                m_AudioMixer.SetFloat(m_SendParameterNames[i], sendLevel);
+
+                source.PlayScheduled(scheduledStartTime);
+            }
+
+            if (m_CurrentMusicAsset.Loop)
+            {
+                UpdateManager.RegisterUpdatable(this);
             }
         }
 
