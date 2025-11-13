@@ -5,5 +5,6 @@
         <ui:Button text="Play a looping sound wth an event" name="PlaySfx0ButtonWithLoopAndEvent" />
         <ui:Button text="Play an ambient sound" name="PlayAmbienceButton" />
         <ui:Button text="Stop all sounds" name="StopAllSfxButton" />
+        <ui:Slider label="Volume" value="0.5" high-value="1" name="SfxVolumeSlider" fill="true" low-value="0" show-input-field="false" style="color: rgb(255, 255, 255);" />
     </ui:VisualElement>
 </ui:UXML>

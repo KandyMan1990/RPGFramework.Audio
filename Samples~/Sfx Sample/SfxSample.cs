@@ -21,6 +21,7 @@ namespace RPGFramework.Audio.Sfx_Sample
         private Button m_PlaySfx0ButtonWithLoopAndEvent;
         private Button m_PlayAmbienceButton;
         private Button m_StopAllSfxButton;
+        private Slider m_SfxVolumeSlider;
 
         private ISfxReference m_SfxReference0;
 
@@ -31,6 +32,7 @@ namespace RPGFramework.Audio.Sfx_Sample
             m_PlaySfx0ButtonWithLoopAndEvent = m_UIDocument.rootVisualElement.Q<Button>("PlaySfx0ButtonWithLoopAndEvent");
             m_PlayAmbienceButton             = m_UIDocument.rootVisualElement.Q<Button>("PlayAmbienceButton");
             m_StopAllSfxButton               = m_UIDocument.rootVisualElement.Q<Button>("StopAllSfxButton");
+            m_SfxVolumeSlider                = m_UIDocument.rootVisualElement.Q<Slider>("SfxVolumeSlider");
         }
 
         private void Start()
@@ -39,20 +41,27 @@ namespace RPGFramework.Audio.Sfx_Sample
             m_SfxPlayer.SetSfxAssetProvider(m_SfxAssetProvider);
             m_SfxPlayer.SetStemMixerGroups(m_SfxMixerGroups);
 
+            float volume = m_SfxPlayer.GetVolume();
+            m_SfxVolumeSlider.SetValueWithoutNotify(volume);
+
             m_PlaySfx1Button.clicked                 += OnPlaySfx1Button;
             m_StopSfx1Button.clicked                 += OnStopSfx1Button;
             m_PlaySfx0ButtonWithLoopAndEvent.clicked += OnPlaySfx0ButtonWithLoopAndEvent;
             m_PlayAmbienceButton.clicked             += OnPlayAmbienceButton;
             m_StopAllSfxButton.clicked               += OnStopAllSfxButton;
+
+            m_SfxVolumeSlider.RegisterValueChangedCallback(OnVolumeSliderValueChanged);
         }
 
         private void OnDestroy()
         {
-            m_PlaySfx1Button.clicked                 -= OnPlaySfx1Button;
-            m_StopSfx1Button.clicked                 -= OnStopSfx1Button;
-            m_PlaySfx0ButtonWithLoopAndEvent.clicked -= OnPlaySfx0ButtonWithLoopAndEvent;
-            m_PlayAmbienceButton.clicked             -= OnPlayAmbienceButton;
+            m_SfxVolumeSlider.UnregisterValueChangedCallback(OnVolumeSliderValueChanged);
+
             m_StopAllSfxButton.clicked               -= OnStopAllSfxButton;
+            m_PlayAmbienceButton.clicked             -= OnPlayAmbienceButton;
+            m_PlaySfx0ButtonWithLoopAndEvent.clicked -= OnPlaySfx0ButtonWithLoopAndEvent;
+            m_StopSfx1Button.clicked                 -= OnStopSfx1Button;
+            m_PlaySfx1Button.clicked                 -= OnPlaySfx1Button;
         }
 
         private static void SfxReferenceOnEvent(string eventName, ISfxReference sfxRef)
@@ -97,6 +106,11 @@ namespace RPGFramework.Audio.Sfx_Sample
         private void OnStopAllSfxButton()
         {
             m_SfxPlayer.StopAll();
+        }
+
+        private void OnVolumeSliderValueChanged(ChangeEvent<float> value)
+        {
+            m_SfxPlayer.SetVolume(value.newValue);
         }
     }
 }
