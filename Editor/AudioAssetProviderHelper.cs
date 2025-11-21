@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Text;
+using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEngine;
 
@@ -58,15 +59,36 @@ namespace RPGFramework.Audio.Editor
             AssetDatabase.Refresh();
         }
 
-        private static string ToPascalCase(string str)
+        private static string ToPascalCase(string input)
         {
-            StringBuilder sb = new StringBuilder(str.Length);
+            Regex wordSplitRegex = new Regex(@"[A-Z]+(?=$|[A-Z][a-z])|[A-Z]?[a-z]+|\d+", RegexOptions.Compiled);
 
-            string[] words = str.Split(' ');
-
-            foreach (string word in words)
+            if (string.IsNullOrWhiteSpace(input))
             {
-                sb.Append(word[..1].ToUpper() + word[1..].ToLower());
+                return string.Empty;
+            }
+
+            input = input.Replace('-', ' ').Replace('_', ' ');
+
+            MatchCollection matches = wordSplitRegex.Matches(input);
+            StringBuilder   sb      = new StringBuilder(input.Length);
+
+            foreach (Match m in matches)
+            {
+                string word = m.Value;
+
+                if (char.IsDigit(word[0]))
+                {
+                    sb.Append(word);
+                    continue;
+                }
+
+                sb.Append(char.ToUpperInvariant(word[0]));
+
+                if (word.Length > 1)
+                {
+                    sb.Append(word[1..].ToLowerInvariant());
+                }
             }
 
             return sb.ToString();
