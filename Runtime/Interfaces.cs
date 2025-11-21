@@ -89,4 +89,17 @@ namespace RPGFramework.Audio
         void          SetVolume(float percent);
         void          Dispose();
     }
+
+    /// <summary>
+    /// Used to provide common sound effect IDs to objects.  Suggest making a ScriptableObject that implements this interface so you can use your own enums via the SfxAssetProvider enum generator
+    /// </summary>
+    public interface IGenericAudioIdProvider
+    {
+        int ButtonNavigate { get; }
+        int ButtonPositive { get; }
+        int ButtonNegative { get; }
+        int ItemConsumed   { get; }
+        int Equip          { get; }
+        int Error          { get; }
+    }
 }
