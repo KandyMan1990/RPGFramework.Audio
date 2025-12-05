@@ -2,7 +2,7 @@
     "name": "RPGFramework.Audio.Editor",
     "rootNamespace": "RPGFramework.Audio.Editor",
     "references": [
-        "GUID:13af680cbd4f2db4a8c7ef02b9003e0f"
+        "RPGFramework.Audio"
     ],
     "includePlatforms": [
         "Editor"
