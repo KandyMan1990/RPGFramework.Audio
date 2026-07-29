@@ -1,6 +1,6 @@
 {
   "name": "com.rpgframework.audio",
-  "version": "0.5.3",
+  "version": "0.5.4",
   "displayName": "RPG Framework Audio",
   "description": "Audio functionality for the RPG Framework",
   "dependencies": {
