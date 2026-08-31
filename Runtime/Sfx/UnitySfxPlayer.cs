@@ -12,6 +12,8 @@ namespace RPGFramework.Audio.Sfx
         private const string SFX_BUS_NAME    = "Sfx";
         private const string SFX_REVERB_SEND = "SfxReverbSend";
 
+        private readonly ISfxPlayer m_This;
+
         private ISfxAssetProvider m_SfxAssetProvider;
         private AudioSource[]     m_CurrentSources;
         private AudioMixerGroup[] m_StemMixerGroups;
@@ -25,6 +27,7 @@ namespace RPGFramework.Audio.Sfx
         public UnitySfxPlayer()
         {
             m_SfxReferences = new List<ISfxReference>();
+            m_This          = this;
 
             UpdateManager.RegisterUpdatable(this);
         }
@@ -43,7 +46,7 @@ namespace RPGFramework.Audio.Sfx
         {
             foreach (ISfxReference sfxReference in m_SfxReferences)
             {
-                ((ISfxPlayer)this).Pause(sfxReference);
+                m_This.Pause(sfxReference);
             }
         }
 
@@ -56,7 +59,7 @@ namespace RPGFramework.Audio.Sfx
         {
             foreach (ISfxReference sfxReference in m_SfxReferences)
             {
-                ((ISfxPlayer)this).Resume(sfxReference);
+                m_This.Resume(sfxReference);
             }
         }
 
@@ -76,7 +79,7 @@ namespace RPGFramework.Audio.Sfx
             for (int i = m_SfxReferences.Count - 1; i >= 0; i--)
             {
                 ISfxReference sfxReference = m_SfxReferences[i];
-                ((ISfxPlayer)this).Stop(sfxReference);
+                m_This.Stop(sfxReference);
             }
 
             m_SfxReferences.Clear();
