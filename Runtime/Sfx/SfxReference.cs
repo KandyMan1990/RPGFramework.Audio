@@ -19,7 +19,6 @@ namespace RPGFramework.Audio.Sfx
         private readonly ISfxAsset             m_SfxAsset;
         private readonly List<ISfxEventData>   m_EventsTriggered;
         private readonly ISfxEventData         m_CompleteEvent;
-        private readonly AudioClip[]           m_ClaimedClips;
 
         private bool m_Completed;
 
@@ -31,13 +30,6 @@ namespace RPGFramework.Audio.Sfx
             m_EventsTriggered = new List<ISfxEventData>();
 
             AudioClip clip = sfxAsset.Tracks[0].Clip;
-
-            m_ClaimedClips = new AudioClip[audioSources.Length];
-
-            for (int i = 0; i < audioSources.Length; i++)
-            {
-                m_ClaimedClips[i] = audioSources[i].clip;
-            }
 
             foreach (ISfxEventData sfxEventData in m_EventData)
             {
@@ -60,12 +52,12 @@ namespace RPGFramework.Audio.Sfx
 
         void ISfxReference.CheckForEventToRaise()
         {
-            if (!TryGetOwnedPosition(out int positionInSamples))
+            if (m_Completed)
             {
-                Complete();
-
                 return;
             }
+
+            int positionInSamples = m_AudioSources[0].timeSamples;
 
             List<ISfxEventData> eventsToRemove = ListPool<ISfxEventData>.Get();
 
@@ -118,7 +110,7 @@ namespace RPGFramework.Audio.Sfx
 
         void ISfxReference.CheckForLoop()
         {
-            if (!m_SfxAsset.Loop)
+            if (!m_SfxAsset.Loop || m_Completed)
             {
                 return;
             }
@@ -140,78 +132,23 @@ namespace RPGFramework.Audio.Sfx
 
         void ISfxReference.Pause()
         {
-            foreach (IStem stem in m_SfxAsset.Tracks)
+            foreach (AudioSource audioSource in m_AudioSources)
             {
-                foreach (AudioSource audioSource in m_AudioSources)
-                {
-                    if (audioSource.clip != stem.Clip)
-                    {
-                        continue;
-                    }
-
-                    audioSource.Pause();
-                    break;
-                }
+                audioSource.Pause();
             }
         }
 
         void ISfxReference.Resume()
         {
-            foreach (IStem stem in m_SfxAsset.Tracks)
+            foreach (AudioSource audioSource in m_AudioSources)
             {
-                foreach (AudioSource audioSource in m_AudioSources)
-                {
-                    if (audioSource.clip != stem.Clip)
-                    {
-                        continue;
-                    }
-
-                    audioSource.UnPause();
-                    break;
-                }
+                audioSource.UnPause();
             }
         }
 
         void ISfxReference.Stop()
         {
-            if (m_Completed)
-            {
-                return;
-            }
-
-            foreach (IStem stem in m_SfxAsset.Tracks)
-            {
-                foreach (AudioSource audioSource in m_AudioSources)
-                {
-                    if (audioSource.clip != stem.Clip)
-                    {
-                        continue;
-                    }
-
-                    audioSource.Stop();
-                    audioSource.clip = null;
-                    break;
-                }
-            }
-        }
-
-        private bool TryGetOwnedPosition(out int positionInSamples)
-        {
-            for (int i = 0; i < m_AudioSources.Length; i++)
-            {
-                if (m_AudioSources[i].clip != m_ClaimedClips[i])
-                {
-                    continue;
-                }
-
-                positionInSamples = m_AudioSources[i].timeSamples;
-
-                return true;
-            }
-
-            positionInSamples = 0;
-
-            return false;
+            m_Completed = true;
         }
 
         private void Complete()
@@ -225,22 +162,7 @@ namespace RPGFramework.Audio.Sfx
 
             OnEvent?.Invoke(m_CompleteEvent.EventName, this);
 
-            ReleaseClaimedSources();
-
             m_OnAllEventsCompleted(this);
-        }
-
-        private void ReleaseClaimedSources()
-        {
-            for (int i = 0; i < m_AudioSources.Length; i++)
-            {
-                if (m_AudioSources[i].clip != m_ClaimedClips[i])
-                {
-                    continue;
-                }
-
-                m_AudioSources[i].clip = null;
-            }
         }
     }
 }
