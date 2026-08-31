@@ -156,6 +156,8 @@ namespace RPGFramework.Audio.Sfx
                 float sendLevel = AudioUtils.PercentToDb(sfxAsset.Tracks[i].ReverbSendLevel);
                 m_AudioMixer.SetFloat(m_SendParameterNames[voice], sendLevel);
 
+                EnsureLoaded(source.clip);
+
                 source.PlayScheduled(scheduledStartTime);
             }
 
@@ -274,9 +276,52 @@ namespace RPGFramework.Audio.Sfx
 
         private void RemoveSfxReference(ISfxReference sfxReference)
         {
+            ISfxAsset asset = sfxReference.Asset;
+
             ReleaseVoices(sfxReference);
 
             m_SfxReferences.Remove(sfxReference);
+
+            UnloadUnusedClips(asset);
+        }
+
+        private static void EnsureLoaded(AudioClip clip)
+        {
+            if (clip.preloadAudioData || clip.loadState == AudioDataLoadState.Loaded)
+            {
+                return;
+            }
+
+            clip.LoadAudioData();
+        }
+
+        private void UnloadUnusedClips(ISfxAsset asset)
+        {
+            foreach (IStem stem in asset.Tracks)
+            {
+                if (stem.Clip.preloadAudioData || IsClipInUse(stem.Clip))
+                {
+                    continue;
+                }
+
+                stem.Clip.UnloadAudioData();
+            }
+        }
+
+        private bool IsClipInUse(AudioClip clip)
+        {
+            for (int i = 0; i < m_SfxReferences.Count; i++)
+            {
+                foreach (IStem stem in m_SfxReferences[i].Asset.Tracks)
+                {
+                    if (ReferenceEquals(stem.Clip, clip))
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
         }
     }
 }

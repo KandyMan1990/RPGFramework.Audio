@@ -62,6 +62,7 @@ namespace RPGFramework.Audio
     {
         event Action<string, ISfxReference> OnEvent;
         IReadOnlyList<ISfxEventData>        Events { get; }
+        internal ISfxAsset                  Asset  { get; }
         internal void                       CheckForLoop();
         internal void                       CheckForEventToRaise();
         internal void                       Pause();
@@ -87,6 +88,5 @@ namespace RPGFramework.Audio
         void          SetStemMixerGroups(AudioMixerGroup[]  groups);
         float         GetVolume();
         void          SetVolume(float percent);
-        void          Dispose();
     }
 }

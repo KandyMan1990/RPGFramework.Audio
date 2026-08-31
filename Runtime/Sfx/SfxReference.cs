@@ -13,6 +13,8 @@ namespace RPGFramework.Audio.Sfx
 
         public IReadOnlyList<ISfxEventData> Events { get; }
 
+        ISfxAsset ISfxReference.Asset => m_SfxAsset;
+
         private readonly AudioSource[]         m_AudioSources;
         private readonly List<ISfxEventData>   m_EventData;
         private readonly Action<ISfxReference> m_OnAllEventsCompleted;
