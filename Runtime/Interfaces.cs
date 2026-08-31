@@ -28,7 +28,7 @@ namespace RPGFramework.Audio
 
     public interface IMusicPlayer
     {
-        Task  Play(int id);
+        Task  Play(int id, Dictionary<int, bool> initialStems = null, float fadeInTime = 0f);
         void  Pause();
         Task  Stop(float fadeTime = 0.001f);
         void  ClearPausedMusic();

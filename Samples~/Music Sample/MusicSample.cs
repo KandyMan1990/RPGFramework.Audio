@@ -114,15 +114,16 @@ namespace RPGFramework.Audio.Music_Sample
             {
                 int musicId = 0;
 
-                await m_MusicPlayer.Play(musicId);
-                // await Play first as it will set all clip volumes to 1
-                m_MusicPlayer.SetActiveStemsImmediate(new Dictionary<int, bool>
-                                                      {
-                                                              { 0, false },
-                                                              { 1, true },
-                                                              { 2, true },
-                                                              { 3, true }
-                                                      });
+                // sets the first stems volume to 0
+                // handy if you want to crossfade stems at some point
+                // this keeps the tracks aligned
+                await m_MusicPlayer.Play(musicId, new Dictionary<int, bool>
+                                                  {
+                                                      { 0, false },
+                                                      { 1, true },
+                                                      { 2, true },
+                                                      { 3, true }
+                                                  });
             }
         }
 
@@ -131,10 +132,10 @@ namespace RPGFramework.Audio.Music_Sample
             float transitionLength = 2f;
             Dictionary<int, bool> newActiveStems = new Dictionary<int, bool>
                                                    {
-                                                           { 0, true },
-                                                           { 1, false },
-                                                           { 2, true },
-                                                           { 3, true }
+                                                       { 0, true },
+                                                       { 1, false },
+                                                       { 2, true },
+                                                       { 3, true }
                                                    };
 
             // can be awaited if necessary, or can fire and forget like below
@@ -147,10 +148,10 @@ namespace RPGFramework.Audio.Music_Sample
             float transitionLength = 2f;
             Dictionary<int, bool> newActiveStems = new Dictionary<int, bool>
                                                    {
-                                                           { 0, true },
-                                                           { 1, true },
-                                                           { 2, true },
-                                                           { 3, true }
+                                                       { 0, true },
+                                                       { 1, true },
+                                                       { 2, true },
+                                                       { 3, true }
                                                    };
 
             // can be awaited if necessary, or can fire and forget like below

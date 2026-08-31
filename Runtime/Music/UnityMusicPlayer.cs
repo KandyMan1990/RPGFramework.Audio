@@ -18,6 +18,8 @@ namespace RPGFramework.Audio.Music
         private int    m_PausedSongId   = -1;
         private double m_PausedPosition = 0.0;
 
+        private readonly IMusicPlayer m_This;
+
         private IMusicAssetProvider     m_MusicAssetProvider;
         private IMusicAsset             m_CurrentMusicAsset;
         private AudioSource[]           m_CurrentSources;
@@ -25,8 +27,17 @@ namespace RPGFramework.Audio.Music
         private AudioMixer              m_AudioMixer;
         private CancellationTokenSource m_CancellationTokenSource;
         private string[]                m_SendParameterNames;
+        private float[]                 m_StemLevels;
+        private float[]                 m_FadeStartLevels;
+        private float                   m_MasterFade = 1f;
+        private int                     m_PlayGeneration;
 
-        Task IMusicPlayer.Play(int id)
+        public UnityMusicPlayer()
+        {
+            m_This = this;
+        }
+
+        Task IMusicPlayer.Play(int id, Dictionary<int, bool> initialStems, float fadeInTime)
         {
             if (m_CurrentSongId == id)
             {
@@ -35,16 +46,20 @@ namespace RPGFramework.Audio.Music
 
             m_CurrentSongId = id;
 
+            m_PlayGeneration++;
+
             float startTime = 0f;
 
             if (m_CurrentSongId == m_PausedSongId)
             {
                 startTime = (float)m_PausedPosition;
 
-                ((IMusicPlayer)this).ClearPausedMusic();
+                m_This.ClearPausedMusic();
             }
 
-            return ScheduleCurrentSong(startTime);
+            Task scheduled = ScheduleCurrentSong(startTime, initialStems, fadeInTime, m_PlayGeneration);
+
+            return scheduled;
         }
 
         void IMusicPlayer.Pause()
@@ -57,6 +72,8 @@ namespace RPGFramework.Audio.Music
             m_PausedSongId   = m_CurrentSongId;
             m_PausedPosition = m_CurrentSources[0].time;
 
+            m_PlayGeneration++;
+
             CancelCts();
             ClearCurrentSong();
         }
@@ -64,7 +81,12 @@ namespace RPGFramework.Audio.Music
         Task IMusicPlayer.Stop(float fadeTime)
         {
             CancelCts();
-            return FadeOutAndStopAsync(fadeTime);
+
+            m_PlayGeneration++;
+
+            Task stopping = FadeOutAndStopAsync(fadeTime, m_PlayGeneration);
+
+            return stopping;
         }
 
         void IMusicPlayer.ClearPausedMusic()
@@ -85,6 +107,8 @@ namespace RPGFramework.Audio.Music
 
             m_CurrentSources     = new AudioSource[m_StemMixerGroups.Length];
             m_SendParameterNames = new string[m_StemMixerGroups.Length];
+            m_StemLevels         = new float[m_StemMixerGroups.Length];
+            m_FadeStartLevels    = new float[m_StemMixerGroups.Length];
 
             GameObject musicPlayer = new GameObject("MusicPlayer");
             Object.DontDestroyOnLoad(musicPlayer);
@@ -104,48 +128,70 @@ namespace RPGFramework.Audio.Music
         {
             CancelCts();
 
+            SetStemLevels(stemValues);
+            ApplyStemVolumes();
+        }
+
+        private void SetStemLevels(Dictionary<int, bool> stemValues)
+        {
             foreach (KeyValuePair<int, bool> kvp in stemValues)
             {
-                m_CurrentSources[kvp.Key].volume = kvp.Value ? 1f : 0f;
+                m_StemLevels[kvp.Key] = kvp.Value ? 1f : 0f;
+            }
+        }
+
+        private void ApplyStemVolumes()
+        {
+            for (int i = 0; i < m_CurrentSources.Length; i++)
+            {
+                m_CurrentSources[i].volume = m_StemLevels[i] * m_MasterFade;
             }
         }
 
         async Task IMusicPlayer.SetActiveStemsFade(Dictionary<int, bool> stemValues, float transitionLength)
         {
-            if (transitionLength > 0f)
+            if (transitionLength <= 0f)
             {
-                CancelCts();
-                m_CancellationTokenSource = new CancellationTokenSource();
+                m_This.SetActiveStemsImmediate(stemValues);
 
-                float progress = 0f;
+                return;
+            }
 
-                Dictionary<int, float> startVolumes = new Dictionary<int, float>();
+            CancelCts();
+
+            CancellationTokenSource cts = new CancellationTokenSource();
+
+            m_CancellationTokenSource = cts;
+
+            for (int i = 0; i < m_StemLevels.Length; i++)
+            {
+                m_FadeStartLevels[i] = m_StemLevels[i];
+            }
+
+            float progress = 0f;
+
+            while (progress < 1f)
+            {
+                if (cts.IsCancellationRequested)
+                {
+                    return;
+                }
 
                 foreach (KeyValuePair<int, bool> kvp in stemValues)
                 {
-                    startVolumes[kvp.Key] = m_CurrentSources[kvp.Key].volume;
+                    float target = kvp.Value ? 1f : 0f;
+
+                    m_StemLevels[kvp.Key] = math.lerp(m_FadeStartLevels[kvp.Key], target, progress);
                 }
 
-                while (progress < 1.0f)
-                {
-                    if (m_CancellationTokenSource.IsCancellationRequested)
-                        return;
+                ApplyStemVolumes();
 
-                    foreach (KeyValuePair<int, bool> kvp in stemValues)
-                    {
-                        float start  = startVolumes[kvp.Key];
-                        float target = kvp.Value ? 1f : 0f;
+                progress += Time.deltaTime / transitionLength;
 
-                        m_CurrentSources[kvp.Key].volume = math.lerp(start, target, progress);
-                    }
-
-                    progress += Time.deltaTime / transitionLength;
-
-                    await Awaitable.NextFrameAsync(m_CancellationTokenSource.Token);
-                }
+                await Awaitable.NextFrameAsync(cts.Token);
             }
 
-            ((IMusicPlayer)this).SetActiveStemsImmediate(stemValues);
+            m_This.SetActiveStemsImmediate(stemValues);
         }
 
         float IMusicPlayer.GetVolume()
@@ -157,8 +203,8 @@ namespace RPGFramework.Audio.Music
         {
             string[] busNames = new string[]
                                 {
-                                        MUSIC_BUS_NAME,
-                                        MUSIC_REVERB_SEND
+                                    MUSIC_BUS_NAME,
+                                    MUSIC_REVERB_SEND
                                 };
 
             AudioUtils.SetVolume(m_AudioMixer, busNames, percent);
@@ -182,25 +228,45 @@ namespace RPGFramework.Audio.Music
             }
         }
 
-        private async Task FadeOutAndStopAsync(float duration)
+        private async Task FadeOutAndStopAsync(float duration, int generation)
         {
-            float t           = 0f;
-            float startVolume = m_CurrentSources[0].volume;
+            await FadeMasterAsync(0f, duration, generation);
+
+            if (m_PlayGeneration != generation)
+            {
+                return;
+            }
+
+            ClearCurrentSong();
+        }
+
+        private async Task FadeMasterAsync(float target, float duration, int generation)
+        {
+            float t     = 0f;
+            float start = m_MasterFade;
 
             while (t < 1f)
             {
-                t += Time.deltaTime / duration;
-                float newVolume = math.lerp(startVolume, 0f, t);
-
-                foreach (AudioSource source in m_CurrentSources)
+                if (m_PlayGeneration != generation)
                 {
-                    source.volume = newVolume;
+                    return;
                 }
+
+                t += Time.deltaTime / duration;
+
+                m_MasterFade = math.lerp(start, target, math.min(t, 1f));
+
+                ApplyStemVolumes();
 
                 await Awaitable.NextFrameAsync();
             }
 
-            ClearCurrentSong();
+            if (m_PlayGeneration == generation)
+            {
+                m_MasterFade = target;
+
+                ApplyStemVolumes();
+            }
         }
 
         private static async Task EnsureAudioClipLoaded(AudioClip audioClip)
@@ -215,9 +281,20 @@ namespace RPGFramework.Audio.Music
             }
         }
 
-        private async Task ScheduleCurrentSong(float startTime)
+        private async Task ScheduleCurrentSong(float startTime, Dictionary<int, bool> initialStems, float fadeInTime, int generation)
         {
             m_CurrentMusicAsset = m_MusicAssetProvider.GetMusicAsset(m_CurrentSongId);
+            m_MasterFade        = fadeInTime > 0f ? 0f : 1f;
+
+            for (int i = 0; i < m_StemLevels.Length; i++)
+            {
+                m_StemLevels[i] = 1f;
+            }
+
+            if (initialStems != null)
+            {
+                SetStemLevels(initialStems);
+            }
 
             int    trackCount = m_CurrentMusicAsset.Tracks.Count;
             Task[] tasks      = new Task[trackCount];
@@ -239,7 +316,7 @@ namespace RPGFramework.Audio.Music
                 source.clip                  = m_CurrentMusicAsset.Tracks[i].Clip;
                 source.playOnAwake           = false;
                 source.loop                  = false;
-                source.volume                = 1f;
+                source.volume                = m_StemLevels[i];
                 source.time                  = startTime;
                 source.outputAudioMixerGroup = m_StemMixerGroups[i];
 
@@ -252,6 +329,11 @@ namespace RPGFramework.Audio.Music
             if (m_CurrentMusicAsset.Loop)
             {
                 UpdateManager.RegisterUpdatable(this);
+            }
+
+            if (fadeInTime > 0f)
+            {
+                await FadeMasterAsync(1f, fadeInTime, generation);
             }
         }
 
