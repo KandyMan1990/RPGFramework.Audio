@@ -18,6 +18,10 @@ namespace RPGFramework.Audio.Sfx
         private readonly Action<ISfxReference> m_OnAllEventsCompleted;
         private readonly ISfxAsset             m_SfxAsset;
         private readonly List<ISfxEventData>   m_EventsTriggered;
+        private readonly ISfxEventData         m_CompleteEvent;
+        private readonly AudioClip[]           m_ClaimedClips;
+
+        private bool m_Completed;
 
         internal SfxReference(AudioSource[] audioSources, ISfxAsset sfxAsset, Action<ISfxReference> onAllEventsCompleted)
         {
@@ -26,32 +30,50 @@ namespace RPGFramework.Audio.Sfx
             m_EventData       = new List<ISfxEventData>(sfxAsset.Events);
             m_EventsTriggered = new List<ISfxEventData>();
 
+            AudioClip clip = sfxAsset.Tracks[0].Clip;
+
+            m_ClaimedClips = new AudioClip[audioSources.Length];
+
+            for (int i = 0; i < audioSources.Length; i++)
+            {
+                m_ClaimedClips[i] = audioSources[i].clip;
+            }
+
             foreach (ISfxEventData sfxEventData in m_EventData)
             {
-                AudioClip clip = sfxAsset.Tracks[0].Clip;
                 sfxEventData.SetSampleRate(clip.frequency);
             }
 
+            List<ISfxEventData> publishedEvents = new List<ISfxEventData>(m_EventData);
+
             if (!sfxAsset.Loop)
             {
-                AudioClip clip = sfxAsset.Tracks[0].Clip;
-                m_EventData.Add(new SfxEventData(SFX_COMPLETE, clip.samples, clip.frequency));
+                m_CompleteEvent = new SfxEventData(SFX_COMPLETE, clip.samples, clip.frequency);
+
+                publishedEvents.Add(m_CompleteEvent);
             }
 
-            Events = new List<ISfxEventData>(m_EventData);
+            Events = publishedEvents;
 
             m_OnAllEventsCompleted = onAllEventsCompleted;
         }
 
         void ISfxReference.CheckForEventToRaise()
         {
+            if (!TryGetOwnedPosition(out int positionInSamples))
+            {
+                Complete();
+
+                return;
+            }
+
             List<ISfxEventData> eventsToRemove = ListPool<ISfxEventData>.Get();
 
             try
             {
                 foreach (ISfxEventData sfxEventData in m_EventData)
                 {
-                    if (m_AudioSources[0].timeSamples >= sfxEventData.EventTriggerTimeInSamples)
+                    if (positionInSamples >= sfxEventData.EventTriggerTimeInSamples)
                     {
                         if (sfxEventData.RemoveEventOnceTriggered)
                         {
@@ -76,17 +98,17 @@ namespace RPGFramework.Audio.Sfx
                     m_EventData.Remove(sfxEventData);
                 }
 
-                if (m_EventData.Count != 0 || m_SfxAsset.Loop)
+                if (m_CompleteEvent == null || m_Completed)
                 {
                     return;
                 }
 
-                foreach (AudioSource source in m_AudioSources)
+                if (positionInSamples < m_CompleteEvent.EventTriggerTimeInSamples)
                 {
-                    source.clip = null;
+                    return;
                 }
 
-                m_OnAllEventsCompleted(this);
+                Complete();
             }
             finally
             {
@@ -152,8 +174,7 @@ namespace RPGFramework.Audio.Sfx
 
         void ISfxReference.Stop()
         {
-            // sfx has already finished playing
-            if (m_EventData.Count == 0 && !m_SfxAsset.Loop)
+            if (m_Completed)
             {
                 return;
             }
@@ -171,6 +192,54 @@ namespace RPGFramework.Audio.Sfx
                     audioSource.clip = null;
                     break;
                 }
+            }
+        }
+
+        private bool TryGetOwnedPosition(out int positionInSamples)
+        {
+            for (int i = 0; i < m_AudioSources.Length; i++)
+            {
+                if (m_AudioSources[i].clip != m_ClaimedClips[i])
+                {
+                    continue;
+                }
+
+                positionInSamples = m_AudioSources[i].timeSamples;
+
+                return true;
+            }
+
+            positionInSamples = 0;
+
+            return false;
+        }
+
+        private void Complete()
+        {
+            if (m_CompleteEvent == null || m_Completed)
+            {
+                return;
+            }
+
+            m_Completed = true;
+
+            OnEvent?.Invoke(m_CompleteEvent.EventName, this);
+
+            ReleaseClaimedSources();
+
+            m_OnAllEventsCompleted(this);
+        }
+
+        private void ReleaseClaimedSources()
+        {
+            for (int i = 0; i < m_AudioSources.Length; i++)
+            {
+                if (m_AudioSources[i].clip != m_ClaimedClips[i])
+                {
+                    continue;
+                }
+
+                m_AudioSources[i].clip = null;
             }
         }
     }
