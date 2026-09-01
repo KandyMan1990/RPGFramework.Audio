@@ -31,6 +31,7 @@ namespace RPGFramework.Audio.Music
         private float[]                 m_FadeStartLevels;
         private float                   m_MasterFade = 1f;
         private int                     m_PlayGeneration;
+        private bool                    m_RegisteredForUpdate;
 
         public UnityMusicPlayer()
         {
@@ -43,6 +44,8 @@ namespace RPGFramework.Audio.Music
             {
                 return Task.CompletedTask;
             }
+
+            ClearCurrentSong();
 
             m_CurrentSongId = id;
 
@@ -80,6 +83,11 @@ namespace RPGFramework.Audio.Music
 
         Task IMusicPlayer.Stop(float fadeTime)
         {
+            if (m_CurrentMusicAsset == null)
+            {
+                return Task.CompletedTask;
+            }
+
             CancelCts();
 
             m_PlayGeneration++;
@@ -271,13 +279,23 @@ namespace RPGFramework.Audio.Music
 
         private static async Task EnsureAudioClipLoaded(AudioClip audioClip)
         {
-            if (!audioClip.preloadAudioData && audioClip.loadState != AudioDataLoadState.Loaded)
+            if (audioClip.preloadAudioData || audioClip.loadState == AudioDataLoadState.Loaded)
             {
-                audioClip.LoadAudioData();
-                while (audioClip.loadState != AudioDataLoadState.Loaded)
+                return;
+            }
+
+            audioClip.LoadAudioData();
+
+            while (audioClip.loadState != AudioDataLoadState.Loaded)
+            {
+                if (audioClip.loadState == AudioDataLoadState.Failed)
                 {
-                    await Awaitable.NextFrameAsync();
+                    Debug.LogError($"{nameof(UnityMusicPlayer)}::{nameof(EnsureAudioClipLoaded)} Clip [{audioClip.name}] failed to load. That stem will be silent");
+
+                    return;
                 }
+
+                await Awaitable.NextFrameAsync();
             }
         }
 
@@ -307,6 +325,11 @@ namespace RPGFramework.Audio.Music
 
             await Task.WhenAll(tasks);
 
+            if (m_PlayGeneration != generation)
+            {
+                return;
+            }
+
             double scheduledStartTime = AudioSettings.dspTime + Time.deltaTime;
 
             for (int i = 0; i < trackCount; i++)
@@ -316,7 +339,6 @@ namespace RPGFramework.Audio.Music
                 source.clip                  = m_CurrentMusicAsset.Tracks[i].Clip;
                 source.playOnAwake           = false;
                 source.loop                  = false;
-                source.volume                = m_StemLevels[i];
                 source.time                  = startTime;
                 source.outputAudioMixerGroup = m_StemMixerGroups[i];
 
@@ -326,9 +348,11 @@ namespace RPGFramework.Audio.Music
                 source.PlayScheduled(scheduledStartTime);
             }
 
+            ApplyStemVolumes();
+
             if (m_CurrentMusicAsset.Loop)
             {
-                UpdateManager.RegisterUpdatable(this);
+                SetRegisteredForUpdate(true);
             }
 
             if (fadeInTime > 0f)
@@ -339,24 +363,50 @@ namespace RPGFramework.Audio.Music
 
         private void ClearCurrentSong()
         {
+            if (m_CurrentMusicAsset == null)
+            {
+                return;
+            }
+
             foreach (AudioSource source in m_CurrentSources)
             {
                 source.Stop();
                 source.clip = null;
             }
 
-            if (m_CurrentMusicAsset.Loop)
-            {
-                UpdateManager.UnregisterUpdatable(this);
-            }
+            SetRegisteredForUpdate(false);
 
             foreach (IStem stem in m_CurrentMusicAsset.Tracks)
             {
+                if (stem.Clip.preloadAudioData)
+                {
+                    continue;
+                }
+
                 stem.Clip.UnloadAudioData();
             }
 
             m_CurrentMusicAsset = null;
             m_CurrentSongId     = -1;
+        }
+
+        private void SetRegisteredForUpdate(bool registered)
+        {
+            if (registered == m_RegisteredForUpdate)
+            {
+                return;
+            }
+
+            m_RegisteredForUpdate = registered;
+
+            if (registered)
+            {
+                UpdateManager.RegisterUpdatable(this);
+
+                return;
+            }
+
+            UpdateManager.UnregisterUpdatable(this);
         }
 
         private void CancelCts()
