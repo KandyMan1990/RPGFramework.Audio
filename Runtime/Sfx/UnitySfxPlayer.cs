@@ -21,6 +21,7 @@ namespace RPGFramework.Audio.Sfx
         private bool              m_Disposed;
         private string[]          m_SendParameterNames;
         private ISfxReference[]   m_VoiceOwners;
+        private GameObject        m_PlayerObject;
 
         private readonly List<ISfxReference> m_SfxReferences;
 
@@ -99,13 +100,15 @@ namespace RPGFramework.Audio.Sfx
             m_SendParameterNames = new string[m_StemMixerGroups.Length];
             m_VoiceOwners        = new ISfxReference[m_StemMixerGroups.Length];
 
-            GameObject sfxPlayer = new GameObject("SfxPlayer");
-            UnityEngine.Object.DontDestroyOnLoad(sfxPlayer);
+            DestroyPlayerObject();
+
+            m_PlayerObject = new GameObject("SfxPlayer");
+            UnityEngine.Object.DontDestroyOnLoad(m_PlayerObject);
 
             for (int i = 0; i < m_CurrentSources.Length; i++)
             {
                 GameObject go = new GameObject(m_StemMixerGroups[i].name);
-                go.transform.parent                       = sfxPlayer.transform;
+                go.transform.parent                       = m_PlayerObject.transform;
                 m_CurrentSources[i]                       = go.AddComponent<AudioSource>();
                 m_CurrentSources[i].outputAudioMixerGroup = m_StemMixerGroups[i];
 
@@ -271,7 +274,23 @@ namespace RPGFramework.Audio.Sfx
             }
 
             m_Disposed = true;
+
+            m_This.StopAll();
+
             UpdateManager.UnregisterUpdatable(this);
+            DestroyPlayerObject();
+        }
+
+        private void DestroyPlayerObject()
+        {
+            if (m_PlayerObject == null)
+            {
+                return;
+            }
+
+            UnityEngine.Object.Destroy(m_PlayerObject);
+
+            m_PlayerObject = null;
         }
 
         private void RemoveSfxReference(ISfxReference sfxReference)

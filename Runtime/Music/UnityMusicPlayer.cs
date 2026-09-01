@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using RPGFramework.Core.PlayerLoop;
@@ -9,7 +10,7 @@ using UnityEngine.Audio;
 
 namespace RPGFramework.Audio.Music
 {
-    public class UnityMusicPlayer : IMusicPlayer, IUpdatable
+    public class UnityMusicPlayer : IMusicPlayer, IUpdatable, IDisposable
     {
         private const string MUSIC_BUS_NAME    = "Music";
         private const string MUSIC_REVERB_SEND = "MusicReverbSend";
@@ -32,6 +33,8 @@ namespace RPGFramework.Audio.Music
         private float                   m_MasterFade = 1f;
         private int                     m_PlayGeneration;
         private bool                    m_RegisteredForUpdate;
+        private bool                    m_Disposed;
+        private GameObject              m_PlayerObject;
 
         public UnityMusicPlayer()
         {
@@ -118,13 +121,15 @@ namespace RPGFramework.Audio.Music
             m_StemLevels         = new float[m_StemMixerGroups.Length];
             m_FadeStartLevels    = new float[m_StemMixerGroups.Length];
 
-            GameObject musicPlayer = new GameObject("MusicPlayer");
-            Object.DontDestroyOnLoad(musicPlayer);
+            DestroyPlayerObject();
+
+            m_PlayerObject = new GameObject("MusicPlayer");
+            UnityEngine.Object.DontDestroyOnLoad(m_PlayerObject);
 
             for (int i = 0; i < m_CurrentSources.Length; i++)
             {
                 GameObject go = new GameObject(m_StemMixerGroups[i].name);
-                go.transform.parent                       = musicPlayer.transform;
+                go.transform.parent                       = m_PlayerObject.transform;
                 m_CurrentSources[i]                       = go.AddComponent<AudioSource>();
                 m_CurrentSources[i].outputAudioMixerGroup = m_StemMixerGroups[i];
 
@@ -407,6 +412,39 @@ namespace RPGFramework.Audio.Music
             }
 
             UpdateManager.UnregisterUpdatable(this);
+        }
+
+        void IDisposable.Dispose()
+        {
+            Dispose();
+            GC.SuppressFinalize(this);
+        }
+
+        private void Dispose()
+        {
+            if (m_Disposed)
+            {
+                return;
+            }
+
+            m_Disposed = true;
+            m_PlayGeneration++;
+
+            CancelCts();
+            ClearCurrentSong();
+            DestroyPlayerObject();
+        }
+
+        private void DestroyPlayerObject()
+        {
+            if (m_PlayerObject == null)
+            {
+                return;
+            }
+
+            UnityEngine.Object.Destroy(m_PlayerObject);
+
+            m_PlayerObject = null;
         }
 
         private void CancelCts()
