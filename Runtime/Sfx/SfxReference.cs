@@ -28,14 +28,15 @@ namespace RPGFramework.Audio.Sfx
         {
             m_AudioSources    = audioSources;
             m_SfxAsset        = sfxAsset;
-            m_EventData       = new List<ISfxEventData>(sfxAsset.Events);
             m_EventsTriggered = new List<ISfxEventData>();
 
             AudioClip clip = sfxAsset.Tracks[0].Clip;
 
-            foreach (ISfxEventData sfxEventData in m_EventData)
+            m_EventData = new List<ISfxEventData>(sfxAsset.Events.Count);
+
+            foreach (ISfxEventData authored in sfxAsset.Events)
             {
-                sfxEventData.SetSampleRate(clip.frequency);
+                m_EventData.Add(new SfxEventData(authored, clip.frequency));
             }
 
             List<ISfxEventData> publishedEvents = new List<ISfxEventData>(m_EventData);

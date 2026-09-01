@@ -46,7 +46,6 @@ namespace RPGFramework.Audio
         float         EventTriggerTime          { get; }
         internal int  EventTriggerTimeInSamples { get; }
         internal bool RemoveEventOnceTriggered  { get; }
-        void          SetSampleRate(int sampleRate);
     }
 
     internal interface ISfxAsset

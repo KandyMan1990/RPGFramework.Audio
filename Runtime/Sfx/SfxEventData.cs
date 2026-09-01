@@ -12,7 +12,7 @@ namespace RPGFramework.Audio.Sfx
         [SerializeField]
         private bool m_RemoveEventOnceTriggered;
 
-        private int m_SampleRate;
+        private readonly int m_SampleRate;
 
         string ISfxEventData.EventName                 => m_EventName;
         float ISfxEventData. EventTriggerTime          => SamplesToSeconds(m_EventTriggerTime);
@@ -26,9 +26,12 @@ namespace RPGFramework.Audio.Sfx
             m_SampleRate       = sampleRate;
         }
 
-        void ISfxEventData.SetSampleRate(int sampleRate)
+        internal SfxEventData(ISfxEventData authored, int sampleRate)
         {
-            m_SampleRate = sampleRate;
+            m_EventName                = authored.EventName;
+            m_EventTriggerTime         = authored.EventTriggerTimeInSamples;
+            m_RemoveEventOnceTriggered = authored.RemoveEventOnceTriggered;
+            m_SampleRate               = sampleRate;
         }
 
         private float SamplesToSeconds(int value)
