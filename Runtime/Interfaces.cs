@@ -18,7 +18,6 @@ namespace RPGFramework.Audio
         internal double               LoopEndTime   { get; }
         internal bool                 Loop          { get; }
         internal IReadOnlyList<IStem> Tracks        { get; }
-        internal void                 CalculateLoopPoints();
     }
 
     public interface IMusicAssetProvider

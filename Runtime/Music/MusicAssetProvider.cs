@@ -12,7 +12,6 @@ namespace RPGFramework.Audio.Music
         IMusicAsset IMusicAssetProvider.GetMusicAsset(int id)
         {
             IMusicAsset musicAsset = m_MusicAssets[id];
-            musicAsset.CalculateLoopPoints();
 
             return musicAsset;
         }
