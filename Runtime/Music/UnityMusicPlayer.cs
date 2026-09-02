@@ -50,9 +50,24 @@ namespace RPGFramework.Audio.Music
                 return Task.CompletedTask;
             }
 
+            if (m_MusicAssetProvider == null)
+            {
+                throw new InvalidOperationException($"{nameof(UnityMusicPlayer)}::{nameof(IMusicPlayer.Play)} No asset provider. Call {nameof(IMusicPlayer.SetMusicAssetProvider)} before playing anything");
+            }
+
+            if (m_CurrentSources == null)
+            {
+                throw new InvalidOperationException($"{nameof(UnityMusicPlayer)}::{nameof(IMusicPlayer.Play)} No channels. Call {nameof(IMusicPlayer.SetStemMixerGroups)} before playing anything");
+            }
+
+            IMusicAsset musicAsset = m_MusicAssetProvider.GetMusicAsset(id);
+
+            ValidateTracks(id, musicAsset);
+
             ClearCurrentSong();
 
-            m_CurrentSongId = id;
+            m_CurrentSongId     = id;
+            m_CurrentMusicAsset = musicAsset;
 
             m_PlayGeneration++;
 
@@ -115,6 +130,8 @@ namespace RPGFramework.Audio.Music
 
         void IMusicPlayer.SetStemMixerGroups(AudioMixerGroup[] groups)
         {
+            ValidateMixerGroups(groups);
+
             m_StemMixerGroups = groups;
             m_AudioMixer      = m_StemMixerGroups[0].audioMixer;
 
@@ -302,8 +319,7 @@ namespace RPGFramework.Audio.Music
 
         private async Task ScheduleCurrentSong(float startTime, Dictionary<int, bool> initialStems, float fadeInTime, int generation)
         {
-            m_CurrentMusicAsset = m_MusicAssetProvider.GetMusicAsset(m_CurrentSongId);
-            m_MasterFade        = fadeInTime > 0f ? 0f : 1f;
+            m_MasterFade = fadeInTime > 0f ? 0f : 1f;
 
             for (int i = 0; i < m_StemLevels.Length; i++)
             {
@@ -429,6 +445,45 @@ namespace RPGFramework.Audio.Music
             CancelCts();
             ClearCurrentSong();
             DestroyPlayerObject();
+        }
+
+        private void ValidateTracks(int id, IMusicAsset musicAsset)
+        {
+            IReadOnlyList<IStem> tracks = musicAsset.Tracks;
+
+            if (tracks.Count == 0)
+            {
+                throw new InvalidOperationException($"{nameof(UnityMusicPlayer)}::{nameof(ValidateTracks)} Music [{id}] has no stems. Give it at least one stem with a clip assigned");
+            }
+
+            if (tracks.Count > m_CurrentSources.Length)
+            {
+                throw new InvalidOperationException($"{nameof(UnityMusicPlayer)}::{nameof(ValidateTracks)} Music [{id}] has {tracks.Count} stems but only {m_CurrentSources.Length} channels exist. Give {nameof(IMusicPlayer.SetStemMixerGroups)} at least as many mixer groups as the widest track has stems");
+            }
+
+            for (int i = 0; i < tracks.Count; i++)
+            {
+                if (tracks[i].Clip == null)
+                {
+                    throw new InvalidOperationException($"{nameof(UnityMusicPlayer)}::{nameof(ValidateTracks)} Music [{id}] stem [{i}] has no clip assigned");
+                }
+            }
+        }
+
+        private static void ValidateMixerGroups(AudioMixerGroup[] groups)
+        {
+            if (groups == null || groups.Length == 0)
+            {
+                throw new InvalidOperationException($"{nameof(UnityMusicPlayer)}::{nameof(IMusicPlayer.SetStemMixerGroups)} At least one mixer group is required. Each one becomes a channel a stem can play on");
+            }
+
+            for (int i = 0; i < groups.Length; i++)
+            {
+                if (groups[i] == null)
+                {
+                    throw new InvalidOperationException($"{nameof(UnityMusicPlayer)}::{nameof(IMusicPlayer.SetStemMixerGroups)} Mixer group [{i}] is not assigned");
+                }
+            }
         }
 
         private void DestroyPlayerObject()

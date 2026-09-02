@@ -96,6 +96,8 @@ namespace RPGFramework.Audio.Sfx
 
         void ISfxPlayer.SetStemMixerGroups(AudioMixerGroup[] groups)
         {
+            ValidateMixerGroups(groups);
+
             m_StemMixerGroups = groups;
             m_AudioMixer      = m_StemMixerGroups[0].audioMixer;
 
@@ -121,8 +123,21 @@ namespace RPGFramework.Audio.Sfx
 
         private ISfxReference ScheduleSfx(int id, float startTime)
         {
-            ISfxAsset sfxAsset  = m_SfxAssetProvider.GetSfxAsset(id);
-            int       stemCount = sfxAsset.Tracks.Count;
+            if (m_SfxAssetProvider == null)
+            {
+                throw new InvalidOperationException($"{nameof(UnitySfxPlayer)}::{nameof(ScheduleSfx)} No asset provider. Call {nameof(ISfxPlayer.SetSfxAssetProvider)} before playing anything");
+            }
+
+            if (m_CurrentSources == null)
+            {
+                throw new InvalidOperationException($"{nameof(UnitySfxPlayer)}::{nameof(ScheduleSfx)} No voices. Call {nameof(ISfxPlayer.SetStemMixerGroups)} before playing anything");
+            }
+
+            ISfxAsset sfxAsset = m_SfxAssetProvider.GetSfxAsset(id);
+
+            ValidateStems(id, sfxAsset);
+
+            int stemCount = sfxAsset.Tracks.Count;
 
             if (stemCount > m_CurrentSources.Length)
             {
@@ -213,6 +228,40 @@ namespace RPGFramework.Audio.Sfx
                     m_VoiceOwners[i] = owner;
 
                     break;
+                }
+            }
+        }
+
+        private static void ValidateStems(int id, ISfxAsset sfxAsset)
+        {
+            IReadOnlyList<IStem> tracks = sfxAsset.Tracks;
+
+            if (tracks.Count == 0)
+            {
+                throw new InvalidOperationException($"{nameof(UnitySfxPlayer)}::{nameof(ValidateStems)} Sfx [{id}] has no stems. Give it at least one stem with a clip assigned");
+            }
+
+            for (int i = 0; i < tracks.Count; i++)
+            {
+                if (tracks[i].Clip == null)
+                {
+                    throw new InvalidOperationException($"{nameof(UnitySfxPlayer)}::{nameof(ValidateStems)} Sfx [{id}] stem [{i}] has no clip assigned");
+                }
+            }
+        }
+
+        private static void ValidateMixerGroups(AudioMixerGroup[] groups)
+        {
+            if (groups == null || groups.Length == 0)
+            {
+                throw new InvalidOperationException($"{nameof(UnitySfxPlayer)}::{nameof(ISfxPlayer.SetStemMixerGroups)} At least one mixer group is required. Each one becomes a voice this player can use");
+            }
+
+            for (int i = 0; i < groups.Length; i++)
+            {
+                if (groups[i] == null)
+                {
+                    throw new InvalidOperationException($"{nameof(UnitySfxPlayer)}::{nameof(ISfxPlayer.SetStemMixerGroups)} Mixer group [{i}] is not assigned");
                 }
             }
         }
