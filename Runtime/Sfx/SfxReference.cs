@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.Pool;
 
 namespace RPGFramework.Audio.Sfx
 {
@@ -16,30 +15,30 @@ namespace RPGFramework.Audio.Sfx
         ISfxAsset ISfxReference.Asset => m_SfxAsset;
 
         private readonly AudioSource[]         m_AudioSources;
-        private readonly List<ISfxEventData>   m_EventData;
+        private readonly ISfxEventData[]       m_Events;
         private readonly Action<ISfxReference> m_OnAllEventsCompleted;
         private readonly ISfxAsset             m_SfxAsset;
-        private readonly List<ISfxEventData>   m_EventsTriggered;
+        private readonly bool[]                m_Triggered;
         private readonly ISfxEventData         m_CompleteEvent;
 
         private bool m_Completed;
 
         internal SfxReference(AudioSource[] audioSources, ISfxAsset sfxAsset, Action<ISfxReference> onAllEventsCompleted)
         {
-            m_AudioSources    = audioSources;
-            m_SfxAsset        = sfxAsset;
-            m_EventsTriggered = new List<ISfxEventData>();
+            m_AudioSources = audioSources;
+            m_SfxAsset     = sfxAsset;
 
             AudioClip clip = sfxAsset.Tracks[0].Clip;
 
-            m_EventData = new List<ISfxEventData>(sfxAsset.Events.Count);
+            m_Events    = new ISfxEventData[sfxAsset.Events.Count];
+            m_Triggered = new bool[m_Events.Length];
 
-            foreach (ISfxEventData authored in sfxAsset.Events)
+            for (int i = 0; i < m_Events.Length; i++)
             {
-                m_EventData.Add(new SfxEventData(authored, clip.frequency));
+                m_Events[i] = new SfxEventData(sfxAsset.Events[i], clip.frequency);
             }
 
-            List<ISfxEventData> publishedEvents = new List<ISfxEventData>(m_EventData);
+            List<ISfxEventData> publishedEvents = new List<ISfxEventData>(m_Events);
 
             if (!sfxAsset.Loop)
             {
@@ -62,53 +61,36 @@ namespace RPGFramework.Audio.Sfx
 
             int positionInSamples = m_AudioSources[0].timeSamples;
 
-            List<ISfxEventData> eventsToRemove = ListPool<ISfxEventData>.Get();
-
-            try
+            for (int i = 0; i < m_Events.Length; i++)
             {
-                foreach (ISfxEventData sfxEventData in m_EventData)
+                if (m_Triggered[i])
                 {
-                    if (positionInSamples >= sfxEventData.EventTriggerTimeInSamples)
-                    {
-                        if (sfxEventData.RemoveEventOnceTriggered)
-                        {
-                            eventsToRemove.Add(sfxEventData);
-                        }
-                        else
-                        {
-                            if (m_EventsTriggered.Contains(sfxEventData))
-                            {
-                                continue;
-                            }
-
-                            m_EventsTriggered.Add(sfxEventData);
-                        }
-
-                        OnEvent?.Invoke(sfxEventData.EventName, this);
-                    }
+                    continue;
                 }
 
-                foreach (ISfxEventData sfxEventData in eventsToRemove)
+                ISfxEventData sfxEventData = m_Events[i];
+
+                if (positionInSamples < sfxEventData.EventTriggerTimeInSamples)
                 {
-                    m_EventData.Remove(sfxEventData);
+                    continue;
                 }
 
-                if (m_CompleteEvent == null || m_Completed)
-                {
-                    return;
-                }
+                m_Triggered[i] = true;
 
-                if (positionInSamples < m_CompleteEvent.EventTriggerTimeInSamples)
-                {
-                    return;
-                }
-
-                Complete();
+                OnEvent?.Invoke(sfxEventData.EventName, this);
             }
-            finally
+
+            if (m_CompleteEvent == null || m_Completed)
             {
-                ListPool<ISfxEventData>.Release(eventsToRemove);
+                return;
             }
+
+            if (positionInSamples < m_CompleteEvent.EventTriggerTimeInSamples)
+            {
+                return;
+            }
+
+            Complete();
         }
 
         void ISfxReference.CheckForLoop()
@@ -129,7 +111,20 @@ namespace RPGFramework.Audio.Sfx
                     source.timeSamples = newTime;
                 }
 
-                m_EventsTriggered.Clear();
+                RearmLoopingEvents();
+            }
+        }
+
+        private void RearmLoopingEvents()
+        {
+            for (int i = 0; i < m_Events.Length; i++)
+            {
+                if (m_Events[i].RemoveEventOnceTriggered)
+                {
+                    continue;
+                }
+
+                m_Triggered[i] = false;
             }
         }
 
