@@ -12,6 +12,8 @@ namespace RPGFramework.Audio.Sfx
         private const string SFX_BUS_NAME    = "Sfx";
         private const string SFX_REVERB_SEND = "SfxReverbSend";
 
+        private static readonly string[] VOLUME_BUS_NAMES = { SFX_BUS_NAME, SFX_REVERB_SEND };
+
         private readonly ISfxPlayer m_This;
 
         private ISfxAssetProvider m_SfxAssetProvider;
@@ -66,13 +68,14 @@ namespace RPGFramework.Audio.Sfx
 
         void ISfxPlayer.Stop(ISfxReference sfxReference)
         {
-            if (!m_SfxReferences.Contains(sfxReference))
+            if (!m_SfxReferences.Remove(sfxReference))
             {
                 return;
             }
 
             sfxReference.Stop();
-            RemoveSfxReference(sfxReference);
+
+            ReleaseReference(sfxReference);
         }
 
         void ISfxPlayer.StopAll()
@@ -236,13 +239,7 @@ namespace RPGFramework.Audio.Sfx
 
         void ISfxPlayer.SetVolume(float percent)
         {
-            string[] busNames = new string[]
-                                {
-                                    SFX_BUS_NAME,
-                                    SFX_REVERB_SEND
-                                };
-
-            AudioUtils.SetVolume(m_AudioMixer, busNames, percent);
+            AudioUtils.SetVolume(m_AudioMixer, VOLUME_BUS_NAMES, percent);
         }
 
         void IDisposable.Dispose()
@@ -295,13 +292,18 @@ namespace RPGFramework.Audio.Sfx
 
         private void RemoveSfxReference(ISfxReference sfxReference)
         {
-            ISfxAsset asset = sfxReference.Asset;
+            if (!m_SfxReferences.Remove(sfxReference))
+            {
+                return;
+            }
 
+            ReleaseReference(sfxReference);
+        }
+
+        private void ReleaseReference(ISfxReference sfxReference)
+        {
             ReleaseVoices(sfxReference);
-
-            m_SfxReferences.Remove(sfxReference);
-
-            UnloadUnusedClips(asset);
+            UnloadUnusedClips(sfxReference.Asset);
         }
 
         private static void EnsureLoaded(AudioClip clip)

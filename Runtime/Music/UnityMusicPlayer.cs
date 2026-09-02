@@ -15,6 +15,8 @@ namespace RPGFramework.Audio.Music
         private const string MUSIC_BUS_NAME    = "Music";
         private const string MUSIC_REVERB_SEND = "MusicReverbSend";
 
+        private static readonly string[] VOLUME_BUS_NAMES = { MUSIC_BUS_NAME, MUSIC_REVERB_SEND };
+
         private int    m_CurrentSongId  = -1;
         private int    m_PausedSongId   = -1;
         private double m_PausedPosition = 0.0;
@@ -214,13 +216,7 @@ namespace RPGFramework.Audio.Music
 
         void IMusicPlayer.SetVolume(float percent)
         {
-            string[] busNames = new string[]
-                                {
-                                    MUSIC_BUS_NAME,
-                                    MUSIC_REVERB_SEND
-                                };
-
-            AudioUtils.SetVolume(m_AudioMixer, busNames, percent);
+            AudioUtils.SetVolume(m_AudioMixer, VOLUME_BUS_NAMES, percent);
         }
 
         void IUpdatable.Update()
