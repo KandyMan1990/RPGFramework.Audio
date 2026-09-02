@@ -61,7 +61,8 @@ namespace RPGFramework.Audio
             }
 
             float amplitude = math.pow(clamp, PERCEPTUAL_EXPONENT);
-            float result    = 20f * math.log10(amplitude);
+
+            float result = math.max(20f * math.log10(amplitude), MIN_DB);
 
             return result;
         }
