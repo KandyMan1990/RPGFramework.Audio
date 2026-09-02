@@ -27,14 +27,14 @@ namespace RPGFramework.Audio
 
     public interface IMusicPlayer
     {
-        Task  Play(int id, Dictionary<int, bool> initialStems = null, float fadeInTime = 0f);
+        Task  Play(int id, bool[] initialStems = null, float fadeInTime = 0f);
         void  Pause();
         Task  Stop(float fadeTime = 0.001f);
         void  ClearPausedMusic();
         void  SetMusicAssetProvider(IMusicAssetProvider     provider);
         void  SetStemMixerGroups(AudioMixerGroup[]          groups);
-        Task  SetActiveStemsFade(Dictionary<int, bool>      stemValues, float transitionLength);
-        void  SetActiveStemsImmediate(Dictionary<int, bool> stemValues);
+        Task  SetActiveStemsFade(bool[]      stemValues, float transitionLength);
+        void  SetActiveStemsImmediate(bool[] stemValues);
         float GetVolume();
         void  SetVolume(float percent);
     }

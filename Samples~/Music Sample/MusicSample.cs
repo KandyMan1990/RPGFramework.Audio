@@ -10,6 +10,12 @@ namespace RPGFramework.Audio.Music_Sample
 {
     public class MusicSample : MonoBehaviour
     {
+        // One entry per stem, in the track's order. Held as static presets so a transition costs nothing to
+        // set up, and so the mixes read as names at the call site rather than as anonymous booleans.
+        private static readonly bool[] ALL_STEMS           = { true,  true,  true, true };
+        private static readonly bool[] WITHOUT_FIRST_STEM  = { false, true,  true, true };
+        private static readonly bool[] WITHOUT_SECOND_STEM = { true,  false, true, true };
+
         [SerializeField]
         private MusicAssetProvider m_MusicAssetProvider;
         [SerializeField]
@@ -117,46 +123,26 @@ namespace RPGFramework.Audio.Music_Sample
                 // sets the first stems volume to 0
                 // handy if you want to crossfade stems at some point
                 // this keeps the tracks aligned
-                await m_MusicPlayer.Play(musicId, new Dictionary<int, bool>
-                                                  {
-                                                      { 0, false },
-                                                      { 1, true },
-                                                      { 2, true },
-                                                      { 3, true }
-                                                  });
+                await m_MusicPlayer.Play(musicId, WITHOUT_FIRST_STEM);
             }
         }
 
         private void OnTransitionButton()
         {
             float transitionLength = 2f;
-            Dictionary<int, bool> newActiveStems = new Dictionary<int, bool>
-                                                   {
-                                                       { 0, true },
-                                                       { 1, false },
-                                                       { 2, true },
-                                                       { 3, true }
-                                                   };
 
             // can be awaited if necessary, or can fire and forget like below
             // fire and forget ensure any exceptions are caught and logged correctly
-            m_MusicPlayer.SetActiveStemsFade(newActiveStems, transitionLength).FireAndForget();
+            m_MusicPlayer.SetActiveStemsFade(WITHOUT_SECOND_STEM, transitionLength).FireAndForget();
         }
 
         private void OnTransitionAllStemsButton()
         {
             float transitionLength = 2f;
-            Dictionary<int, bool> newActiveStems = new Dictionary<int, bool>
-                                                   {
-                                                       { 0, true },
-                                                       { 1, true },
-                                                       { 2, true },
-                                                       { 3, true }
-                                                   };
 
             // can be awaited if necessary, or can fire and forget like below
             // fire and forget ensure any exceptions are caught and logged correctly
-            m_MusicPlayer.SetActiveStemsFade(newActiveStems, transitionLength).FireAndForget();
+            m_MusicPlayer.SetActiveStemsFade(ALL_STEMS, transitionLength).FireAndForget();
         }
 
         private void OnPauseMusicButton()

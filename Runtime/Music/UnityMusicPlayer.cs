@@ -43,7 +43,7 @@ namespace RPGFramework.Audio.Music
             m_This = this;
         }
 
-        Task IMusicPlayer.Play(int id, Dictionary<int, bool> initialStems, float fadeInTime)
+        Task IMusicPlayer.Play(int id, bool[] initialStems, float fadeInTime)
         {
             if (m_CurrentSongId == id)
             {
@@ -63,6 +63,11 @@ namespace RPGFramework.Audio.Music
             IMusicAsset musicAsset = m_MusicAssetProvider.GetMusicAsset(id);
 
             ValidateTracks(id, musicAsset);
+
+            if (initialStems != null)
+            {
+                ValidateStemValues(initialStems, musicAsset, nameof(IMusicPlayer.Play));
+            }
 
             ClearCurrentSong();
 
@@ -156,74 +161,28 @@ namespace RPGFramework.Audio.Music
             }
         }
 
-        void IMusicPlayer.SetActiveStemsImmediate(Dictionary<int, bool> stemValues)
+        Task IMusicPlayer.SetActiveStemsFade(bool[] stemValues, float transitionLength)
         {
-            CancelCts();
+            ValidateStemValues(stemValues, m_CurrentMusicAsset, nameof(IMusicPlayer.SetActiveStemsFade));
 
-            SetStemLevels(stemValues);
-            ApplyStemVolumes();
-        }
-
-        private void SetStemLevels(Dictionary<int, bool> stemValues)
-        {
-            foreach (KeyValuePair<int, bool> kvp in stemValues)
-            {
-                m_StemLevels[kvp.Key] = kvp.Value ? 1f : 0f;
-            }
-        }
-
-        private void ApplyStemVolumes()
-        {
-            for (int i = 0; i < m_CurrentSources.Length; i++)
-            {
-                m_CurrentSources[i].volume = m_StemLevels[i] * m_MasterFade;
-            }
-        }
-
-        async Task IMusicPlayer.SetActiveStemsFade(Dictionary<int, bool> stemValues, float transitionLength)
-        {
             if (transitionLength <= 0f)
             {
                 m_This.SetActiveStemsImmediate(stemValues);
 
-                return;
+                return Task.CompletedTask;
             }
+
+            return FadeStemsAsync(stemValues, transitionLength);
+        }
+
+        void IMusicPlayer.SetActiveStemsImmediate(bool[] stemValues)
+        {
+            ValidateStemValues(stemValues, m_CurrentMusicAsset, nameof(IMusicPlayer.SetActiveStemsImmediate));
 
             CancelCts();
 
-            CancellationTokenSource cts = new CancellationTokenSource();
-
-            m_CancellationTokenSource = cts;
-
-            for (int i = 0; i < m_StemLevels.Length; i++)
-            {
-                m_FadeStartLevels[i] = m_StemLevels[i];
-            }
-
-            float progress = 0f;
-
-            while (progress < 1f)
-            {
-                if (cts.IsCancellationRequested)
-                {
-                    return;
-                }
-
-                foreach (KeyValuePair<int, bool> kvp in stemValues)
-                {
-                    float target = kvp.Value ? 1f : 0f;
-
-                    m_StemLevels[kvp.Key] = math.lerp(m_FadeStartLevels[kvp.Key], target, progress);
-                }
-
-                ApplyStemVolumes();
-
-                progress += Time.deltaTime / transitionLength;
-
-                await Awaitable.NextFrameAsync(cts.Token);
-            }
-
-            m_This.SetActiveStemsImmediate(stemValues);
+            SetStemLevels(stemValues);
+            ApplyStemVolumes();
         }
 
         float IMusicPlayer.GetVolume()
@@ -252,6 +211,85 @@ namespace RPGFramework.Audio.Music
                     }
                 }
             }
+        }
+
+        void IDisposable.Dispose()
+        {
+            Dispose();
+            GC.SuppressFinalize(this);
+        }
+
+        private void SetStemLevels(bool[] stemValues)
+        {
+            for (int i = 0; i < stemValues.Length; i++)
+            {
+                m_StemLevels[i] = stemValues[i] ? 1f : 0f;
+            }
+        }
+
+        private static void ValidateStemValues(bool[] stemValues, IMusicAsset musicAsset, string caller)
+        {
+            if (stemValues == null)
+            {
+                throw new InvalidOperationException($"{nameof(UnityMusicPlayer)}::{caller} No stem values given");
+            }
+
+            if (musicAsset == null)
+            {
+                throw new InvalidOperationException($"{nameof(UnityMusicPlayer)}::{caller} No music is playing, so there are no stems to set");
+            }
+
+            if (stemValues.Length != musicAsset.Tracks.Count)
+            {
+                throw new InvalidOperationException($"{nameof(UnityMusicPlayer)}::{caller} Given {stemValues.Length} stem values but the track has {musicAsset.Tracks.Count} stems. Give one value per stem, in order");
+            }
+        }
+
+        private void ApplyStemVolumes()
+        {
+            for (int i = 0; i < m_CurrentSources.Length; i++)
+            {
+                m_CurrentSources[i].volume = m_StemLevels[i] * m_MasterFade;
+            }
+        }
+
+        private async Task FadeStemsAsync(bool[] stemValues, float transitionLength)
+        {
+            CancelCts();
+
+            CancellationTokenSource cts = new CancellationTokenSource();
+
+            m_CancellationTokenSource = cts;
+
+            for (int i = 0; i < m_StemLevels.Length; i++)
+            {
+                m_FadeStartLevels[i] = m_StemLevels[i];
+            }
+
+            float progress = 0f;
+
+            while (progress < 1f)
+            {
+                if (cts.IsCancellationRequested)
+                {
+                    return;
+                }
+
+                for (int i = 0; i < stemValues.Length; i++)
+                {
+                    float target = stemValues[i] ? 1f : 0f;
+
+                    m_StemLevels[i] = math.lerp(m_FadeStartLevels[i], target, progress);
+                }
+
+                ApplyStemVolumes();
+
+                progress += Time.deltaTime / transitionLength;
+
+                await Awaitable.NextFrameAsync(cts.Token);
+            }
+
+            m_This.SetActiveStemsImmediate(stemValues);
         }
 
         private async Task FadeOutAndStopAsync(float duration, int generation)
@@ -317,7 +355,7 @@ namespace RPGFramework.Audio.Music
             }
         }
 
-        private async Task ScheduleCurrentSong(float startTime, Dictionary<int, bool> initialStems, float fadeInTime, int generation)
+        private async Task ScheduleCurrentSong(float startTime, bool[] initialStems, float fadeInTime, int generation)
         {
             m_MasterFade = fadeInTime > 0f ? 0f : 1f;
 
@@ -426,12 +464,6 @@ namespace RPGFramework.Audio.Music
             UpdateManager.UnregisterUpdatable(this);
         }
 
-        void IDisposable.Dispose()
-        {
-            Dispose();
-            GC.SuppressFinalize(this);
-        }
-
         private void Dispose()
         {
             if (m_Disposed)
@@ -458,7 +490,8 @@ namespace RPGFramework.Audio.Music
 
             if (tracks.Count > m_CurrentSources.Length)
             {
-                throw new InvalidOperationException($"{nameof(UnityMusicPlayer)}::{nameof(ValidateTracks)} Music [{id}] has {tracks.Count} stems but only {m_CurrentSources.Length} channels exist. Give {nameof(IMusicPlayer.SetStemMixerGroups)} at least as many mixer groups as the widest track has stems");
+                throw new
+                    InvalidOperationException($"{nameof(UnityMusicPlayer)}::{nameof(ValidateTracks)} Music [{id}] has {tracks.Count} stems but only {m_CurrentSources.Length} channels exist. Give {nameof(IMusicPlayer.SetStemMixerGroups)} at least as many mixer groups as the widest track has stems");
             }
 
             for (int i = 0; i < tracks.Count; i++)
