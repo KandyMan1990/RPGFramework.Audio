@@ -10,16 +10,19 @@ namespace RPGFramework.Audio.Sfx
 
         public event Action<string, ISfxReference> OnEvent;
 
-        public IReadOnlyList<ISfxEventData> Events { get; }
+        public IReadOnlyList<ISfxEventData> Events => m_PublishedEvents ??= BuildPublishedEvents();
 
         ISfxAsset ISfxReference.Asset => m_SfxAsset;
 
-        private readonly AudioSource[]         m_AudioSources;
-        private readonly ISfxEventData[]       m_Events;
-        private readonly Action<ISfxReference> m_OnAllEventsCompleted;
-        private readonly ISfxAsset             m_SfxAsset;
-        private readonly bool[]                m_Triggered;
-        private readonly ISfxEventData         m_CompleteEvent;
+        private readonly AudioSource[]                m_AudioSources;
+        private readonly IReadOnlyList<ISfxEventData> m_Events;
+        private readonly Action<ISfxReference>        m_OnAllEventsCompleted;
+        private readonly ISfxAsset                    m_SfxAsset;
+        private readonly bool[]                       m_Triggered;
+        private readonly int                          m_SampleRate;
+        private readonly int                          m_CompleteTriggerSamples;
+
+        private IReadOnlyList<ISfxEventData> m_PublishedEvents;
 
         private bool m_Completed;
 
@@ -30,24 +33,10 @@ namespace RPGFramework.Audio.Sfx
 
             AudioClip clip = sfxAsset.Tracks[0].Clip;
 
-            m_Events    = new ISfxEventData[sfxAsset.Events.Count];
-            m_Triggered = new bool[m_Events.Length];
-
-            for (int i = 0; i < m_Events.Length; i++)
-            {
-                m_Events[i] = new SfxEventData(sfxAsset.Events[i], clip.frequency);
-            }
-
-            List<ISfxEventData> publishedEvents = new List<ISfxEventData>(m_Events);
-
-            if (!sfxAsset.Loop)
-            {
-                m_CompleteEvent = new SfxEventData(SFX_COMPLETE, clip.samples, clip.frequency);
-
-                publishedEvents.Add(m_CompleteEvent);
-            }
-
-            Events = publishedEvents;
+            m_Events                 = sfxAsset.Events;
+            m_Triggered              = new bool[m_Events.Count];
+            m_SampleRate             = clip.frequency;
+            m_CompleteTriggerSamples = sfxAsset.Loop ? -1 : clip.samples;
 
             m_OnAllEventsCompleted = onAllEventsCompleted;
         }
@@ -61,7 +50,7 @@ namespace RPGFramework.Audio.Sfx
 
             int positionInSamples = m_AudioSources[0].timeSamples;
 
-            for (int i = 0; i < m_Events.Length; i++)
+            for (int i = 0; i < m_Events.Count; i++)
             {
                 if (m_Triggered[i])
                 {
@@ -80,12 +69,12 @@ namespace RPGFramework.Audio.Sfx
                 OnEvent?.Invoke(sfxEventData.EventName, this);
             }
 
-            if (m_CompleteEvent == null || m_Completed)
+            if (m_CompleteTriggerSamples < 0 || m_Completed)
             {
                 return;
             }
 
-            if (positionInSamples < m_CompleteEvent.EventTriggerTimeInSamples)
+            if (positionInSamples < m_CompleteTriggerSamples)
             {
                 return;
             }
@@ -117,7 +106,7 @@ namespace RPGFramework.Audio.Sfx
 
         private void RearmLoopingEvents()
         {
-            for (int i = 0; i < m_Events.Length; i++)
+            for (int i = 0; i < m_Events.Count; i++)
             {
                 if (m_Events[i].RemoveEventOnceTriggered)
                 {
@@ -151,16 +140,33 @@ namespace RPGFramework.Audio.Sfx
 
         private void Complete()
         {
-            if (m_CompleteEvent == null || m_Completed)
+            if (m_CompleteTriggerSamples < 0 || m_Completed)
             {
                 return;
             }
 
             m_Completed = true;
 
-            OnEvent?.Invoke(m_CompleteEvent.EventName, this);
+            OnEvent?.Invoke(SFX_COMPLETE, this);
 
             m_OnAllEventsCompleted(this);
+        }
+
+        private IReadOnlyList<ISfxEventData> BuildPublishedEvents()
+        {
+            List<ISfxEventData> published = new List<ISfxEventData>(m_Events.Count + 1);
+
+            for (int i = 0; i < m_Events.Count; i++)
+            {
+                published.Add(new SfxEventData(m_Events[i], m_SampleRate));
+            }
+
+            if (m_CompleteTriggerSamples >= 0)
+            {
+                published.Add(new SfxEventData(SFX_COMPLETE, m_CompleteTriggerSamples, m_SampleRate));
+            }
+
+            return published;
         }
     }
 }
