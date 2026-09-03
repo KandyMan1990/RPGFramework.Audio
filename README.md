@@ -11,7 +11,9 @@ The 16 channels give the option of playing music via stems instead of a bounced 
 
 Music can also have stems fade in and out should something happen in game where a transition would be preferred instead of starting a different track.
 
-Music can be looped by specifying the tempo, beats per bar, and the start/end bar to loop
+Music can be looped by specifying the tempo, time signature, and the start/end bar to loop. The time signature is beats per bar plus the note that gets the beat, so compound signatures such as 6/8 or 12/8 give the correct bar length rather than being approximated in 4/4. BPM is read as quarter notes per minute, which is what a DAW reports, so a 6/8 bar at 120 BPM is 1.5 seconds.
+
+Loop points are authored as bars, so changing the time signature of an existing asset moves where those bars land in the audio
 
 Pausing music does not prevent a different track from playing. For example, pause music ID 1, play music ID 2, then when wanting to return to music A, just call Stop() then Play(1) and it will resume from where it was paused.
 If you want a previously paused music to start from scratch, you can call ClearPausedMusic() before calling Play and it will ensure the track starts from the beginning.

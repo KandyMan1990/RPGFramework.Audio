@@ -3,6 +3,19 @@ using UnityEngine;
 
 namespace RPGFramework.Audio.Music
 {
+    /// <summary>
+    /// The note that gets the beat, i.e. the lower number of a time signature.
+    /// The value of each member is that lower number, so it can be used directly in the bar length calculation.
+    /// </summary>
+    public enum NoteValue
+    {
+        Whole     = 1,
+        Half      = 2,
+        Quarter   = 4,
+        Eighth    = 8,
+        Sixteenth = 16
+    }
+
     [CreateAssetMenu(fileName = "Music Asset", menuName = "RPG Framework/Audio/Music Asset")]
     public class MusicAsset : ScriptableObject, IMusicAsset
     {
@@ -17,6 +30,9 @@ namespace RPGFramework.Audio.Music
 
         [SerializeField]
         private int m_BeatsPerBar = 4;
+
+        [SerializeField]
+        private NoteValue m_BeatUnit = NoteValue.Quarter;
 
         [SerializeField]
         private bool m_Loop;
@@ -68,15 +84,18 @@ namespace RPGFramework.Audio.Music
                 return;
             }
 
-            m_LoopStartTime   = BarToSeconds(m_LoopStartBar - 1, m_BPM, m_BeatsPerBar);
-            m_LoopEndTime     = BarToSeconds(m_LoopEndBar   - 1, m_BPM, m_BeatsPerBar);
+            m_LoopStartTime   = BarToSeconds(m_LoopStartBar - 1, m_BPM, m_BeatsPerBar, m_BeatUnit);
+            m_LoopEndTime     = BarToSeconds(m_LoopEndBar   - 1, m_BPM, m_BeatsPerBar, m_BeatUnit);
             m_LoopPointsValid = true;
         }
 
-        private static double BarToSeconds(int bar, float bpm, int beatsPerBar)
+        private static double BarToSeconds(int bar, float bpm, int beatsPerBar, NoteValue beatUnit)
         {
-            double secondsPerBeat = 60.0 / bpm;
-            return bar * beatsPerBar * secondsPerBeat;
+            double secondsPerQuarterNote = 60.0 / bpm;
+            double secondsPerBeat        = 4.0 / (int)beatUnit * secondsPerQuarterNote;
+            double seconds               = bar * beatsPerBar * secondsPerBeat;
+
+            return seconds;
         }
     }
 }
