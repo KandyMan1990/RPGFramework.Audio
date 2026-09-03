@@ -4,7 +4,6 @@
   "displayName": "RPG Framework Audio",
   "description": "Audio functionality for the RPG Framework",
   "dependencies": {
-    "com.rpgframework.core": "0.7.0",
     "com.unity.mathematics": "1.4.0"
   },
   "unity": "6000.0",

@@ -1,13 +1,11 @@
 using System;
 using System.Collections.Generic;
-using RPGFramework.Core.PlayerLoop;
-using RPGFramework.Core;
 using UnityEngine;
 using UnityEngine.Audio;
 
 namespace RPGFramework.Audio.Sfx
 {
-    public class UnitySfxPlayer : ISfxPlayer, IUpdatable, IDisposable
+    public class UnitySfxPlayer : ISfxPlayer, IAudioUpdatable, IDisposable
     {
         private const string SFX_BUS_NAME    = "Sfx";
         private const string SFX_REVERB_SEND = "SfxReverbSend";
@@ -24,6 +22,7 @@ namespace RPGFramework.Audio.Sfx
         private string[]          m_SendParameterNames;
         private ISfxReference[]   m_VoiceOwners;
         private GameObject        m_PlayerObject;
+        private AudioUpdateDriver m_UpdateDriver;
 
         private readonly List<ISfxReference> m_SfxReferences;
 
@@ -31,8 +30,6 @@ namespace RPGFramework.Audio.Sfx
         {
             m_SfxReferences = new List<ISfxReference>();
             m_This          = this;
-
-            UpdateManager.RegisterUpdatable(this);
         }
 
         ISfxReference ISfxPlayer.Play(int id)
@@ -110,6 +107,8 @@ namespace RPGFramework.Audio.Sfx
             m_PlayerObject = new GameObject("SfxPlayer");
             UnityEngine.Object.DontDestroyOnLoad(m_PlayerObject);
 
+            m_UpdateDriver = AudioUpdateDriver.Attach(m_PlayerObject, this);
+
             for (int i = 0; i < m_CurrentSources.Length; i++)
             {
                 GameObject go = new GameObject(m_StemMixerGroups[i].name);
@@ -119,6 +118,37 @@ namespace RPGFramework.Audio.Sfx
 
                 m_SendParameterNames[i] = $"{m_StemMixerGroups[i].name}_Send";
             }
+        }
+
+        float ISfxPlayer.GetVolume()
+        {
+            return AudioUtils.GetVolume(m_AudioMixer, SFX_BUS_NAME);
+        }
+
+        void ISfxPlayer.SetVolume(float percent)
+        {
+            AudioUtils.SetVolume(m_AudioMixer, VOLUME_BUS_NAMES, percent);
+        }
+
+        void IAudioUpdatable.Update()
+        {
+            if (m_SfxReferences.Count == 0)
+            {
+                return;
+            }
+
+            for (int i = m_SfxReferences.Count - 1; i >= 0; i--)
+            {
+                ISfxReference sfxReference = m_SfxReferences[i];
+                sfxReference.CheckForEventToRaise();
+                sfxReference.CheckForLoop();
+            }
+        }
+
+        void IDisposable.Dispose()
+        {
+            Dispose();
+            GC.SuppressFinalize(this);
         }
 
         private ISfxReference ScheduleSfx(int id, float startTime)
@@ -281,37 +311,6 @@ namespace RPGFramework.Audio.Sfx
             }
         }
 
-        float ISfxPlayer.GetVolume()
-        {
-            return AudioUtils.GetVolume(m_AudioMixer, SFX_BUS_NAME);
-        }
-
-        void ISfxPlayer.SetVolume(float percent)
-        {
-            AudioUtils.SetVolume(m_AudioMixer, VOLUME_BUS_NAMES, percent);
-        }
-
-        void IDisposable.Dispose()
-        {
-            Dispose();
-            GC.SuppressFinalize(this);
-        }
-
-        void IUpdatable.Update()
-        {
-            if (m_SfxReferences.Count == 0)
-            {
-                return;
-            }
-
-            for (int i = m_SfxReferences.Count - 1; i >= 0; i--)
-            {
-                ISfxReference sfxReference = m_SfxReferences[i];
-                sfxReference.CheckForEventToRaise();
-                sfxReference.CheckForLoop();
-            }
-        }
-
         private void Dispose()
         {
             if (m_Disposed)
@@ -323,7 +322,6 @@ namespace RPGFramework.Audio.Sfx
 
             m_This.StopAll();
 
-            UpdateManager.UnregisterUpdatable(this);
             DestroyPlayerObject();
         }
 
@@ -334,9 +332,12 @@ namespace RPGFramework.Audio.Sfx
                 return;
             }
 
+            m_UpdateDriver.enabled = false;
+
             UnityEngine.Object.Destroy(m_PlayerObject);
 
             m_PlayerObject = null;
+            m_UpdateDriver = null;
         }
 
         private void RemoveSfxReference(ISfxReference sfxReference)

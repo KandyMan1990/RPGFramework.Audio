@@ -1,6 +1,8 @@
 # RPGFramework.Audio
 Audio functionality for the RPG Framework
 
+This package depends on nothing but Unity and Unity.Mathematics — no other RPG Framework package. It drives its own per frame update from a component on the GameObject each player creates for its audio sources, so it can be dropped into any Unity project as it is.
+
 Audio is played using Unity's built in audio systems.  The samples contain a mixer asset that has 16 channels reserved for playing music and 16 channels for sound effects, however this is just an example, a mixer could have 2 channels, it could have 200 channels, 16 and 16 just seemed like a reasonable number that would cover the vast majority of use cases.
 
 When it comes to looping, be it music or sfx, there should be trailing sound after the loop point in case Unity's audio system overruns the buffer size when processing, e.g. if Unity processes audio in say 64 byte chunks but your audio clip isn't divisible by 64, it could cause noise/pops/clicks or it could cause Unity to think the audio has finished playing and stop looping.  For music, I've found an additional bar of music generally covers the overflow, and for sfx, at least 1 second past the loop point has stopped any errors occurring.

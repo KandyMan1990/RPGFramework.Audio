@@ -6,6 +6,11 @@ using UnityEngine.Audio;
 
 namespace RPGFramework.Audio
 {
+    internal interface IAudioUpdatable
+    {
+        internal void Update();
+    }
+
     internal interface IStem
     {
         internal AudioClip Clip            { get; }

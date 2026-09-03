@@ -2,15 +2,13 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using RPGFramework.Core.PlayerLoop;
-using RPGFramework.Core;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Audio;
 
 namespace RPGFramework.Audio.Music
 {
-    public class UnityMusicPlayer : IMusicPlayer, IUpdatable, IDisposable
+    public class UnityMusicPlayer : IMusicPlayer, IAudioUpdatable, IDisposable
     {
         private const string MUSIC_BUS_NAME    = "Music";
         private const string MUSIC_REVERB_SEND = "MusicReverbSend";
@@ -37,6 +35,7 @@ namespace RPGFramework.Audio.Music
         private bool                    m_RegisteredForUpdate;
         private bool                    m_Disposed;
         private GameObject              m_PlayerObject;
+        private AudioUpdateDriver       m_UpdateDriver;
 
         public UnityMusicPlayer()
         {
@@ -150,6 +149,9 @@ namespace RPGFramework.Audio.Music
             m_PlayerObject = new GameObject("MusicPlayer");
             UnityEngine.Object.DontDestroyOnLoad(m_PlayerObject);
 
+            m_UpdateDriver         = AudioUpdateDriver.Attach(m_PlayerObject, this);
+            m_UpdateDriver.enabled = m_RegisteredForUpdate;
+
             for (int i = 0; i < m_CurrentSources.Length; i++)
             {
                 GameObject go = new GameObject(m_StemMixerGroups[i].name);
@@ -195,7 +197,7 @@ namespace RPGFramework.Audio.Music
             AudioUtils.SetVolume(m_AudioMixer, VOLUME_BUS_NAMES, percent);
         }
 
-        void IUpdatable.Update()
+        void IAudioUpdatable.Update()
         {
             double currentTime = m_CurrentSources[0].time;
 
@@ -452,16 +454,8 @@ namespace RPGFramework.Audio.Music
                 return;
             }
 
-            m_RegisteredForUpdate = registered;
-
-            if (registered)
-            {
-                UpdateManager.RegisterUpdatable(this);
-
-                return;
-            }
-
-            UpdateManager.UnregisterUpdatable(this);
+            m_RegisteredForUpdate  = registered;
+            m_UpdateDriver.enabled = registered;
         }
 
         private void Dispose()
@@ -526,9 +520,12 @@ namespace RPGFramework.Audio.Music
                 return;
             }
 
+            m_UpdateDriver.enabled = false;
+
             UnityEngine.Object.Destroy(m_PlayerObject);
 
             m_PlayerObject = null;
+            m_UpdateDriver = null;
         }
 
         private void CancelCts()

@@ -2,7 +2,6 @@
     "name": "RPGFramework.Audio",
     "rootNamespace": "RPGFramework.Audio",
     "references": [
-        "RPGFramework.Core",
         "Unity.Mathematics"
     ],
     "includePlatforms": [],
