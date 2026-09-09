@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Unity.Mathematics;
@@ -10,8 +9,9 @@ namespace RPGFramework.Audio.Music
 {
     public class UnityMusicPlayer : IMusicPlayer, IAudioUpdatable, IDisposable
     {
-        private const string MUSIC_BUS_NAME    = "Music";
-        private const string MUSIC_REVERB_SEND = "MusicReverbSend";
+        private const string MUSIC_BUS_NAME         = "Music";
+        private const string MUSIC_REVERB_SEND      = "MusicReverbSend";
+        private const string MUSIC_GAME_OBJECT_NAME = "MusicPlayer";
 
         private static readonly string[] VOLUME_BUS_NAMES = { MUSIC_BUS_NAME, MUSIC_REVERB_SEND };
 
@@ -31,7 +31,6 @@ namespace RPGFramework.Audio.Music
         private float[]                 m_StemLevels;
         private float[]                 m_FadeStartLevels;
         private float                   m_MasterFade = 1f;
-        private int                     m_PlayGeneration;
         private bool                    m_RegisteredForUpdate;
         private bool                    m_Disposed;
         private GameObject              m_PlayerObject;
@@ -42,38 +41,19 @@ namespace RPGFramework.Audio.Music
             m_This = this;
         }
 
-        Task IMusicPlayer.Play(int id, bool[] initialStems, float fadeInTime)
+        Task IMusicPlayer.PlayAsync(int id, int initialStemStateIndex, float fadeInTime)
         {
             if (m_CurrentSongId == id)
             {
                 return Task.CompletedTask;
             }
 
-            if (m_MusicAssetProvider == null)
-            {
-                throw new InvalidOperationException($"{nameof(UnityMusicPlayer)}::{nameof(IMusicPlayer.Play)} No asset provider. Call {nameof(IMusicPlayer.SetMusicAssetProvider)} before playing anything");
-            }
-
-            if (m_CurrentSources == null)
-            {
-                throw new InvalidOperationException($"{nameof(UnityMusicPlayer)}::{nameof(IMusicPlayer.Play)} No channels. Call {nameof(IMusicPlayer.SetStemMixerGroups)} before playing anything");
-            }
-
             IMusicAsset musicAsset = m_MusicAssetProvider.GetMusicAsset(id);
-
-            ValidateTracks(id, musicAsset);
-
-            if (initialStems != null)
-            {
-                ValidateStemValues(initialStems, musicAsset, nameof(IMusicPlayer.Play));
-            }
 
             ClearCurrentSong();
 
             m_CurrentSongId     = id;
             m_CurrentMusicAsset = musicAsset;
-
-            m_PlayGeneration++;
 
             float startTime = 0f;
 
@@ -84,9 +64,7 @@ namespace RPGFramework.Audio.Music
                 m_This.ClearPausedMusic();
             }
 
-            Task scheduled = ScheduleCurrentSong(startTime, initialStems, fadeInTime, m_PlayGeneration);
-
-            return scheduled;
+            return ScheduleCurrentSong(startTime, initialStemStateIndex, fadeInTime);
         }
 
         void IMusicPlayer.Pause()
@@ -99,13 +77,11 @@ namespace RPGFramework.Audio.Music
             m_PausedSongId   = m_CurrentSongId;
             m_PausedPosition = m_CurrentSources[0].time;
 
-            m_PlayGeneration++;
-
             CancelCts();
             ClearCurrentSong();
         }
 
-        Task IMusicPlayer.Stop(float fadeTime)
+        Task IMusicPlayer.StopAsync(float fadeTime)
         {
             if (m_CurrentMusicAsset == null)
             {
@@ -114,11 +90,7 @@ namespace RPGFramework.Audio.Music
 
             CancelCts();
 
-            m_PlayGeneration++;
-
-            Task stopping = FadeOutAndStopAsync(fadeTime, m_PlayGeneration);
-
-            return stopping;
+            return FadeOutAndStopAsync(fadeTime);
         }
 
         void IMusicPlayer.ClearPausedMusic()
@@ -134,8 +106,6 @@ namespace RPGFramework.Audio.Music
 
         void IMusicPlayer.SetStemMixerGroups(AudioMixerGroup[] groups)
         {
-            ValidateMixerGroups(groups);
-
             m_StemMixerGroups = groups;
             m_AudioMixer      = m_StemMixerGroups[0].audioMixer;
 
@@ -146,7 +116,7 @@ namespace RPGFramework.Audio.Music
 
             DestroyPlayerObject();
 
-            m_PlayerObject = new GameObject("MusicPlayer");
+            m_PlayerObject = new GameObject(MUSIC_GAME_OBJECT_NAME);
             UnityEngine.Object.DontDestroyOnLoad(m_PlayerObject);
 
             m_UpdateDriver         = AudioUpdateDriver.Attach(m_PlayerObject, this);
@@ -163,28 +133,18 @@ namespace RPGFramework.Audio.Music
             }
         }
 
-        Task IMusicPlayer.SetActiveStemsFade(bool[] stemValues, float transitionLength)
+        Task IMusicPlayer.SetStemStateFadeAsync(int stemStateIndex, float transitionLength)
         {
-            ValidateStemValues(stemValues, m_CurrentMusicAsset, nameof(IMusicPlayer.SetActiveStemsFade));
+            bool[] state = m_CurrentMusicAsset.GetStemsForState(stemStateIndex);
 
-            if (transitionLength <= 0f)
-            {
-                m_This.SetActiveStemsImmediate(stemValues);
-
-                return Task.CompletedTask;
-            }
-
-            return FadeStemsAsync(stemValues, transitionLength);
+            return SetStemStateFadeAsync(state, transitionLength);
         }
 
-        void IMusicPlayer.SetActiveStemsImmediate(bool[] stemValues)
+        void IMusicPlayer.SetStemStateImmediate(int stemStateIndex)
         {
-            ValidateStemValues(stemValues, m_CurrentMusicAsset, nameof(IMusicPlayer.SetActiveStemsImmediate));
+            bool[] state = m_CurrentMusicAsset.GetStemsForState(stemStateIndex);
 
-            CancelCts();
-
-            SetStemLevels(stemValues);
-            ApplyStemVolumes();
+            SetStemStateImmediate(state);
         }
 
         float IMusicPlayer.GetVolume()
@@ -221,29 +181,31 @@ namespace RPGFramework.Audio.Music
             GC.SuppressFinalize(this);
         }
 
+        private Task SetStemStateFadeAsync(bool[] state, float transitionLength)
+        {
+            if (transitionLength <= 0f)
+            {
+                SetStemStateImmediate(state);
+
+                return Task.CompletedTask;
+            }
+
+            return FadeStemsAsync(state, transitionLength);
+        }
+
+        private void SetStemStateImmediate(bool[] state)
+        {
+            CancelCts();
+
+            SetStemLevels(state);
+            ApplyStemVolumes();
+        }
+
         private void SetStemLevels(bool[] stemValues)
         {
             for (int i = 0; i < stemValues.Length; i++)
             {
                 m_StemLevels[i] = stemValues[i] ? 1f : 0f;
-            }
-        }
-
-        private static void ValidateStemValues(bool[] stemValues, IMusicAsset musicAsset, string caller)
-        {
-            if (stemValues == null)
-            {
-                throw new InvalidOperationException($"{nameof(UnityMusicPlayer)}::{caller} No stem values given");
-            }
-
-            if (musicAsset == null)
-            {
-                throw new InvalidOperationException($"{nameof(UnityMusicPlayer)}::{caller} No music is playing, so there are no stems to set");
-            }
-
-            if (stemValues.Length != musicAsset.Tracks.Count)
-            {
-                throw new InvalidOperationException($"{nameof(UnityMusicPlayer)}::{caller} Given {stemValues.Length} stem values but the track has {musicAsset.Tracks.Count} stems. Give one value per stem, in order");
             }
         }
 
@@ -291,33 +253,23 @@ namespace RPGFramework.Audio.Music
                 await Awaitable.NextFrameAsync(cts.Token);
             }
 
-            m_This.SetActiveStemsImmediate(stemValues);
+            SetStemStateImmediate(stemValues);
         }
 
-        private async Task FadeOutAndStopAsync(float duration, int generation)
+        private async Task FadeOutAndStopAsync(float duration)
         {
-            await FadeMasterAsync(0f, duration, generation);
-
-            if (m_PlayGeneration != generation)
-            {
-                return;
-            }
+            await FadeMasterAsync(0f, duration);
 
             ClearCurrentSong();
         }
 
-        private async Task FadeMasterAsync(float target, float duration, int generation)
+        private async Task FadeMasterAsync(float target, float duration)
         {
             float t     = 0f;
             float start = m_MasterFade;
 
             while (t < 1f)
             {
-                if (m_PlayGeneration != generation)
-                {
-                    return;
-                }
-
                 t += Time.deltaTime / duration;
 
                 m_MasterFade = math.lerp(start, target, math.min(t, 1f));
@@ -327,12 +279,9 @@ namespace RPGFramework.Audio.Music
                 await Awaitable.NextFrameAsync();
             }
 
-            if (m_PlayGeneration == generation)
-            {
-                m_MasterFade = target;
+            m_MasterFade = target;
 
-                ApplyStemVolumes();
-            }
+            ApplyStemVolumes();
         }
 
         private static async Task EnsureAudioClipLoaded(AudioClip audioClip)
@@ -357,7 +306,7 @@ namespace RPGFramework.Audio.Music
             }
         }
 
-        private async Task ScheduleCurrentSong(float startTime, bool[] initialStems, float fadeInTime, int generation)
+        private async Task ScheduleCurrentSong(float startTime, int initialStemStateIndex, float fadeInTime)
         {
             m_MasterFade = fadeInTime > 0f ? 0f : 1f;
 
@@ -366,10 +315,9 @@ namespace RPGFramework.Audio.Music
                 m_StemLevels[i] = 1f;
             }
 
-            if (initialStems != null)
-            {
-                SetStemLevels(initialStems);
-            }
+            bool[] state = m_CurrentMusicAsset.GetStemsForState(initialStemStateIndex);
+
+            SetStemLevels(state);
 
             int    trackCount = m_CurrentMusicAsset.Tracks.Count;
             Task[] tasks      = new Task[trackCount];
@@ -381,11 +329,6 @@ namespace RPGFramework.Audio.Music
             }
 
             await Task.WhenAll(tasks);
-
-            if (m_PlayGeneration != generation)
-            {
-                return;
-            }
 
             double scheduledStartTime = AudioSettings.dspTime + Time.deltaTime;
 
@@ -414,7 +357,7 @@ namespace RPGFramework.Audio.Music
 
             if (fadeInTime > 0f)
             {
-                await FadeMasterAsync(1f, fadeInTime, generation);
+                await FadeMasterAsync(1f, fadeInTime);
             }
         }
 
@@ -466,51 +409,10 @@ namespace RPGFramework.Audio.Music
             }
 
             m_Disposed = true;
-            m_PlayGeneration++;
 
             CancelCts();
             ClearCurrentSong();
             DestroyPlayerObject();
-        }
-
-        private void ValidateTracks(int id, IMusicAsset musicAsset)
-        {
-            IReadOnlyList<IStem> tracks = musicAsset.Tracks;
-
-            if (tracks.Count == 0)
-            {
-                throw new InvalidOperationException($"{nameof(UnityMusicPlayer)}::{nameof(ValidateTracks)} Music [{id}] has no stems. Give it at least one stem with a clip assigned");
-            }
-
-            if (tracks.Count > m_CurrentSources.Length)
-            {
-                throw new
-                    InvalidOperationException($"{nameof(UnityMusicPlayer)}::{nameof(ValidateTracks)} Music [{id}] has {tracks.Count} stems but only {m_CurrentSources.Length} channels exist. Give {nameof(IMusicPlayer.SetStemMixerGroups)} at least as many mixer groups as the widest track has stems");
-            }
-
-            for (int i = 0; i < tracks.Count; i++)
-            {
-                if (tracks[i].Clip == null)
-                {
-                    throw new InvalidOperationException($"{nameof(UnityMusicPlayer)}::{nameof(ValidateTracks)} Music [{id}] stem [{i}] has no clip assigned");
-                }
-            }
-        }
-
-        private static void ValidateMixerGroups(AudioMixerGroup[] groups)
-        {
-            if (groups == null || groups.Length == 0)
-            {
-                throw new InvalidOperationException($"{nameof(UnityMusicPlayer)}::{nameof(IMusicPlayer.SetStemMixerGroups)} At least one mixer group is required. Each one becomes a channel a stem can play on");
-            }
-
-            for (int i = 0; i < groups.Length; i++)
-            {
-                if (groups[i] == null)
-                {
-                    throw new InvalidOperationException($"{nameof(UnityMusicPlayer)}::{nameof(IMusicPlayer.SetStemMixerGroups)} Mixer group [{i}] is not assigned");
-                }
-            }
         }
 
         private void DestroyPlayerObject()

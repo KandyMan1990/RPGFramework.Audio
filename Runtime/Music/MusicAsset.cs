@@ -40,6 +40,9 @@ namespace RPGFramework.Audio.Music
         [SerializeField]
         private List<Stem> m_Tracks;
 
+        [SerializeField]
+        private List<StemState> m_States;
+
         private double m_LoopStartTime;
         private double m_LoopEndTime;
         private bool   m_LoopPointsValid;
@@ -49,14 +52,45 @@ namespace RPGFramework.Audio.Music
         bool IMusicAsset.                Loop          => m_Loop && m_LoopPointsValid;
         IReadOnlyList<IStem> IMusicAsset.Tracks        => m_Tracks;
 
+        bool[] IMusicAsset.GetStemsForState(int stateIndex)
+        {
+            StemState stemState = m_States[stateIndex];
+
+            return stemState.ActiveStems;
+        }
+
         private void OnEnable()
         {
             CalculateLoopPoints();
+            EnsureStates();
         }
 
         private void OnValidate()
         {
             CalculateLoopPoints();
+            EnsureStates();
+        }
+
+        private void EnsureStates()
+        {
+            if (m_Tracks == null)
+            {
+                return;
+            }
+
+            m_States ??= new List<StemState>();
+
+            if (m_States.Count == 0)
+            {
+                m_States.Add(StemState.CreateAllStemsOn(m_Tracks.Count));
+
+                return;
+            }
+
+            foreach (StemState state in m_States)
+            {
+                state.MatchStemCount(m_Tracks.Count);
+            }
         }
 
         private void CalculateLoopPoints()

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -21,12 +21,17 @@ namespace RPGFramework.Audio.Sfx
         private readonly bool[]                       m_Triggered;
         private readonly int                          m_SampleRate;
         private readonly int                          m_CompleteTriggerSamples;
+        private readonly double                       m_ScheduledStartDspTime;
+        private readonly double                       m_CompleteDspTime;
+
+        private double m_PausedAtDspTime;
+        private double m_PausedDuration;
 
         private IReadOnlyList<ISfxEventData> m_PublishedEvents;
 
         private bool m_Completed;
 
-        internal SfxReference(AudioSource[] audioSources, ISfxAsset sfxAsset, Action<ISfxReference> onAllEventsCompleted)
+        internal SfxReference(AudioSource[] audioSources, ISfxAsset sfxAsset, double scheduledStartDspTime, Action<ISfxReference> onAllEventsCompleted)
         {
             m_AudioSources = audioSources;
             m_SfxAsset     = sfxAsset;
@@ -38,12 +43,20 @@ namespace RPGFramework.Audio.Sfx
             m_SampleRate             = clip.frequency;
             m_CompleteTriggerSamples = sfxAsset.Loop ? -1 : clip.samples;
 
+            m_ScheduledStartDspTime = scheduledStartDspTime;
+            m_CompleteDspTime       = scheduledStartDspTime + (double)clip.samples / clip.frequency;
+
             m_OnAllEventsCompleted = onAllEventsCompleted;
         }
 
         void ISfxReference.CheckForEventToRaise()
         {
             if (m_Completed)
+            {
+                return;
+            }
+
+            if (AudioSettings.dspTime < m_ScheduledStartDspTime + m_PausedDuration)
             {
                 return;
             }
@@ -74,7 +87,7 @@ namespace RPGFramework.Audio.Sfx
                 return;
             }
 
-            if (positionInSamples < m_CompleteTriggerSamples)
+            if (AudioSettings.dspTime < m_CompleteDspTime + m_PausedDuration)
             {
                 return;
             }
@@ -119,6 +132,11 @@ namespace RPGFramework.Audio.Sfx
 
         void ISfxReference.Pause()
         {
+            if (m_PausedAtDspTime <= 0d)
+            {
+                m_PausedAtDspTime = AudioSettings.dspTime;
+            }
+
             foreach (AudioSource audioSource in m_AudioSources)
             {
                 audioSource.Pause();
@@ -127,6 +145,12 @@ namespace RPGFramework.Audio.Sfx
 
         void ISfxReference.Resume()
         {
+            if (m_PausedAtDspTime > 0d)
+            {
+                m_PausedDuration  += AudioSettings.dspTime - m_PausedAtDspTime;
+                m_PausedAtDspTime =  0d;
+            }
+
             foreach (AudioSource audioSource in m_AudioSources)
             {
                 audioSource.UnPause();
@@ -147,9 +171,26 @@ namespace RPGFramework.Audio.Sfx
 
             m_Completed = true;
 
+            RaiseUntriggeredEvents();
+
             OnEvent?.Invoke(SFX_COMPLETE, this);
 
             m_OnAllEventsCompleted(this);
+        }
+
+        private void RaiseUntriggeredEvents()
+        {
+            for (int i = 0; i < m_Events.Count; i++)
+            {
+                if (m_Triggered[i])
+                {
+                    continue;
+                }
+
+                m_Triggered[i] = true;
+
+                OnEvent?.Invoke(m_Events[i].EventName, this);
+            }
         }
 
         private IReadOnlyList<ISfxEventData> BuildPublishedEvents()

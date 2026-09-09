@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using UnityEngine;
@@ -23,6 +23,7 @@ namespace RPGFramework.Audio
         internal double               LoopEndTime   { get; }
         internal bool                 Loop          { get; }
         internal IReadOnlyList<IStem> Tracks        { get; }
+        internal bool[]               GetStemsForState(int stateIndex);
     }
 
     public interface IMusicAssetProvider
@@ -32,14 +33,14 @@ namespace RPGFramework.Audio
 
     public interface IMusicPlayer
     {
-        Task  Play(int id, bool[] initialStems = null, float fadeInTime = 0f);
+        Task  PlayAsync(int id, int initialStemStateIndex = 0, float fadeInTime = 0f);
         void  Pause();
-        Task  Stop(float fadeTime = 0.001f);
+        Task  StopAsync(float fadeTime = 0.001f);
         void  ClearPausedMusic();
-        void  SetMusicAssetProvider(IMusicAssetProvider     provider);
-        void  SetStemMixerGroups(AudioMixerGroup[]          groups);
-        Task  SetActiveStemsFade(bool[]      stemValues, float transitionLength);
-        void  SetActiveStemsImmediate(bool[] stemValues);
+        void  SetMusicAssetProvider(IMusicAssetProvider provider);
+        void  SetStemMixerGroups(AudioMixerGroup[]      groups);
+        Task  SetStemStateFadeAsync(int                 stemStateIndex, float transitionLength);
+        void  SetStemStateImmediate(int                 stemStateIndex);
         float GetVolume();
         void  SetVolume(float percent);
     }

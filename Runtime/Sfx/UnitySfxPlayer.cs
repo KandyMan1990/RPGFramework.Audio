@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Audio;
@@ -7,8 +7,10 @@ namespace RPGFramework.Audio.Sfx
 {
     public class UnitySfxPlayer : ISfxPlayer, IAudioUpdatable, IDisposable
     {
-        private const string SFX_BUS_NAME    = "Sfx";
-        private const string SFX_REVERB_SEND = "SfxReverbSend";
+        private const string SFX_BUS_NAME         = "Sfx";
+        private const string SFX_REVERB_SEND      = "SfxReverbSend";
+        private const string SFX_GAME_OBJECT_NAME = "SfxPlayer";
+
 
         private static readonly string[] VOLUME_BUS_NAMES = { SFX_BUS_NAME, SFX_REVERB_SEND };
 
@@ -25,10 +27,12 @@ namespace RPGFramework.Audio.Sfx
         private AudioUpdateDriver m_UpdateDriver;
 
         private readonly List<ISfxReference> m_SfxReferences;
+        private readonly List<ISfxReference> m_UpdateBuffer;
 
         public UnitySfxPlayer()
         {
             m_SfxReferences = new List<ISfxReference>();
+            m_UpdateBuffer  = new List<ISfxReference>();
             m_This          = this;
         }
 
@@ -93,8 +97,6 @@ namespace RPGFramework.Audio.Sfx
 
         void ISfxPlayer.SetStemMixerGroups(AudioMixerGroup[] groups)
         {
-            ValidateMixerGroups(groups);
-
             m_StemMixerGroups = groups;
             m_AudioMixer      = m_StemMixerGroups[0].audioMixer;
 
@@ -104,7 +106,7 @@ namespace RPGFramework.Audio.Sfx
 
             DestroyPlayerObject();
 
-            m_PlayerObject = new GameObject("SfxPlayer");
+            m_PlayerObject = new GameObject(SFX_GAME_OBJECT_NAME);
             UnityEngine.Object.DontDestroyOnLoad(m_PlayerObject);
 
             m_UpdateDriver = AudioUpdateDriver.Attach(m_PlayerObject, this);
@@ -137,9 +139,18 @@ namespace RPGFramework.Audio.Sfx
                 return;
             }
 
-            for (int i = m_SfxReferences.Count - 1; i >= 0; i--)
+            m_UpdateBuffer.Clear();
+            m_UpdateBuffer.AddRange(m_SfxReferences);
+
+            for (int i = 0; i < m_UpdateBuffer.Count; i++)
             {
-                ISfxReference sfxReference = m_SfxReferences[i];
+                ISfxReference sfxReference = m_UpdateBuffer[i];
+
+                if (!m_SfxReferences.Contains(sfxReference))
+                {
+                    continue;
+                }
+
                 sfxReference.CheckForEventToRaise();
                 sfxReference.CheckForLoop();
             }
@@ -153,19 +164,7 @@ namespace RPGFramework.Audio.Sfx
 
         private ISfxReference ScheduleSfx(int id, float startTime)
         {
-            if (m_SfxAssetProvider == null)
-            {
-                throw new InvalidOperationException($"{nameof(UnitySfxPlayer)}::{nameof(ScheduleSfx)} No asset provider. Call {nameof(ISfxPlayer.SetSfxAssetProvider)} before playing anything");
-            }
-
-            if (m_CurrentSources == null)
-            {
-                throw new InvalidOperationException($"{nameof(UnitySfxPlayer)}::{nameof(ScheduleSfx)} No voices. Call {nameof(ISfxPlayer.SetStemMixerGroups)} before playing anything");
-            }
-
             ISfxAsset sfxAsset = m_SfxAssetProvider.GetSfxAsset(id);
-
-            ValidateStems(id, sfxAsset);
 
             int stemCount = sfxAsset.Tracks.Count;
 
@@ -212,7 +211,7 @@ namespace RPGFramework.Audio.Sfx
                 source.PlayScheduled(scheduledStartTime);
             }
 
-            SfxReference sfxRef = new SfxReference(audioSourceReferences, sfxAsset, RemoveSfxReference);
+            SfxReference sfxRef = new SfxReference(audioSourceReferences, sfxAsset, scheduledStartTime, RemoveSfxReference);
 
             TakeOwnership(audioSourceReferences, sfxRef);
 
@@ -258,40 +257,6 @@ namespace RPGFramework.Audio.Sfx
                     m_VoiceOwners[i] = owner;
 
                     break;
-                }
-            }
-        }
-
-        private static void ValidateStems(int id, ISfxAsset sfxAsset)
-        {
-            IReadOnlyList<IStem> tracks = sfxAsset.Tracks;
-
-            if (tracks.Count == 0)
-            {
-                throw new InvalidOperationException($"{nameof(UnitySfxPlayer)}::{nameof(ValidateStems)} Sfx [{id}] has no stems. Give it at least one stem with a clip assigned");
-            }
-
-            for (int i = 0; i < tracks.Count; i++)
-            {
-                if (tracks[i].Clip == null)
-                {
-                    throw new InvalidOperationException($"{nameof(UnitySfxPlayer)}::{nameof(ValidateStems)} Sfx [{id}] stem [{i}] has no clip assigned");
-                }
-            }
-        }
-
-        private static void ValidateMixerGroups(AudioMixerGroup[] groups)
-        {
-            if (groups == null || groups.Length == 0)
-            {
-                throw new InvalidOperationException($"{nameof(UnitySfxPlayer)}::{nameof(ISfxPlayer.SetStemMixerGroups)} At least one mixer group is required. Each one becomes a voice this player can use");
-            }
-
-            for (int i = 0; i < groups.Length; i++)
-            {
-                if (groups[i] == null)
-                {
-                    throw new InvalidOperationException($"{nameof(UnitySfxPlayer)}::{nameof(ISfxPlayer.SetStemMixerGroups)} Mixer group [{i}] is not assigned");
                 }
             }
         }
