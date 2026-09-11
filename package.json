@@ -1,10 +1,11 @@
 {
   "name": "com.rpgframework.audio",
-  "version": "1.1.0",
+  "version": "2.0.0",
   "displayName": "RPG Framework Audio",
   "description": "Audio functionality for the RPG Framework",
   "dependencies": {
-    "com.unity.mathematics": "1.4.0"
+    "com.unity.mathematics": "1.4.0",
+    "com.rpgframework.hashing": "2.0.1"
   },
   "unity": "6000.0",
   "keywords": [
