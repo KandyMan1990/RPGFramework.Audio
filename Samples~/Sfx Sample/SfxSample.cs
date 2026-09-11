@@ -1,4 +1,5 @@
 using RPGFramework.Audio.Sfx;
+using RPGFramework.Hashing;
 using UnityEngine;
 using UnityEngine.Audio;
 using UnityEngine.UIElements;
@@ -7,6 +8,12 @@ namespace RPGFramework.Audio.Sfx_Sample
 {
     public class SfxSample : MonoBehaviour
     {
+        // Sounds are named, and the name is hashed so that reordering the provider's list cannot
+        // repoint a caller. Each name is the SFX asset's own.
+        private const string LOOPING_SOUND = "Sfx_00";
+        private const string ONE_SHOT      = "Sfx_01";
+        private const string AMBIENCE      = "Rain";
+
         [SerializeField]
         private SfxAssetProvider m_SfxAssetProvider;
         [SerializeField]
@@ -72,7 +79,7 @@ namespace RPGFramework.Audio.Sfx_Sample
         private void OnPlaySfx1Button()
         {
             // trigger a sound
-            m_SfxReference0 = m_SfxPlayer.Play(1);
+            m_SfxReference0 = m_SfxPlayer.Play(Fnv1a64.Hash(ONE_SHOT));
         }
 
         private void OnStopSfx1Button()
@@ -84,7 +91,7 @@ namespace RPGFramework.Audio.Sfx_Sample
         private void OnPlaySfx0ButtonWithLoopAndEvent()
         {
             // trigger a sound
-            ISfxReference sfxReference = m_SfxPlayer.Play(0);
+            ISfxReference sfxReference = m_SfxPlayer.Play(Fnv1a64.Hash(LOOPING_SOUND));
 
             // see when each event will be triggered in seconds
             foreach (ISfxEventData sfxEventData in sfxReference.Events)
@@ -98,7 +105,7 @@ namespace RPGFramework.Audio.Sfx_Sample
         private void OnPlayAmbienceButton()
         {
             // trigger ambience
-            ISfxReference sfxReference = m_SfxReference0 = m_SfxPlayer.Play(2);
+            ISfxReference sfxReference = m_SfxReference0 = m_SfxPlayer.Play(Fnv1a64.Hash(AMBIENCE));
 
             sfxReference.OnEvent += SfxReferenceOnEvent;
         }
