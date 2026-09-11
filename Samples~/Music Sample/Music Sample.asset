@@ -16,6 +16,8 @@ MonoBehaviour:
   m_LoopStartBar: 5
   m_LoopEndBar: 21
   m_BeatsPerBar: 4
+  m_BeatUnit: 4
+  m_Loop: 1
   m_Tracks:
   - m_AudioClip: {fileID: 8300000, guid: c93f6cb4f4df6214dbbda31b1f7d4671, type: 3}
     m_ReverbSendLevel: 0.3
@@ -25,4 +27,10 @@ MonoBehaviour:
     m_ReverbSendLevel: 0.7
   - m_AudioClip: {fileID: 8300000, guid: 360e11fe379096e4b9733963fbc382e4, type: 3}
     m_ReverbSendLevel: 0.8
-  m_Loop: 1
+  m_States:
+  - m_Name: Default
+    m_ActiveStems: 01010101y
+  - m_Name: WithoutFirstStem
+    m_ActiveStems: 00010101y
+  - m_Name: WithoutSecondStem
+    m_ActiveStems: 01000101y

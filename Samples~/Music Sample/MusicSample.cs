@@ -1,6 +1,6 @@
-﻿using System.Collections.Generic;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 using RPGFramework.Audio.Music;
+using RPGFramework.Hashing;
 using UnityEngine;
 using UnityEngine.Audio;
 using UnityEngine.UIElements;
@@ -12,9 +12,13 @@ namespace RPGFramework.Audio.Music_Sample
         // The stem states the music asset declares, in the order they are authored on it. Which stems
         // each one turns on is decided on the asset, so this sample only has to know what it wants to
         // hear, not which track is which.
-        private const int STATE_ALL_STEMS           = 0;
-        private const int STATE_WITHOUT_FIRST_STEM  = 1;
-        private const int STATE_WITHOUT_SECOND_STEM = 2;
+        // Tracks and stem states are both named, and the name is hashed, so that reordering either list
+        // cannot repoint a script or a caller. The names are the asset's own.
+        private const string TRACK = "Music Sample";
+
+        private const string DEFAULT                   = "Default";
+        private const string STATE_WITHOUT_FIRST_STEM  = "WithoutFirstStem";
+        private const string STATE_WITHOUT_SECOND_STEM = "WithoutSecondStem";
 
         [SerializeField]
         private MusicAssetProvider m_MusicAssetProvider;
@@ -87,11 +91,9 @@ namespace RPGFramework.Audio.Music_Sample
 
         private void OnPlayMusicButton()
         {
-            int musicId = 0;
-
             // can be awaited if necessary, or can fire and forget like below
             // fire and forget ensure any exceptions are caught and logged correctly
-            m_MusicPlayer.PlayAsync(musicId).FireAndForget();
+            m_MusicPlayer.PlayAsync(Fnv1a64.Hash(TRACK)).FireAndForget();
 
             m_PlayMusicButton.SetEnabled(false);
             m_PlayMusicMutedButton.SetEnabled(false);
@@ -118,12 +120,10 @@ namespace RPGFramework.Audio.Music_Sample
 
             async Task Run()
             {
-                int musicId = 0;
-
                 // sets the first stems volume to 0
                 // handy if you want to crossfade stems at some point
                 // this keeps the tracks aligned
-                await m_MusicPlayer.PlayAsync(musicId, STATE_WITHOUT_FIRST_STEM);
+                await m_MusicPlayer.PlayAsync(Fnv1a64.Hash(TRACK), Fnv1a64.Hash(STATE_WITHOUT_FIRST_STEM));
             }
         }
 
@@ -133,7 +133,7 @@ namespace RPGFramework.Audio.Music_Sample
 
             // can be awaited if necessary, or can fire and forget like below
             // fire and forget ensure any exceptions are caught and logged correctly
-            m_MusicPlayer.SetStemStateFadeAsync(STATE_WITHOUT_SECOND_STEM, transitionLength).FireAndForget();
+            m_MusicPlayer.SetStemStateFadeAsync(Fnv1a64.Hash(STATE_WITHOUT_SECOND_STEM), transitionLength).FireAndForget();
         }
 
         private void OnTransitionAllStemsButton()
@@ -142,7 +142,7 @@ namespace RPGFramework.Audio.Music_Sample
 
             // can be awaited if necessary, or can fire and forget like below
             // fire and forget ensure any exceptions are caught and logged correctly
-            m_MusicPlayer.SetStemStateFadeAsync(STATE_ALL_STEMS, transitionLength).FireAndForget();
+            m_MusicPlayer.SetStemStateFadeAsync(Fnv1a64.Hash(DEFAULT), transitionLength).FireAndForget();
         }
 
         private void OnPauseMusicButton()
