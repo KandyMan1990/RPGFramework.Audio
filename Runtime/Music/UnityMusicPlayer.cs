@@ -15,9 +15,11 @@ namespace RPGFramework.Audio.Music
 
         private static readonly string[] VOLUME_BUS_NAMES = { MUSIC_BUS_NAME, MUSIC_REVERB_SEND };
 
-        private int    m_CurrentSongId  = -1;
-        private int    m_PausedSongId   = -1;
-        private double m_PausedPosition = 0.0;
+        private const ulong NO_MUSIC = 0;
+
+        private ulong  m_CurrentSongHash = NO_MUSIC;
+        private ulong  m_PausedSongHash  = NO_MUSIC;
+        private double m_PausedPosition  = 0.0;
 
         private readonly IMusicPlayer m_This;
 
@@ -41,40 +43,40 @@ namespace RPGFramework.Audio.Music
             m_This = this;
         }
 
-        Task IMusicPlayer.PlayAsync(int id, int initialStemStateIndex, float fadeInTime)
+        Task IMusicPlayer.PlayAsync(ulong nameHash, ulong initialStemStateHash, float fadeInTime)
         {
-            if (m_CurrentSongId == id)
+            if (m_CurrentSongHash == nameHash)
             {
                 return Task.CompletedTask;
             }
 
-            IMusicAsset musicAsset = m_MusicAssetProvider.GetMusicAsset(id);
+            IMusicAsset musicAsset = m_MusicAssetProvider.GetMusicAsset(nameHash);
 
             ClearCurrentSong();
 
-            m_CurrentSongId     = id;
+            m_CurrentSongHash   = nameHash;
             m_CurrentMusicAsset = musicAsset;
 
             float startTime = 0f;
 
-            if (m_CurrentSongId == m_PausedSongId)
+            if (m_CurrentSongHash == m_PausedSongHash)
             {
                 startTime = (float)m_PausedPosition;
 
                 m_This.ClearPausedMusic();
             }
 
-            return ScheduleCurrentSong(startTime, initialStemStateIndex, fadeInTime);
+            return ScheduleCurrentSong(startTime, initialStemStateHash, fadeInTime);
         }
 
         void IMusicPlayer.Pause()
         {
-            if (m_CurrentSongId < 0)
+            if (m_CurrentSongHash == NO_MUSIC)
             {
                 return;
             }
 
-            m_PausedSongId   = m_CurrentSongId;
+            m_PausedSongHash = m_CurrentSongHash;
             m_PausedPosition = m_CurrentSources[0].time;
 
             CancelCts();
@@ -95,7 +97,7 @@ namespace RPGFramework.Audio.Music
 
         void IMusicPlayer.ClearPausedMusic()
         {
-            m_PausedSongId   = -1;
+            m_PausedSongHash = NO_MUSIC;
             m_PausedPosition = 0.0;
         }
 
@@ -133,16 +135,16 @@ namespace RPGFramework.Audio.Music
             }
         }
 
-        Task IMusicPlayer.SetStemStateFadeAsync(int stemStateIndex, float transitionLength)
+        Task IMusicPlayer.SetStemStateFadeAsync(ulong stemStateHash, float transitionLength)
         {
-            bool[] state = m_CurrentMusicAsset.GetStemsForState(stemStateIndex);
+            bool[] state = m_CurrentMusicAsset.GetStemsForState(stemStateHash);
 
             return SetStemStateFadeAsync(state, transitionLength);
         }
 
-        void IMusicPlayer.SetStemStateImmediate(int stemStateIndex)
+        void IMusicPlayer.SetStemStateImmediate(ulong stemStateHash)
         {
-            bool[] state = m_CurrentMusicAsset.GetStemsForState(stemStateIndex);
+            bool[] state = m_CurrentMusicAsset.GetStemsForState(stemStateHash);
 
             SetStemStateImmediate(state);
         }
@@ -306,7 +308,7 @@ namespace RPGFramework.Audio.Music
             }
         }
 
-        private async Task ScheduleCurrentSong(float startTime, int initialStemStateIndex, float fadeInTime)
+        private async Task ScheduleCurrentSong(float startTime, ulong initialStemStateHash, float fadeInTime)
         {
             m_MasterFade = fadeInTime > 0f ? 0f : 1f;
 
@@ -315,7 +317,7 @@ namespace RPGFramework.Audio.Music
                 m_StemLevels[i] = 1f;
             }
 
-            bool[] state = m_CurrentMusicAsset.GetStemsForState(initialStemStateIndex);
+            bool[] state = m_CurrentMusicAsset.GetStemsForState(initialStemStateHash);
 
             SetStemLevels(state);
 
@@ -387,7 +389,7 @@ namespace RPGFramework.Audio.Music
             }
 
             m_CurrentMusicAsset = null;
-            m_CurrentSongId     = -1;
+            m_CurrentSongHash   = NO_MUSIC;
         }
 
         private void SetRegisteredForUpdate(bool registered)

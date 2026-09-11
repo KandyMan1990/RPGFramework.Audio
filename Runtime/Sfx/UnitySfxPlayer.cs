@@ -36,9 +36,9 @@ namespace RPGFramework.Audio.Sfx
             m_This          = this;
         }
 
-        ISfxReference ISfxPlayer.Play(int id)
+        ISfxReference ISfxPlayer.Play(ulong nameHash)
         {
-            return ScheduleSfx(id, 0f);
+            return ScheduleSfx(nameHash, 0f);
         }
 
         void ISfxPlayer.Pause(ISfxReference sfxReference)
@@ -162,9 +162,9 @@ namespace RPGFramework.Audio.Sfx
             GC.SuppressFinalize(this);
         }
 
-        private ISfxReference ScheduleSfx(int id, float startTime)
+        private ISfxReference ScheduleSfx(ulong nameHash, float startTime)
         {
-            ISfxAsset sfxAsset = m_SfxAssetProvider.GetSfxAsset(id);
+            ISfxAsset sfxAsset = m_SfxAssetProvider.GetSfxAsset(nameHash);
 
             int stemCount = sfxAsset.Tracks.Count;
 

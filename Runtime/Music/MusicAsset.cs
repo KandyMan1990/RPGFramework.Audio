@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using RPGFramework.Hashing;
 using UnityEngine;
 
 namespace RPGFramework.Audio.Music
@@ -19,6 +20,8 @@ namespace RPGFramework.Audio.Music
     [CreateAssetMenu(fileName = "Music Asset", menuName = "RPG Framework/Audio/Music Asset")]
     public class MusicAsset : ScriptableObject, IMusicAsset
     {
+        public const ulong NO_STATE_NAMED = 0;
+
         [SerializeField]
         private float m_BPM;
 
@@ -43,6 +46,8 @@ namespace RPGFramework.Audio.Music
         [SerializeField]
         private List<StemState> m_States;
 
+        private Dictionary<ulong, StemState> m_StatesByNameHash;
+
         private double m_LoopStartTime;
         private double m_LoopEndTime;
         private bool   m_LoopPointsValid;
@@ -52,12 +57,35 @@ namespace RPGFramework.Audio.Music
         bool IMusicAsset.                Loop          => m_Loop && m_LoopPointsValid;
         IReadOnlyList<IStem> IMusicAsset.Tracks        => m_Tracks;
 
-        bool[] IMusicAsset.GetStemsForState(int stateIndex)
+        bool[] IMusicAsset.GetStemsForState(ulong stateNameHash)
         {
-            StemState stemState = m_States[stateIndex];
+            StemState stemState = stateNameHash == NO_STATE_NAMED
+                                      ? m_States[0]
+                                      : m_StatesByNameHash[stateNameHash];
 
             return stemState.ActiveStems;
         }
+
+#if UNITY_EDITOR
+        /// <summary>
+        /// The state names a script can use with this asset, for tooling that offers them as a choice.
+        /// </summary>
+        public IEnumerable<string> StemStateNames
+        {
+            get
+            {
+                if (m_States == null)
+                {
+                    yield break;
+                }
+
+                foreach (StemState state in m_States)
+                {
+                    yield return state.Name;
+                }
+            }
+        }
+#endif
 
         private void OnEnable()
         {
@@ -65,11 +93,29 @@ namespace RPGFramework.Audio.Music
             EnsureStates();
         }
 
+#if UNITY_EDITOR
         private void OnValidate()
         {
             CalculateLoopPoints();
             EnsureStates();
+            WarnAboutDuplicateStateNames();
         }
+
+        private void WarnAboutDuplicateStateNames()
+        {
+            if (m_States == null)
+            {
+                return;
+            }
+
+            if (m_StatesByNameHash.Count == m_States.Count)
+            {
+                return;
+            }
+
+            Debug.LogWarning($"{nameof(MusicAsset)} [{name}] has {m_States.Count} stem states but only {m_StatesByNameHash.Count} distinct names, so at least one can never be selected. Give every state its own name");
+        }
+#endif
 
         private void EnsureStates()
         {
@@ -84,12 +130,26 @@ namespace RPGFramework.Audio.Music
             {
                 m_States.Add(StemState.CreateAllStemsOn(m_Tracks.Count));
 
+                BuildStateLookup();
+
                 return;
             }
 
             foreach (StemState state in m_States)
             {
                 state.MatchStemCount(m_Tracks.Count);
+            }
+
+            BuildStateLookup();
+        }
+
+        private void BuildStateLookup()
+        {
+            m_StatesByNameHash = new Dictionary<ulong, StemState>(m_States.Count);
+
+            foreach (StemState state in m_States)
+            {
+                m_StatesByNameHash[Fnv1a64.Hash(state.Name)] = state;
             }
         }
 

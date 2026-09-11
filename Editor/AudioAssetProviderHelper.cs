@@ -1,4 +1,5 @@
 ﻿using System;
+using RPGFramework.Hashing;
 using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -31,6 +32,7 @@ namespace RPGFramework.Audio.Editor
 
             SerializedProperty assets = m_SerializedObject.FindProperty(m_AssetList);
             string[]           enums  = new string[assets.arraySize];
+            string[]           names  = new string[assets.arraySize];
 
             for (int i = 0; i < assets.arraySize; i++)
             {
@@ -38,6 +40,7 @@ namespace RPGFramework.Audio.Editor
                 T                  asset   = (T)element.objectReferenceValue;
 
                 enums[i] = ToPascalCase(asset.name);
+                names[i] = asset.name;
             }
 
             if (!Directory.Exists(path))
@@ -52,7 +55,7 @@ namespace RPGFramework.Audio.Editor
                 File.Delete(filePath);
             }
 
-            string file = BuildEnumFile(filename, namespaceForEnum, enums);
+            string file = BuildEnumFile(filename, namespaceForEnum, enums, names);
 
             File.WriteAllText(filePath, file);
 
@@ -94,7 +97,7 @@ namespace RPGFramework.Audio.Editor
             return sb.ToString();
         }
 
-        private static string BuildEnumFile(string filename, string namespaceForEnum, string[] enums)
+        private static string BuildEnumFile(string filename, string namespaceForEnum, string[] enums, string[] names)
         {
             StringBuilder sb           = new StringBuilder();
             string        enumFileName = filename.Split('.')[0];
@@ -105,13 +108,15 @@ namespace RPGFramework.Audio.Editor
             sb.AppendLine($"namespace {namespaceForEnum}");
             sb.AppendLine("{");
 
-            sb.AppendLine($"\tpublic enum {enumFileName.Replace(" ", "")}");
+            sb.AppendLine($"\tpublic enum {enumFileName.Replace(" ", "")} : ulong");
             sb.AppendLine("\t{");
 
             for (int i = 0; i < enums.Length; i++)
             {
                 string enumName = enums[i];
-                sb.AppendLine($"\t\t{enumName} = {i},");
+
+                sb.AppendLine($"\t\t/// <summary>{names[i]}</summary>");
+                sb.AppendLine($"\t\t{enumName} = {Fnv1a64.Hash(names[i])}UL,");
             }
 
             sb.AppendLine("\t}");

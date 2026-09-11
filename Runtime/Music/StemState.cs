@@ -14,6 +14,7 @@ namespace RPGFramework.Audio.Music
         [SerializeField]
         private bool[] m_ActiveStems;
 
+        internal string Name        => m_Name;
         internal bool[] ActiveStems => m_ActiveStems;
 
         internal static StemState CreateAllStemsOn(int stemCount)

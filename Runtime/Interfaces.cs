@@ -23,24 +23,24 @@ namespace RPGFramework.Audio
         internal double               LoopEndTime   { get; }
         internal bool                 Loop          { get; }
         internal IReadOnlyList<IStem> Tracks        { get; }
-        internal bool[]               GetStemsForState(int stateIndex);
+        internal bool[]               GetStemsForState(ulong stateNameHash);
     }
 
     public interface IMusicAssetProvider
     {
-        internal IMusicAsset GetMusicAsset(int id);
+        internal IMusicAsset GetMusicAsset(ulong nameHash);
     }
 
     public interface IMusicPlayer
     {
-        Task  PlayAsync(int id, int initialStemStateIndex = 0, float fadeInTime = 0f);
+        Task  PlayAsync(ulong nameHash, ulong initialStemStateHash = 0, float fadeInTime = 0f);
         void  Pause();
         Task  StopAsync(float fadeTime = 0.001f);
         void  ClearPausedMusic();
         void  SetMusicAssetProvider(IMusicAssetProvider provider);
         void  SetStemMixerGroups(AudioMixerGroup[]      groups);
-        Task  SetStemStateFadeAsync(int                 stemStateIndex, float transitionLength);
-        void  SetStemStateImmediate(int                 stemStateIndex);
+        Task  SetStemStateFadeAsync(ulong               stemStateHash, float transitionLength);
+        void  SetStemStateImmediate(ulong               stemStateHash);
         float GetVolume();
         void  SetVolume(float percent);
     }
@@ -76,12 +76,12 @@ namespace RPGFramework.Audio
 
     public interface ISfxAssetProvider
     {
-        internal ISfxAsset GetSfxAsset(int id);
+        internal ISfxAsset GetSfxAsset(ulong nameHash);
     }
 
     public interface ISfxPlayer
     {
-        ISfxReference Play(int            id);
+        ISfxReference Play(ulong          nameHash);
         void          Pause(ISfxReference sfxReference);
         void          PauseAll();
         void          Resume(ISfxReference sfxReference);
