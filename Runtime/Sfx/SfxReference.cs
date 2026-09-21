@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace RPGFramework.Audio.Sfx
 {
-    public class SfxReference : ISfxReference
+    internal class SfxReference : ISfxReference
     {
         public const string SFX_COMPLETE = "SfxComplete";
 

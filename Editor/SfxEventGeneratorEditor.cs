@@ -10,7 +10,7 @@ using UnityEngine;
 
 namespace RPGFramework.Audio.Editor
 {
-    public class SfxEventGeneratorEditor
+    internal class SfxEventGeneratorEditor
     {
         private AudioAssetProviderModalWindow m_Window;
         private SerializedObject              m_SerializedObject;

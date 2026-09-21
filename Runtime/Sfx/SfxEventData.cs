@@ -3,7 +3,7 @@ using UnityEngine;
 namespace RPGFramework.Audio.Sfx
 {
     [System.Serializable]
-    public class SfxEventData : ISfxEventData
+    internal class SfxEventData : ISfxEventData
     {
         [SerializeField]
         private string m_EventName;

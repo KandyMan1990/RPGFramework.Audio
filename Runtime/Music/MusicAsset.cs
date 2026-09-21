@@ -8,7 +8,7 @@ namespace RPGFramework.Audio.Music
     /// The note that gets the beat, i.e. the lower number of a time signature.
     /// The value of each member is that lower number, so it can be used directly in the bar length calculation.
     /// </summary>
-    public enum NoteValue
+    internal enum NoteValue
     {
         Whole     = 1,
         Half      = 2,
@@ -20,7 +20,7 @@ namespace RPGFramework.Audio.Music
     [CreateAssetMenu(fileName = "Music Asset", menuName = "RPG Framework/Audio/Music Asset")]
     public class MusicAsset : ScriptableObject, IMusicAsset
     {
-        public const ulong NO_STATE_NAMED = 0;
+        private const ulong NO_STATE_NAMED = 0;
 
         [SerializeField]
         private float m_BPM;

@@ -5,7 +5,7 @@ using UnityEngine.UIElements;
 
 namespace RPGFramework.Audio.Editor
 {
-    public class AudioAssetProviderModalWindow : EditorWindow
+    internal class AudioAssetProviderModalWindow : EditorWindow
     {
         public event Action<string, string, string> OnConfirm;
 

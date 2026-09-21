@@ -3,7 +3,7 @@ using UnityEngine;
 namespace RPGFramework.Audio
 {
     [System.Serializable]
-    public class Stem : IStem
+    internal class Stem : IStem
     {
         [SerializeField]
         private AudioClip m_AudioClip;
