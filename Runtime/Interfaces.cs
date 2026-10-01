@@ -34,6 +34,11 @@ namespace RPGFramework.Audio
     public interface IMusicPlayer
     {
         Task  PlayAsync(ulong nameHash, ulong initialStemStateHash = 0, float fadeInTime = 0f);
+
+        /// <summary>
+        /// Stops the track and unloads it, remembering where it was: a later <see cref="PlayAsync" /> of the same track
+        /// picks up from there.
+        /// </summary>
         void  Pause();
         Task  StopAsync(float fadeTime = 0.001f);
         void  ClearPausedMusic();
