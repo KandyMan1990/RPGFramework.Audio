@@ -46,6 +46,14 @@ namespace RPGFramework.Audio.Music
         [SerializeField]
         private List<StemState> m_States;
 
+        // Kept whether or not PSX Reverb is installed, so a song's settings survive the package being removed and added
+        // back; Unity would drop them on the next save of a field compiled out. Shown only when it is installed.
+        [SerializeField]
+#if !RPGFRAMEWORK_PSXREVERB
+        [HideInInspector]
+#endif
+        private ReverbSettings m_Reverb = new ReverbSettings();
+
         private Dictionary<ulong, StemState> m_StatesByNameHash;
 
         private double m_LoopStartTime;
@@ -56,6 +64,7 @@ namespace RPGFramework.Audio.Music
         double IMusicAsset.              LoopEndTime   => m_LoopEndTime;
         bool IMusicAsset.                Loop          => m_Loop && m_LoopPointsValid;
         IReadOnlyList<IStem> IMusicAsset.Tracks        => m_Tracks;
+        ReverbSettings IMusicAsset.      Reverb        => m_Reverb;
 
         bool[] IMusicAsset.GetStemsForState(ulong stateNameHash)
         {

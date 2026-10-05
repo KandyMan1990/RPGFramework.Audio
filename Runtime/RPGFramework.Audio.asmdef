@@ -12,6 +12,12 @@
     "precompiledReferences": [],
     "autoReferenced": true,
     "defineConstraints": [],
-    "versionDefines": [],
+    "versionDefines": [
+        {
+            "name": "com.rpgframework.psxreverb",
+            "expression": "1.0.0",
+            "define": "RPGFRAMEWORK_PSXREVERB"
+        }
+    ],
     "noEngineReferences": false
 }

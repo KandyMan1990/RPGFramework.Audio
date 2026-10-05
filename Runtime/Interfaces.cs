@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using RPGFramework.Audio.Music;
 using UnityEngine;
 using UnityEngine.Audio;
 
@@ -23,6 +24,7 @@ namespace RPGFramework.Audio
         internal double               LoopEndTime   { get; }
         internal bool                 Loop          { get; }
         internal IReadOnlyList<IStem> Tracks        { get; }
+        internal ReverbSettings       Reverb        { get; }
         internal bool[]               GetStemsForState(ulong stateNameHash);
     }
 
@@ -48,6 +50,19 @@ namespace RPGFramework.Audio
         void  SetStemStateImmediate(ulong               stemStateHash);
         float GetVolume();
         void  SetVolume(float percent);
+
+        /// <summary>
+        /// Switches PSX Reverb, which every sound shares, to a preset, until the next song that names one or the next
+        /// call. A different preset cuts the reverb's tail. Does nothing unless <c>com.rpgframework.psxreverb</c> is
+        /// installed.
+        /// </summary>
+        void SetReverbPreset(ReverbPreset preset);
+
+        /// <summary>
+        /// Sets how loud PSX Reverb plays for every sound, 0 to 1, until the next song that names a volume or the next
+        /// call. Does nothing unless <c>com.rpgframework.psxreverb</c> is installed.
+        /// </summary>
+        void SetReverbVolume(float volume);
     }
 
     public interface ISfxEventData

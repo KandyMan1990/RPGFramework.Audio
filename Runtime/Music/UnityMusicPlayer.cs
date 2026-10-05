@@ -12,6 +12,8 @@ namespace RPGFramework.Audio.Music
         private const string MUSIC_BUS_NAME         = "Music";
         private const string MUSIC_REVERB_SEND      = "MusicReverbSend";
         private const string MUSIC_GAME_OBJECT_NAME = "MusicPlayer";
+        private const string REVERB_PRESET          = "ReverbPreset";
+        private const string REVERB_DEPTH           = "ReverbDepth";
 
         private static readonly string[] VOLUME_BUS_NAMES = { MUSIC_BUS_NAME, MUSIC_REVERB_SEND };
 
@@ -157,6 +159,16 @@ namespace RPGFramework.Audio.Music
         void IMusicPlayer.SetVolume(float percent)
         {
             AudioUtils.SetVolume(m_AudioMixer, VOLUME_BUS_NAMES, percent);
+        }
+
+        void IMusicPlayer.SetReverbPreset(ReverbPreset preset)
+        {
+            SetReverbParameter(REVERB_PRESET, (float)preset);
+        }
+
+        void IMusicPlayer.SetReverbVolume(float volume)
+        {
+            SetReverbParameter(REVERB_DEPTH, AudioUtils.ReverbVolumeToDepth(volume));
         }
 
         void IAudioUpdatable.Update()
@@ -351,6 +363,7 @@ namespace RPGFramework.Audio.Music
             }
 
             ApplyStemVolumes();
+            ApplySongReverb(m_CurrentMusicAsset.Reverb);
 
             if (m_CurrentMusicAsset.Loop)
             {
@@ -361,6 +374,27 @@ namespace RPGFramework.Audio.Music
             {
                 await FadeMasterAsync(1f, fadeInTime);
             }
+        }
+
+        private void ApplySongReverb(ReverbSettings reverb)
+        {
+            if (reverb.SetsPreset)
+            {
+                m_This.SetReverbPreset(reverb.Preset);
+            }
+
+            if (reverb.SetsVolume)
+            {
+                m_This.SetReverbVolume(reverb.Volume);
+            }
+        }
+
+        // The exposed parameters are PSX Reverb's, so a game without it has none to write.
+        private void SetReverbParameter(string parameter, float value)
+        {
+#if RPGFRAMEWORK_PSXREVERB
+            AudioUtils.SetParameter(m_AudioMixer, parameter, value);
+#endif
         }
 
         private void ClearCurrentSong()

@@ -6,6 +6,8 @@ namespace RPGFramework.Audio
 {
     internal static class AudioUtils
     {
+        internal const float MAX_REVERB_DEPTH = 127f;
+
         private const float MIN_DB              = -80f;
         private const float PERCEPTUAL_EXPONENT = 1.661f;
 
@@ -29,13 +31,28 @@ namespace RPGFramework.Audio
 
             foreach (string busName in busNames)
             {
-                if (mixer.SetFloat(busName, db))
-                {
-                    continue;
-                }
-
-                Debug.LogError($"{nameof(AudioUtils)}::{nameof(SetVolume)} Parameter [{busName}] is not exposed on mixer [{mixer.name}]. Expose it in the mixer for this volume to take effect");
+                SetParameter(mixer, busName, db);
             }
+        }
+
+        internal static void SetParameter(AudioMixer mixer, string parameter, float value)
+        {
+            if (mixer.SetFloat(parameter, value))
+            {
+                return;
+            }
+
+            Debug.LogError($"{nameof(AudioUtils)}::{nameof(SetParameter)} Parameter [{parameter}] is not exposed on mixer [{mixer.name}]. Expose it in the mixer for this setting to take effect");
+        }
+
+        /// <summary>
+        /// A reverb volume, 0 to 1, as PSX Reverb's Depth, 0 to 127. Linear, as the console's depth register is.
+        /// </summary>
+        internal static float ReverbVolumeToDepth(float volume)
+        {
+            float depth = math.clamp(volume, 0f, 1f) * MAX_REVERB_DEPTH;
+
+            return depth;
         }
 
         internal static float DbToPercent(float db)

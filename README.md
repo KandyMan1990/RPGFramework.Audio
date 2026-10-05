@@ -32,7 +32,7 @@ The players expect a particular mixer graph, and it is worth setting up before w
 * So Music is the dry path and MusicReverbSend is the wet path — two parallel signals, not a bus and one of its sends.
 * Sfx is arranged identically, with `Sfx`, `SfxReverbSend` and `SfxTrack{N}_Send`.
 
-`Music`, `MusicReverbSend`, `Sfx`, `SfxReverbSend` and every `{GroupName}_Send` must be exposed on the mixer.  Anything that isn't exposed logs an error naming the parameter when the player tries to read or write it.
+`Music`, `MusicReverbSend`, `Sfx`, `SfxReverbSend` and every `{GroupName}_Send` must be exposed on the mixer, and with PSX Reverb installed, `ReverbPreset` and `ReverbDepth` too (see [PS1 reverb](#ps1-reverb)).  Anything that isn't exposed logs an error naming the parameter when the player tries to read or write it.
 
 `SetVolume` writes the same dB to both the dry bus and the reverb send bus, which keeps the dry/wet ratio constant as volume changes.  Attenuating only the dry bus would leave the reverb ringing on its own channel.
 
@@ -98,6 +98,23 @@ Pausing music does not prevent a different track from playing. For example, paus
 If you want a previously paused music to start from scratch, you can call `ClearPausedMusic()` before calling play and it will ensure the track starts from the beginning.
 
 Only one paused position is remembered, so pausing a second track replaces the first.  Playing something else does not discard it — the paused track stays waiting until it is played again or cleared.
+
+### PS1 reverb
+
+With [PSX Reverb](https://github.com/KandyMan1990/RPGFramework.PSXReverb) (`com.rpgframework.psxreverb`) installed on the Reverb bus, a music asset gains a **Reverb** group: an optional preset and an optional volume, each applied when the song starts, including when a paused song resumes.  A setting left unticked leaves the reverb as the last song or script set it.  The volume can be set with its 0 to 1 slider or as PSX Reverb's depth, 0 to 127, and each row has a **Default** button that puts back PSX Reverb's own: studio C, and depth 40.
+
+The volume is 0 to 1, and goes to PSX Reverb's Depth, 0 to 127, in a straight line.  It is how loud the reverb plays for every sound while the song is on, sound effects included, where a stem's send level is how much of that one stem goes in.  A different preset clears the reverb, cutting its tail.
+
+`SetReverbPreset` and `SetReverbVolume` set either directly, and hold until the next song that names that setting, or the next call:
+
+```csharp
+musicPlayer.SetReverbPreset(ReverbPreset.Hall);
+musicPlayer.SetReverbVolume(0.5f);
+```
+
+The player writes PSX Reverb's Preset and Depth through parameters exposed as `ReverbPreset` and `ReverbDepth`: right-click each slider on the effect, choose to expose it to script, and rename it.
+
+Without the package, the Reverb group is hidden, the two calls do nothing and nothing is written to the mixer.  A song's settings are still kept on the asset, so removing the package and adding it back loses nothing.
 
 ### Import settings
 
