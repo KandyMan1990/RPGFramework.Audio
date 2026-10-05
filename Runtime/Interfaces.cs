@@ -45,8 +45,7 @@ namespace RPGFramework.Audio
         /// <summary>
         /// Fades the playing track out and this one in to <paramref name="volume" /> over the same seconds, the two
         /// sharing the music channels while both sound, so it throws when together they have more stems than there are
-        /// channels. A crossfade asked for during another cuts the track already fading out. A paused track picks up
-        /// where it was, as with <see cref="PlayAsync" />.
+        /// channels. A crossfade asked for during another cuts the track already fading out.
         /// </summary>
         Task  CrossfadeAsync(ulong nameHash, ulong initialStemStateHash, float seconds, float volume = 1f);
 
@@ -58,10 +57,19 @@ namespace RPGFramework.Audio
         Task  SetSongVolumeAsync(float volume, float seconds = 0f);
 
         /// <summary>
-        /// Stops the track and unloads it, remembering where it was: a later <see cref="PlayAsync" /> of the same track
-        /// picks up from there.
+        /// Stops every track and unloads it, and returns what was playing — which track, where, and which stems — for
+        /// the caller to keep and hand to <see cref="ResumeAsync" />. The player keeps nothing itself. With no track
+        /// playing, or one that has reached its end, the snapshot is empty.
         /// </summary>
-        void  Pause();
+        MusicSnapshot Pause();
+
+        /// <summary>
+        /// Plays a paused track again from where it was, with the stems it had, fading whatever is playing out under it
+        /// over <paramref name="seconds" /> as <see cref="CrossfadeAsync" /> does, zero cutting. It plays at
+        /// <paramref name="volume" />, as <see cref="PlayAsync" /> does, not the volume it was paused at. An empty
+        /// snapshot fades out whatever is playing instead, since nothing was playing when it was taken.
+        /// </summary>
+        Task  ResumeAsync(MusicSnapshot snapshot, float seconds = 0f, float volume = 1f);
         Task  StopAsync(float fadeTime = 0.001f);
 
         /// <summary>
@@ -69,7 +77,6 @@ namespace RPGFramework.Audio
         /// paused, or reaches its end without looping. A track fading out under a stop is not.
         /// </summary>
         bool  IsPlaying();
-        void  ClearPausedMusic();
         void  SetMusicAssetProvider(IMusicAssetProvider provider);
         void  SetStemMixerGroups(AudioMixerGroup[]      groups);
         Task  SetStemStateFadeAsync(ulong               stemStateHash, float transitionLength);

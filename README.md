@@ -120,10 +120,23 @@ A track that doesn't loop costs nothing per frame — the update component is on
 
 ### Pause and resume
 
-Pausing music does not prevent a different track from playing. For example, pause music "Overworld", play music "Battle", then when wanting to return to "Overworld", just call `StopAsync()` then `PlayAsync(Fnv1a64.Hash("Overworld"))` and it will resume from where it was paused.
-If you want a previously paused music to start from scratch, you can call `ClearPausedMusic()` before calling play and it will ensure the track starts from the beginning.  `CrossfadeAsync` to a paused track picks it up where it was too.
+`Pause` stops the music and returns a `MusicSnapshot` of what was playing — the track, where it was, and which stems it had — for you to keep.  `ResumeAsync` plays it again from there, so music can be put aside for a battle and its victory music, and picked up afterwards:
 
-Only one paused position is remembered, so pausing a second track replaces the first.  Playing something else does not discard it — the paused track stays waiting until it is played again or cleared.  Pausing during a crossfade remembers the track fading in and stops both.
+```csharp
+MusicSnapshot overworld = musicPlayer.Pause();
+
+await musicPlayer.PlayAsync(Fnv1a64.Hash("Battle"));
+
+// ...the battle, then the victory music...
+
+await musicPlayer.ResumeAsync(overworld, 1f);
+```
+
+* `ResumeAsync` fades whatever is playing out under the resumed track over the seconds given, as `CrossfadeAsync` does; zero cuts.  It takes a volume, as `PlayAsync` does, rather than restoring the one the track was paused at.
+* Pausing with nothing playing returns an empty snapshot, and resuming an empty snapshot fades out whatever is playing, since nothing was when it was taken.
+* The player keeps no snapshot itself, so one can be kept as long as it is needed, and more than one at once.  `PlayAsync` of a paused track starts it from the beginning.
+* Pausing during a crossfade keeps the track fading in and stops both.
+* A paused track's clips are unloaded, and resuming loads them again.
 
 ### PS1 reverb
 

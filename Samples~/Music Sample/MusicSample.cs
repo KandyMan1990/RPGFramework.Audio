@@ -29,6 +29,10 @@ namespace RPGFramework.Audio.Music_Sample
 
         private IMusicPlayer m_MusicPlayer;
 
+        // what the pause button stopped, so the play button can carry on from there
+        private MusicSnapshot m_PausedMusic;
+        private bool          m_HasPausedMusic;
+
         private Button m_PlayMusicButton;
         private Button m_PlayMusicMutedButton;
         private Button m_TransitionButton;
@@ -93,7 +97,17 @@ namespace RPGFramework.Audio.Music_Sample
         {
             // can be awaited if necessary, or can fire and forget like below
             // fire and forget ensure any exceptions are caught and logged correctly
-            m_MusicPlayer.PlayAsync(Fnv1a64.Hash(TRACK)).FireAndForget();
+            if (m_HasPausedMusic)
+            {
+                // carries on from where it was paused, with the stems it had
+                m_MusicPlayer.ResumeAsync(m_PausedMusic).FireAndForget();
+
+                m_HasPausedMusic = false;
+            }
+            else
+            {
+                m_MusicPlayer.PlayAsync(Fnv1a64.Hash(TRACK)).FireAndForget();
+            }
 
             m_PlayMusicButton.SetEnabled(false);
             m_PlayMusicMutedButton.SetEnabled(false);
@@ -106,6 +120,9 @@ namespace RPGFramework.Audio.Music_Sample
 
         private void OnPlayMusicMutedButton()
         {
+            // always starts from the top, so anything paused is let go
+            m_HasPausedMusic = false;
+
             m_PlayMusicButton.SetEnabled(false);
             m_PlayMusicMutedButton.SetEnabled(false);
             m_TransitionButton.SetEnabled(true);
@@ -147,7 +164,9 @@ namespace RPGFramework.Audio.Music_Sample
 
         private void OnPauseMusicButton()
         {
-            m_MusicPlayer.Pause();
+            // the player keeps nothing, so whatever is to be resumed later has to be kept here
+            m_PausedMusic    = m_MusicPlayer.Pause();
+            m_HasPausedMusic = true;
 
             m_PlayMusicButton.SetEnabled(true);
             m_PlayMusicMutedButton.SetEnabled(true);

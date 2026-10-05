@@ -20,9 +20,6 @@ namespace RPGFramework.Audio.Music
 
         private const ulong NO_MUSIC = 0;
 
-        private ulong  m_PausedSongHash = NO_MUSIC;
-        private double m_PausedPosition = 0.0;
-
         private readonly IMusicPlayer m_This;
 
         // The playing song, and while a crossfade or a stop lasts, the songs fading out under it.
@@ -53,11 +50,12 @@ namespace RPGFramework.Audio.Music
             }
 
             IMusicAsset musicAsset = m_MusicAssetProvider.GetMusicAsset(nameHash);
+            bool[]      stems      = musicAsset.GetStemsForState(initialStemStateHash);
 
             CancelCts();
             StopAllSongs();
 
-            return StartSong(nameHash, musicAsset, initialStemStateHash, fadeInTime, volume, null);
+            return StartSong(nameHash, musicAsset, stems, 0f, fadeInTime, volume, null);
         }
 
         Task IMusicPlayer.CrossfadeAsync(ulong nameHash, ulong initialStemStateHash, float seconds, float volume)
@@ -68,12 +66,35 @@ namespace RPGFramework.Audio.Music
             }
 
             IMusicAsset musicAsset = m_MusicAssetProvider.GetMusicAsset(nameHash);
+            bool[]      stems      = musicAsset.GetStemsForState(initialStemStateHash);
             Song        outgoing   = m_Playing;
 
             CancelCts();
             StopSongsFadingOut();
 
-            return StartSong(nameHash, musicAsset, initialStemStateHash, seconds, volume, outgoing);
+            return StartSong(nameHash, musicAsset, stems, 0f, seconds, volume, outgoing);
+        }
+
+        Task IMusicPlayer.ResumeAsync(MusicSnapshot snapshot, float seconds, float volume)
+        {
+            // Nothing was playing when it was taken, so nothing should be now.
+            if (snapshot.NameHash == NO_MUSIC)
+            {
+                return m_This.StopAsync(seconds);
+            }
+
+            if (IsCurrentSong(snapshot.NameHash))
+            {
+                return Task.CompletedTask;
+            }
+
+            IMusicAsset musicAsset = m_MusicAssetProvider.GetMusicAsset(snapshot.NameHash);
+            Song        outgoing   = m_Playing;
+
+            CancelCts();
+            StopSongsFadingOut();
+
+            return StartSong(snapshot.NameHash, musicAsset, snapshot.Stems, snapshot.Position, seconds, volume, outgoing);
         }
 
         Task IMusicPlayer.SetSongVolumeAsync(float volume, float seconds)
@@ -94,16 +115,14 @@ namespace RPGFramework.Audio.Music
             return FadeMasterAsync(m_Playing, m_Playing.Volume, seconds);
         }
 
-        void IMusicPlayer.Pause()
+        MusicSnapshot IMusicPlayer.Pause()
         {
-            if (m_Playing != null)
-            {
-                m_PausedSongHash = m_Playing.NameHash;
-                m_PausedPosition = m_Sources[m_Playing.Channels[0]].time;
-            }
+            MusicSnapshot snapshot = m_This.IsPlaying() ? TakeSnapshot(m_Playing) : default;
 
             CancelCts();
             StopAllSongs();
+
+            return snapshot;
         }
 
         Task IMusicPlayer.StopAsync(float fadeTime)
@@ -133,12 +152,6 @@ namespace RPGFramework.Audio.Music
             bool playing = m_Playing != null && (!m_Playing.Scheduled || m_Sources[m_Playing.Channels[0]].isPlaying);
 
             return playing;
-        }
-
-        void IMusicPlayer.ClearPausedMusic()
-        {
-            m_PausedSongHash = NO_MUSIC;
-            m_PausedPosition = 0.0;
         }
 
         void IMusicPlayer.SetMusicAssetProvider(IMusicAssetProvider provider)
@@ -226,6 +239,15 @@ namespace RPGFramework.Audio.Music
             GC.SuppressFinalize(this);
         }
 
+        // A song still loading has not moved from where it was asked to start. The stems are copied, so the snapshot
+        // stays as it was whatever the asset does next.
+        private MusicSnapshot TakeSnapshot(Song song)
+        {
+            float position = song.Scheduled ? m_Sources[song.Channels[0]].time : song.StartTime;
+
+            return new MusicSnapshot(song.NameHash, position, (bool[])song.Stems.Clone());
+        }
+
         private bool IsCurrentSong(ulong nameHash)
         {
             return m_Playing != null && m_Playing.NameHash == nameHash;
@@ -255,6 +277,8 @@ namespace RPGFramework.Audio.Music
 
         private Task SetStemStateFadeAsync(Song song, bool[] state, float transitionLength)
         {
+            song.Stems = state;
+
             if (transitionLength <= 0f)
             {
                 SetStemStateImmediate(song, state);
@@ -268,6 +292,8 @@ namespace RPGFramework.Audio.Music
         private void SetStemStateImmediate(Song song, bool[] state)
         {
             CancelCts();
+
+            song.Stems = state;
 
             SetStemLevels(song, state);
             ApplyStemVolumes(song);
@@ -402,35 +428,27 @@ namespace RPGFramework.Audio.Music
             }
         }
 
-        private Task StartSong(ulong nameHash, IMusicAsset musicAsset, ulong initialStemStateHash, float fadeSeconds, float volume, Song outgoing)
+        private Task StartSong(ulong nameHash, IMusicAsset musicAsset, bool[] stems, float startTime, float fadeSeconds, float volume, Song outgoing)
         {
-            bool[] state    = musicAsset.GetStemsForState(initialStemStateHash);
-            int[]  channels = m_ChannelPool.Take(musicAsset.Name, musicAsset.Tracks.Count);
-            Song   song     = new Song(nameHash, musicAsset, channels);
+            int[] channels = m_ChannelPool.Take(musicAsset.Name, musicAsset.Tracks.Count);
+            Song  song     = new Song(nameHash, musicAsset, channels);
 
-            song.Volume = math.clamp(volume, 0f, 1f);
+            song.Volume    = math.clamp(volume, 0f, 1f);
+            song.StartTime = startTime;
+            song.Stems     = stems;
 
-            SetStemLevels(song, state);
+            SetStemLevels(song, stems);
 
             m_Sounding.Add(song);
             m_Playing = song;
 
-            float startTime = 0f;
-
-            if (nameHash == m_PausedSongHash)
-            {
-                startTime = (float)m_PausedPosition;
-
-                m_This.ClearPausedMusic();
-            }
-
-            return PlaySongAsync(song, startTime, fadeSeconds, outgoing);
+            return PlaySongAsync(song, fadeSeconds, outgoing);
         }
 
-        private async Task PlaySongAsync(Song song, float startTime, float fadeSeconds, Song outgoing)
+        private async Task PlaySongAsync(Song song, float fadeSeconds, Song outgoing)
         {
             bool fadesIn   = fadeSeconds > 0f;
-            bool scheduled = await ScheduleSongAsync(song, startTime, fadesIn);
+            bool scheduled = await ScheduleSongAsync(song, fadesIn);
 
             if (!scheduled)
             {
@@ -445,7 +463,7 @@ namespace RPGFramework.Audio.Music
         }
 
         /// <returns>False when another song took over while this one's clips loaded, so it never sounded.</returns>
-        private async Task<bool> ScheduleSongAsync(Song song, float startTime, bool fadesIn)
+        private async Task<bool> ScheduleSongAsync(Song song, bool fadesIn)
         {
             IReadOnlyList<IStem> tracks = song.Asset.Tracks;
             Task[]               loads  = new Task[tracks.Count];
@@ -474,7 +492,7 @@ namespace RPGFramework.Audio.Music
                 source.clip        = tracks[i].Clip;
                 source.playOnAwake = false;
                 source.loop        = false;
-                source.time        = startTime;
+                source.time        = song.StartTime;
 
                 float sendLevel = AudioUtils.PercentToDb(tracks[i].ReverbSendLevel);
                 m_AudioMixer.SetFloat(m_SendParameterNames[channel], sendLevel);
@@ -661,6 +679,10 @@ namespace RPGFramework.Audio.Music
             internal readonly int[]       Channels;
             internal readonly float[]     StemLevels;
             internal readonly float[]     FadeStartLevels;
+
+            // The state its stems were last sent to, for a snapshot: a stem fade under way counts as finished.
+            internal bool[] Stems;
+            internal float  StartTime;
 
             // Where the song's fades take it, and where they have got to, each a gain on every stem.
             internal float Volume;
