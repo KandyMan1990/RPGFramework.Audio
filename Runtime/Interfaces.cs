@@ -20,6 +20,7 @@ namespace RPGFramework.Audio
 
     internal interface IMusicAsset
     {
+        internal string               Name          { get; }
         internal double               LoopStartTime { get; }
         internal double               LoopEndTime   { get; }
         internal bool                 Loop          { get; }
@@ -35,7 +36,26 @@ namespace RPGFramework.Audio
 
     public interface IMusicPlayer
     {
-        Task  PlayAsync(ulong nameHash, ulong initialStemStateHash = 0, float fadeInTime = 0f);
+        /// <summary>
+        /// Plays a track, cutting whatever was playing, at <paramref name="volume" /> — see
+        /// <see cref="SetSongVolumeAsync" />.
+        /// </summary>
+        Task  PlayAsync(ulong nameHash, ulong initialStemStateHash = 0, float fadeInTime = 0f, float volume = 1f);
+
+        /// <summary>
+        /// Fades the playing track out and this one in to <paramref name="volume" /> over the same seconds, the two
+        /// sharing the music channels while both sound, so it throws when together they have more stems than there are
+        /// channels. A crossfade asked for during another cuts the track already fading out. A paused track picks up
+        /// where it was, as with <see cref="PlayAsync" />.
+        /// </summary>
+        Task  CrossfadeAsync(ulong nameHash, ulong initialStemStateHash, float seconds, float volume = 1f);
+
+        /// <summary>
+        /// Sets the playing track's own volume, 0 to 1, over <paramref name="seconds" />, zero at once. A linear gain on
+        /// its stems, under <see cref="SetVolume" />, which is the player's volume from the game's settings. Does
+        /// nothing with no track playing; the next track plays at the volume it is started with.
+        /// </summary>
+        Task  SetSongVolumeAsync(float volume, float seconds = 0f);
 
         /// <summary>
         /// Stops the track and unloads it, remembering where it was: a later <see cref="PlayAsync" /> of the same track
@@ -43,6 +63,12 @@ namespace RPGFramework.Audio
         /// </summary>
         void  Pause();
         Task  StopAsync(float fadeTime = 0.001f);
+
+        /// <summary>
+        /// Whether a track is playing: from when it is asked for, its clips still loading included, until it is stopped,
+        /// paused, or reaches its end without looping. A track fading out under a stop is not.
+        /// </summary>
+        bool  IsPlaying();
         void  ClearPausedMusic();
         void  SetMusicAssetProvider(IMusicAssetProvider provider);
         void  SetStemMixerGroups(AudioMixerGroup[]      groups);

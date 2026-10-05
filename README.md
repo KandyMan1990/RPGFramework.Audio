@@ -62,7 +62,7 @@ The package does not guard against being used before it is configured — there 
 
 The 16 channels give the option of playing music via stems instead of a bounced track, where each stem can send to a realtime reverb bus for live processing of reverb with varying send amounts per stem.
 
-A track with more stems than there are music mixer groups throws.  That is deliberate: music channels are a fixed part of setting the player up, so too few of them is a setup mistake that should fail immediately rather than quietly play the track with its top layers missing.  Sfx behaves differently — see below.
+Every song sounding at once shares those channels, one per stem, so a song can play on any of them — set every music group up the same way.  A track with more stems than there are free channels throws: one wider than the mixer, or a crossfade whose two tracks together are (see [Crossfades](#crossfades)).  That is deliberate: music channels are a fixed part of setting the player up, so too few of them is a setup mistake that should fail immediately rather than quietly play the track with its top layers missing.  Sfx behaves differently — see below.
 
 ### Stem states
 
@@ -84,20 +84,46 @@ Two things happen automatically when an asset loads, in builds as well as in the
 
 Two states sharing a name makes one of them unreachable, so the asset warns about duplicate names while authoring.
 
+### Crossfades
+
+`CrossfadeAsync` fades the playing track out and another in over the same number of seconds, both in a straight line:
+
+```csharp
+await musicPlayer.CrossfadeAsync(Fnv1a64.Hash("World Map"), Fnv1a64.Hash("Exploration"), 2f);
+```
+
+* **The two tracks share the music channels while both sound**, each stem on a free one, so nothing extra is needed in the mixer.  If the two together have more stems than there are channels, it throws, naming both tracks, the channels they need and the channels there are — sixteen channels cannot crossfade a ten-stem track into an eight-stem one.  Add music groups to the mixer and to `SetStemMixerGroups`.
+* **At most two tracks sound.**  A crossfade asked for while another is still fading a track out cuts that track.
+* The track fading out plays on at full volume until the new one's clips have loaded, so nothing dips while they load.
+* Crossfading to the track already playing does nothing, as `PlayAsync` does.  With nothing playing, it is a fade in.
+* Stem states apply to the track fading in.  Its reverb settings apply when it starts, and a different preset cuts the reverb's tail under the track fading out.
+* `StopAsync` fades out both.
+* An optional last argument is the volume it fades in to, 0 to 1 — see [Song volume](#song-volume).
+
+### Song volume
+
+Each track has a volume of its own, 0 to 1, for the game to set — quiet music in a quiet room — apart from `SetVolume`, which is the player's from the game's settings.  `PlayAsync` and `CrossfadeAsync` take one, defaulting to full, and `SetSongVolumeAsync` changes the playing track's, at once or over some seconds:
+
+```csharp
+await musicPlayer.SetSongVolumeAsync(0.25f, 2f);
+```
+
+It is a straight gain on the track's stems, and fades go to it rather than to full.  With nothing playing it does nothing, so a game that wants a level kept from one track to the next keeps it and passes it to the next `PlayAsync`, as the field does.
+
 ### Looping
 
 Music can be looped by specifying the tempo, time signature, and the start/end bar to loop. The time signature is beats per bar plus the note that gets the beat, so compound signatures such as 6/8 or 12/8 give the correct bar length rather than being approximated in 4/4. BPM is read as quarter notes per minute, which is what a DAW reports, so a 6/8 bar at 120 BPM is 1.5 seconds.
 
 Loop points are authored as bars, so changing the time signature of an existing asset moves where those bars land in the audio.  The first bar is bar 1, and the end bar must come after the start bar.  An asset marked to loop with a BPM, beats per bar, or bar range that can't produce a loop logs a warning naming the asset and plays through without looping.
 
-A track that doesn't loop costs nothing per frame — the update component is only enabled while there is a loop point to watch.
+A track that doesn't loop costs nothing per frame — the update component is only enabled while there is a loop point to watch.  `IsPlaying` says whether a track is playing: from when it is asked for, while its clips load included, until it is stopped, paused, or reaches its end without looping.
 
 ### Pause and resume
 
 Pausing music does not prevent a different track from playing. For example, pause music "Overworld", play music "Battle", then when wanting to return to "Overworld", just call `StopAsync()` then `PlayAsync(Fnv1a64.Hash("Overworld"))` and it will resume from where it was paused.
-If you want a previously paused music to start from scratch, you can call `ClearPausedMusic()` before calling play and it will ensure the track starts from the beginning.
+If you want a previously paused music to start from scratch, you can call `ClearPausedMusic()` before calling play and it will ensure the track starts from the beginning.  `CrossfadeAsync` to a paused track picks it up where it was too.
 
-Only one paused position is remembered, so pausing a second track replaces the first.  Playing something else does not discard it — the paused track stays waiting until it is played again or cleared.
+Only one paused position is remembered, so pausing a second track replaces the first.  Playing something else does not discard it — the paused track stays waiting until it is played again or cleared.  Pausing during a crossfade remembers the track fading in and stops both.
 
 ### PS1 reverb
 
@@ -128,7 +154,7 @@ Ideally, music stems should be imported with the following settings:
 
 An existing preset exists to copy/paste into the folder where music is stored to automatically apply these settings when music is imported
 
-The player loads a stem's sample data before scheduling it and releases it when the track stops, but only for clips that were imported with Preload Audio Data off.  A stem imported without its preset gets Unity's default of preload on, and the player then leaves it alone entirely — it stays resident rather than silently failing to reload.
+The player loads a stem's sample data before scheduling it and releases it when the track stops, unless a track still sounding uses the same clip, and only for clips that were imported with Preload Audio Data off.  A stem imported without its preset gets Unity's default of preload on, and the player then leaves it alone entirely — it stays resident rather than silently failing to reload.
 
 ## Sfx
 

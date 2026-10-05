@@ -60,6 +60,7 @@ namespace RPGFramework.Audio.Music
         private double m_LoopEndTime;
         private bool   m_LoopPointsValid;
 
+        string IMusicAsset.              Name          => name;
         double IMusicAsset.              LoopStartTime => m_LoopStartTime;
         double IMusicAsset.              LoopEndTime   => m_LoopEndTime;
         bool IMusicAsset.                Loop          => m_Loop && m_LoopPointsValid;
