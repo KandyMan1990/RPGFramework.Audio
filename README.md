@@ -18,7 +18,7 @@ m_SfxPlayer.Play(Fnv1a64.Hash("Sword_Hit"));
 
 Each provider indexes its list by that hash when it is enabled.  These used to be list indices, which meant inserting or reordering an entry silently repointed every caller with nothing to report it — the wrong sound just played.  A name survives reordering, and a rename fails loudly at the call site instead.  Renaming an asset is now the thing that breaks callers.
 
-Music stem states are named and hashed the same way.  `MusicAsset.NO_STATE_NAMED` (zero) means "the first state the asset lists", which is what `PlayAsync` defaults to for a caller that doesn't care about layering.
+Music stem states are named and hashed the same way.  A state hash of zero means "the first state the asset lists", which is what `PlayAsync` defaults to for a caller that doesn't care about layering.
 
 Rather than hashing string literals everywhere, both provider inspectors can generate an enum of their contents — see [Editor tooling](#editor-tooling) below.
 
@@ -32,7 +32,7 @@ The players expect a particular mixer graph, and it is worth setting up before w
 * So Music is the dry path and MusicReverbSend is the wet path — two parallel signals, not a bus and one of its sends.
 * Sfx is arranged identically, with `Sfx`, `SfxReverbSend` and `SfxTrack{N}_Send`.
 
-`Music`, `MusicReverbSend`, `Sfx`, `SfxReverbSend` and every `{GroupName}_Send` must be exposed on the mixer, and with PSX Reverb installed, `ReverbPreset` and `ReverbDepth` too (see [PS1 reverb](#ps1-reverb)).  Anything that isn't exposed logs an error naming the parameter when the player tries to read or write it.
+`Music`, `MusicReverbSend`, `Sfx`, `SfxReverbSend` and every `{GroupName}_Send` must be exposed on the mixer, and with PSX Reverb installed, `ReverbPreset` and `ReverbDepth` too (see [PS1 reverb](#ps1-reverb)).  A volume bus or reverb parameter that isn't exposed logs an error naming it when the player reads or writes it.  A `{GroupName}_Send` that isn't exposed is skipped silently, so that stem simply sends nothing to the reverb.
 
 `SetVolume` writes the same dB to both the dry bus and the reverb send bus, which keeps the dry/wet ratio constant as volume changes.  Attenuating only the dry bus would leave the reverb ringing on its own channel.
 
@@ -232,6 +232,20 @@ Hand-written string literals are easy to get wrong, so both provider inspectors 
 * **SFX Asset Provider** — *Generate class per Sfx for its Sfx event data* writes the same thing per asset instead, which keeps event names scoped to the sound they belong to.
 
 Generated files are overwritten on each run and carry a "do not modify" header.
+
+### Previewing in the inspector
+
+A music asset and an sfx asset can each be played from their inspector, below the usual fields, without entering play mode.
+
+* **Music** — *Play*, *Stop*, and *Play into the loop*, which starts four seconds before the loop's end to hear the jump back to its start without waiting for it.  A stem state dropdown and a toggle per stem switch what is audible while it plays, and the playhead shows the time and the bar, counted from 1 as the loop's bars are.
+* **Sfx** — *Play* and *Stop*, and the asset's events listed with their times, each lit once the playhead passes it.  As the player does, a looping sound re-arms its events each time round unless they fire once, and a sound that doesn't loop raises any it never reached, then `SfxComplete`, as it ends.
+
+The preview plays the stems together and loops them as the players do, but on its own, not through the mixer, so a song's reverb sends and PSX Reverb aren't heard, and it plays at the clips' own volume.  Changing the asset, or selecting something else, stops it.
+
+## Not in this version
+
+* **Music and sounds can't be loaded from asset bundles.**  A provider references its assets directly, so they ship inside the build, and content added after release can't bring its own.
+* **The players run in play mode only**, through a mixer set up as described above; the inspector preview is the way to hear an asset outside it.
 
 ## Samples
 
