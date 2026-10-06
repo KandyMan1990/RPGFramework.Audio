@@ -6,8 +6,6 @@ namespace RPGFramework.Audio.Sfx
 {
     internal class SfxReference : ISfxReference
     {
-        public const string SFX_COMPLETE = "SfxComplete";
-
         public event Action<string, ISfxReference> OnEvent;
 
         public IReadOnlyList<ISfxEventData> Events => m_PublishedEvents ??= BuildPublishedEvents();
@@ -173,7 +171,7 @@ namespace RPGFramework.Audio.Sfx
 
             RaiseUntriggeredEvents();
 
-            OnEvent?.Invoke(SFX_COMPLETE, this);
+            OnEvent?.Invoke(ISfxReference.SFX_COMPLETE, this);
 
             m_OnAllEventsCompleted(this);
         }
@@ -204,7 +202,7 @@ namespace RPGFramework.Audio.Sfx
 
             if (m_CompleteTriggerSamples >= 0)
             {
-                published.Add(new SfxEventData(SFX_COMPLETE, m_CompleteTriggerSamples, m_SampleRate));
+                published.Add(new SfxEventData(ISfxReference.SFX_COMPLETE, m_CompleteTriggerSamples, m_SampleRate));
             }
 
             return published;

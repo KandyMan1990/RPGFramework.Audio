@@ -196,7 +196,7 @@ Event times are authored in samples, the same as loop points.  `ISfxReference.Ev
 A few behaviours worth knowing:
 
 * On a looping sound, events re-arm each time it loops, unless **Remove Event Once Triggered** is ticked on that event.
-* A sound that doesn't loop raises a final `SfxReference.SFX_COMPLETE` event when it finishes, and that event appears in the `Events` list.  Looping sounds never complete, so they get neither.
+* A sound that doesn't loop raises a final `ISfxReference.SFX_COMPLETE` event when it finishes, and that event appears in the `Events` list.  Looping sounds never complete, so they get neither.
 * If a non-looping sound finishes with events that never fired, those are raised before the complete event, so nothing listening is left waiting.
 
 ### Import settings

@@ -117,6 +117,11 @@ namespace RPGFramework.Audio
 
     public interface ISfxReference
     {
+        /// <summary>
+        /// The event a sound that does not loop raises as it finishes
+        /// </summary>
+        const string SFX_COMPLETE = "SfxComplete";
+
         event Action<string, ISfxReference> OnEvent;
         IReadOnlyList<ISfxEventData>        Events { get; }
         internal ISfxAsset                  Asset  { get; }

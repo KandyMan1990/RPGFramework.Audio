@@ -127,7 +127,7 @@ namespace RPGFramework.Audio.Editor
 
             if (complete)
             {
-                m_EventNames[count - 1]   = SfxReference.SFX_COMPLETE;
+                m_EventNames[count - 1]   = ISfxReference.SFX_COMPLETE;
                 m_EventSamples[count - 1] = clip.samples;
                 m_FiresOnce[count - 1]    = true;
             }
