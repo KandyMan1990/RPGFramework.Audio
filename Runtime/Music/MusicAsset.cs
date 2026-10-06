@@ -80,7 +80,7 @@ namespace RPGFramework.Audio.Music
         /// <summary>
         /// The state names a script can use with this asset, for tooling that offers them as a choice.
         /// </summary>
-        public IEnumerable<string> StemStateNames
+        internal IEnumerable<string> StemStateNames
         {
             get
             {
