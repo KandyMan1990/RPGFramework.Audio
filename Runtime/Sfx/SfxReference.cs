@@ -106,8 +106,10 @@ namespace RPGFramework.Audio.Sfx
             {
                 int newTime = currentTime - (m_SfxAsset.LoopEnd - m_SfxAsset.LoopStart);
 
-                foreach (AudioSource source in m_AudioSources)
+                for (int i = 0; i < m_AudioSources.Length; i++)
                 {
+                    AudioSource source = m_AudioSources[i];
+
                     source.timeSamples = newTime;
                 }
 
@@ -135,8 +137,10 @@ namespace RPGFramework.Audio.Sfx
                 m_PausedAtDspTime = AudioSettings.dspTime;
             }
 
-            foreach (AudioSource audioSource in m_AudioSources)
+            for (int i = 0; i < m_AudioSources.Length; i++)
             {
+                AudioSource audioSource = m_AudioSources[i];
+
                 audioSource.Pause();
             }
         }
@@ -149,8 +153,10 @@ namespace RPGFramework.Audio.Sfx
                 m_PausedAtDspTime =  0d;
             }
 
-            foreach (AudioSource audioSource in m_AudioSources)
+            for (int i = 0; i < m_AudioSources.Length; i++)
             {
+                AudioSource audioSource = m_AudioSources[i];
+
                 audioSource.UnPause();
             }
         }

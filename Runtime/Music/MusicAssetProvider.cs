@@ -17,8 +17,10 @@ namespace RPGFramework.Audio.Music
         {
             get
             {
-                foreach (MusicAsset asset in m_MusicAssets)
+                for (int i = 0; i < m_MusicAssets.Count; i++)
                 {
+                    MusicAsset asset = m_MusicAssets[i];
+
                     if (asset == null)
                     {
                         continue;
@@ -31,8 +33,10 @@ namespace RPGFramework.Audio.Music
 
         public IEnumerable<string> StemStateNamesOf(string assetName)
         {
-            foreach (MusicAsset asset in m_MusicAssets)
+            for (int i = 0; i < m_MusicAssets.Count; i++)
             {
+                MusicAsset asset = m_MusicAssets[i];
+
                 if (asset == null || asset.name != assetName)
                 {
                     continue;
@@ -48,8 +52,10 @@ namespace RPGFramework.Audio.Music
         {
             get
             {
-                foreach (MusicAsset asset in m_MusicAssets)
+                for (int i = 0; i < m_MusicAssets.Count; i++)
                 {
+                    MusicAsset asset = m_MusicAssets[i];
+
                     if (asset == null)
                     {
                         continue;
@@ -87,8 +93,10 @@ namespace RPGFramework.Audio.Music
         {
             m_ByNameHash = new Dictionary<ulong, MusicAsset>(m_MusicAssets.Count);
 
-            foreach (MusicAsset musicAsset in m_MusicAssets)
+            for (int i = 0; i < m_MusicAssets.Count; i++)
             {
+                MusicAsset musicAsset = m_MusicAssets[i];
+
                 if (musicAsset == null)
                 {
                     continue;

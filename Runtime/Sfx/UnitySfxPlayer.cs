@@ -48,8 +48,10 @@ namespace RPGFramework.Audio.Sfx
 
         void ISfxPlayer.PauseAll()
         {
-            foreach (ISfxReference sfxReference in m_SfxReferences)
+            for (int i = 0; i < m_SfxReferences.Count; i++)
             {
+                ISfxReference sfxReference = m_SfxReferences[i];
+
                 m_This.Pause(sfxReference);
             }
         }
@@ -61,8 +63,10 @@ namespace RPGFramework.Audio.Sfx
 
         void ISfxPlayer.ResumeAll()
         {
-            foreach (ISfxReference sfxReference in m_SfxReferences)
+            for (int i = 0; i < m_SfxReferences.Count; i++)
             {
+                ISfxReference sfxReference = m_SfxReferences[i];
+
                 m_This.Resume(sfxReference);
             }
         }
@@ -333,8 +337,10 @@ namespace RPGFramework.Audio.Sfx
 
         private void UnloadUnusedClips(ISfxAsset asset)
         {
-            foreach (IStem stem in asset.Tracks)
+            for (int i = 0; i < asset.Tracks.Count; i++)
             {
+                IStem stem = asset.Tracks[i];
+
                 if (stem.Clip.preloadAudioData || IsClipInUse(stem.Clip))
                 {
                     continue;
@@ -348,8 +354,12 @@ namespace RPGFramework.Audio.Sfx
         {
             for (int i = 0; i < m_SfxReferences.Count; i++)
             {
-                foreach (IStem stem in m_SfxReferences[i].Asset.Tracks)
+                IReadOnlyList<IStem> stems = m_SfxReferences[i].Asset.Tracks;
+
+                for (int j = 0; j < stems.Count; j++)
                 {
+                    IStem stem = stems[j];
+
                     if (ReferenceEquals(stem.Clip, clip))
                     {
                         return true;

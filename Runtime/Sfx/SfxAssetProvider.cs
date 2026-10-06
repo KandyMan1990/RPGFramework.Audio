@@ -17,8 +17,10 @@ namespace RPGFramework.Audio.Sfx
         {
             get
             {
-                foreach (SfxAsset asset in m_SfxAssets)
+                for (int i = 0; i < m_SfxAssets.Count; i++)
                 {
+                    SfxAsset asset = m_SfxAssets[i];
+
                     if (asset == null)
                     {
                         continue;
@@ -53,8 +55,10 @@ namespace RPGFramework.Audio.Sfx
         {
             m_ByNameHash = new Dictionary<ulong, SfxAsset>(m_SfxAssets.Count);
 
-            foreach (SfxAsset sfxAsset in m_SfxAssets)
+            for (int i = 0; i < m_SfxAssets.Count; i++)
             {
+                SfxAsset sfxAsset = m_SfxAssets[i];
+
                 if (sfxAsset == null)
                 {
                     continue;

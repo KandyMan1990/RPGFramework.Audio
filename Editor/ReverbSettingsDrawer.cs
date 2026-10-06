@@ -80,8 +80,10 @@ namespace RPGFramework.Audio.Editor
             value.style.flexGrow = 1f;
             row.Add(value);
 
-            foreach (VisualElement element in after)
+            for (int i = 0; i < after.Length; i++)
             {
+                VisualElement element = after[i];
+
                 row.Add(element);
             }
 

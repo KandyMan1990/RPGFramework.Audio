@@ -89,8 +89,10 @@ namespace RPGFramework.Audio.Music
                     yield break;
                 }
 
-                foreach (StemState state in m_States)
+                for (int i = 0; i < m_States.Count; i++)
                 {
+                    StemState state = m_States[i];
+
                     yield return state.Name;
                 }
             }
@@ -145,8 +147,10 @@ namespace RPGFramework.Audio.Music
                 return;
             }
 
-            foreach (StemState state in m_States)
+            for (int i = 0; i < m_States.Count; i++)
             {
+                StemState state = m_States[i];
+
                 state.MatchStemCount(m_Tracks.Count);
             }
 
@@ -157,8 +161,10 @@ namespace RPGFramework.Audio.Music
         {
             m_StatesByNameHash = new Dictionary<ulong, StemState>(m_States.Count);
 
-            foreach (StemState state in m_States)
+            for (int i = 0; i < m_States.Count; i++)
             {
+                StemState state = m_States[i];
+
                 m_StatesByNameHash[Fnv1a64.Hash(state.Name)] = state;
             }
         }

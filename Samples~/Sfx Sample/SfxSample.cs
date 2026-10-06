@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using RPGFramework.Audio.Sfx;
 using RPGFramework.Hashing;
 using UnityEngine;
@@ -94,8 +95,12 @@ namespace RPGFramework.Audio.Sfx_Sample
             ISfxReference sfxReference = m_SfxPlayer.Play(Fnv1a64.Hash(LOOPING_SOUND));
 
             // see when each event will be triggered in seconds
-            foreach (ISfxEventData sfxEventData in sfxReference.Events)
+            IReadOnlyList<ISfxEventData> events = sfxReference.Events;
+
+            for (int i = 0; i < events.Count; i++)
             {
+                ISfxEventData sfxEventData = events[i];
+
                 Debug.Log($"{sfxEventData.EventName} {sfxEventData.EventTriggerTime}");
             }
 

@@ -24,8 +24,10 @@ namespace RPGFramework.Audio.Music
         {
             int free = 0;
 
-            foreach (string holder in m_Holders)
+            for (int i = 0; i < m_Holders.Length; i++)
             {
+                string holder = m_Holders[i];
+
                 if (holder == null)
                 {
                     free++;
@@ -56,8 +58,10 @@ namespace RPGFramework.Audio.Music
 
         internal void Free(int[] channels)
         {
-            foreach (int channel in channels)
+            for (int i = 0; i < channels.Length; i++)
             {
+                int channel = channels[i];
+
                 m_Holders[channel] = null;
             }
         }
@@ -69,8 +73,10 @@ namespace RPGFramework.Audio.Music
             List<string> holders = new List<string>();
             List<int>    held    = new List<int>();
 
-            foreach (string holder in m_Holders)
+            for (int i = 0; i < m_Holders.Length; i++)
             {
+                string holder = m_Holders[i];
+
                 if (holder == null)
                 {
                     continue;

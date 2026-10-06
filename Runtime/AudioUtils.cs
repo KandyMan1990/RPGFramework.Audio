@@ -29,8 +29,10 @@ namespace RPGFramework.Audio
         {
             float db = PercentToDb(percent);
 
-            foreach (string busName in busNames)
+            for (int i = 0; i < busNames.Length; i++)
             {
+                string busName = busNames[i];
+
                 SetParameter(mixer, busName, db);
             }
         }

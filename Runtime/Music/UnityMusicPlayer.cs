@@ -224,8 +224,10 @@ namespace RPGFramework.Audio.Music
 
         void IAudioUpdatable.Update()
         {
-            foreach (Song song in m_Sounding)
+            for (int i = 0; i < m_Sounding.Count; i++)
             {
+                Song song = m_Sounding[i];
+
                 if (ChecksLoop(song))
                 {
                     LoopIfPastEnd(song);
@@ -264,8 +266,10 @@ namespace RPGFramework.Audio.Music
 
             double newTime = currentTime - (song.Asset.LoopEndTime - song.Asset.LoopStartTime);
 
-            foreach (int channel in song.Channels)
+            for (int i = 0; i < song.Channels.Length; i++)
             {
+                int channel = song.Channels[i];
+
                 AudioSource source = m_Sources[channel];
 
                 if (source.isPlaying)
@@ -567,16 +571,20 @@ namespace RPGFramework.Audio.Music
                 m_Playing = null;
             }
 
-            foreach (int channel in song.Channels)
+            for (int i = 0; i < song.Channels.Length; i++)
             {
+                int channel = song.Channels[i];
+
                 m_Sources[channel].Stop();
                 m_Sources[channel].clip = null;
             }
 
             m_ChannelPool.Free(song.Channels);
 
-            foreach (IStem stem in song.Asset.Tracks)
+            for (int i = 0; i < song.Asset.Tracks.Count; i++)
             {
+                IStem stem = song.Asset.Tracks[i];
+
                 if (stem.Clip.preloadAudioData || IsClipSounding(stem.Clip))
                 {
                     continue;
@@ -591,10 +599,14 @@ namespace RPGFramework.Audio.Music
         // Two songs can share clips, and one still sounding needs them loaded.
         private bool IsClipSounding(AudioClip clip)
         {
-            foreach (Song song in m_Sounding)
+            for (int i = 0; i < m_Sounding.Count; i++)
             {
-                foreach (IStem stem in song.Asset.Tracks)
+                Song song = m_Sounding[i];
+
+                for (int j = 0; j < song.Asset.Tracks.Count; j++)
                 {
+                    IStem stem = song.Asset.Tracks[j];
+
                     if (stem.Clip == clip)
                     {
                         return true;
@@ -614,8 +626,10 @@ namespace RPGFramework.Audio.Music
         {
             bool registered = false;
 
-            foreach (Song song in m_Sounding)
+            for (int i = 0; i < m_Sounding.Count; i++)
             {
+                Song song = m_Sounding[i];
+
                 registered |= ChecksLoop(song);
             }
 
