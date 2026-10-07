@@ -34,7 +34,7 @@ namespace RPGFramework.Audio
         internal IMusicAsset GetMusicAsset(ulong nameHash);
     }
 
-    public interface IMusicPlayer
+    public interface IMusicPlayer : IDisposable
     {
         /// <summary>
         /// Plays a track, cutting whatever was playing, at <paramref name="volume" /> — see
@@ -137,7 +137,7 @@ namespace RPGFramework.Audio
         internal ISfxAsset GetSfxAsset(ulong nameHash);
     }
 
-    public interface ISfxPlayer
+    public interface ISfxPlayer : IDisposable
     {
         ISfxReference Play(ulong          nameHash);
         void          Pause(ISfxReference sfxReference);

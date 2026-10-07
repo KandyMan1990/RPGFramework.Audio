@@ -32,7 +32,7 @@ The players expect a particular mixer graph, and it is worth setting up before w
 * So Music is the dry path and MusicReverbSend is the wet path — two parallel signals, not a bus and one of its sends.
 * Sfx is arranged identically, with `Sfx`, `SfxReverbSend` and `SfxTrack{N}_Send`.
 
-`Music`, `MusicReverbSend`, `Sfx`, `SfxReverbSend` and every `{GroupName}_Send` must be exposed on the mixer, and with PSX Reverb installed, `ReverbPreset` and `ReverbDepth` too (see [PS1 reverb](#ps1-reverb)).  A volume bus or reverb parameter that isn't exposed logs an error naming it when the player reads or writes it.  A `{GroupName}_Send` that isn't exposed is skipped silently, so that stem simply sends nothing to the reverb.
+`Music`, `MusicReverbSend`, `Sfx`, `SfxReverbSend` and every `{GroupName}_Send` must be exposed on the mixer, and with PSX Reverb installed, `ReverbPreset` and `ReverbDepth` too (see [PSX reverb](#psx-reverb)).  A volume bus or reverb parameter that isn't exposed logs an error naming it when the player reads or writes it.  A `{GroupName}_Send` that isn't exposed is skipped silently, so that stem simply sends nothing to the reverb.
 
 `SetVolume` writes the same dB to both the dry bus and the reverb send bus, which keeps the dry/wet ratio constant as volume changes.  Attenuating only the dry bus would leave the reverb ringing on its own channel.
 
@@ -54,7 +54,7 @@ sfxPlayer.SetStemMixerGroups(m_SfxMixerGroups);
 
 `SetStemMixerGroups` is what builds the player: it creates a `MusicPlayer` or `SfxPlayer` GameObject marked `DontDestroyOnLoad`, one child AudioSource per mixer group named after that group, and the component that ticks the player each frame.  Nothing works before it is called, and calling it again rebuilds everything.
 
-Both players implement `IDisposable` explicitly, so disposing means casting: `((IDisposable)musicPlayer).Dispose()`.  That stops everything playing and destroys the player GameObject.
+`IMusicPlayer` and `ISfxPlayer` are both `IDisposable`: `musicPlayer.Dispose()` stops everything playing and destroys the player GameObject.
 
 The package does not guard against being used before it is configured — there are no null-provider or mixer-group checks.  Those always pass once it is wired up correctly, and a mistake fails on the first frame of the first run.
 
@@ -138,7 +138,7 @@ await musicPlayer.ResumeAsync(overworld, 1f);
 * Pausing during a crossfade keeps the track fading in and stops both.
 * A paused track's clips are unloaded, and resuming loads them again.
 
-### PS1 reverb
+### PSX reverb
 
 With [PSX Reverb](https://github.com/KandyMan1990/RPGFramework.PSXReverb) (`com.rpgframework.psxreverb`) installed on the Reverb bus, a music asset gains a **Reverb** group: an optional preset and an optional volume, each applied when the song starts, including when a paused song resumes.  A setting left unticked leaves the reverb as the last song or script set it.  The volume can be set with its 0 to 1 slider or as PSX Reverb's depth, 0 to 127, and each row has a **Default** button that puts back PSX Reverb's own: studio C, and depth 40.
 
@@ -210,7 +210,7 @@ Ideally, sfx stems should be imported with the following settings:
 
 An existing preset exists to copy/paste into the folder where sfx are stored to automatically apply these settings when sfx are imported
 
-ADPCM is roughly 3.5:1 against PCM, trivially cheap to decode, and the format the PS1 SPU itself used.  With decompress on load the saving is in build size rather than memory, since the clip is decompressed when it loads either way; compressed in memory with ADPCM is the lower-RAM alternative if a module's resident set is still too large.
+ADPCM is roughly 3.5:1 against PCM, trivially cheap to decode, and the format the PSX SPU itself used.  With decompress on load the saving is in build size rather than memory, since the clip is decompressed when it loads either way; compressed in memory with ADPCM is the lower-RAM alternative if a module's resident set is still too large.
 
 Preload audio data must be off for the player to manage residency at all, as described under [Voices](#voices) above.  Load In Background stays off deliberately: the player loads a clip immediately before scheduling it, and that load only blocks until the data is ready while this is unchecked.  Turning it on would let a sound start before its samples had arrived.
 

@@ -6,11 +6,17 @@ namespace RPGFramework.Audio.Sfx
 {
     internal class SfxReference : ISfxReference
     {
-        public event Action<string, ISfxReference> OnEvent;
+        event Action<string, ISfxReference> ISfxReference.OnEvent
+        {
+            add    => m_OnEvent += value;
+            remove => m_OnEvent -= value;
+        }
 
-        public IReadOnlyList<ISfxEventData> Events => m_PublishedEvents ??= BuildPublishedEvents();
+        IReadOnlyList<ISfxEventData> ISfxReference.Events => m_PublishedEvents ??= BuildPublishedEvents();
 
         ISfxAsset ISfxReference.Asset => m_SfxAsset;
+
+        private Action<string, ISfxReference> m_OnEvent;
 
         private readonly AudioSource[]                m_AudioSources;
         private readonly IReadOnlyList<ISfxEventData> m_Events;
@@ -77,7 +83,7 @@ namespace RPGFramework.Audio.Sfx
 
                 m_Triggered[i] = true;
 
-                OnEvent?.Invoke(sfxEventData.EventName, this);
+                m_OnEvent?.Invoke(sfxEventData.EventName, this);
             }
 
             if (m_CompleteTriggerSamples < 0 || m_Completed)
@@ -177,7 +183,7 @@ namespace RPGFramework.Audio.Sfx
 
             RaiseUntriggeredEvents();
 
-            OnEvent?.Invoke(ISfxReference.SFX_COMPLETE, this);
+            m_OnEvent?.Invoke(ISfxReference.SFX_COMPLETE, this);
 
             m_OnAllEventsCompleted(this);
         }
@@ -193,7 +199,7 @@ namespace RPGFramework.Audio.Sfx
 
                 m_Triggered[i] = true;
 
-                OnEvent?.Invoke(m_Events[i].EventName, this);
+                m_OnEvent?.Invoke(m_Events[i].EventName, this);
             }
         }
 

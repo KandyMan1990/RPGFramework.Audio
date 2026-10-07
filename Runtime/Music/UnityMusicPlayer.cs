@@ -8,7 +8,7 @@ using UnityEngine.Audio;
 
 namespace RPGFramework.Audio.Music
 {
-    public class UnityMusicPlayer : IMusicPlayer, IAudioUpdatable, IDisposable
+    public class UnityMusicPlayer : IMusicPlayer, IAudioUpdatable
     {
         private const string MUSIC_BUS_NAME         = "Music";
         private const string MUSIC_REVERB_SEND      = "MusicReverbSend";
