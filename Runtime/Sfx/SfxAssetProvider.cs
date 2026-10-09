@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using RPGFramework.Hashing;
 using UnityEngine;
@@ -8,7 +9,7 @@ namespace RPGFramework.Audio.Sfx
     public class SfxAssetProvider : ScriptableObject, ISfxAssetProvider
     {
         [SerializeField]
-        private List<SfxAsset> m_SfxAssets = new List<SfxAsset>();
+        private SfxAsset[] m_SfxAssets = Array.Empty<SfxAsset>();
 
         private Dictionary<ulong, SfxAsset> m_ByNameHash;
 
@@ -17,7 +18,7 @@ namespace RPGFramework.Audio.Sfx
         {
             get
             {
-                for (int i = 0; i < m_SfxAssets.Count; i++)
+                for (int i = 0; i < m_SfxAssets.Length; i++)
                 {
                     SfxAsset asset = m_SfxAssets[i];
 
@@ -53,9 +54,9 @@ namespace RPGFramework.Audio.Sfx
 
         private void BuildLookup()
         {
-            m_ByNameHash = new Dictionary<ulong, SfxAsset>(m_SfxAssets.Count);
+            m_ByNameHash = new Dictionary<ulong, SfxAsset>(m_SfxAssets.Length);
 
-            for (int i = 0; i < m_SfxAssets.Count; i++)
+            for (int i = 0; i < m_SfxAssets.Length; i++)
             {
                 SfxAsset sfxAsset = m_SfxAssets[i];
 

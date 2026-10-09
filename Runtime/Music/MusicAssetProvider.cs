@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using RPGFramework.Hashing;
 using UnityEngine;
 
@@ -8,7 +9,7 @@ namespace RPGFramework.Audio.Music
     public class MusicAssetProvider : ScriptableObject, IMusicAssetProvider
     {
         [SerializeField]
-        private List<MusicAsset> m_MusicAssets = new List<MusicAsset>();
+        private MusicAsset[] m_MusicAssets = Array.Empty<MusicAsset>();
 
         private Dictionary<ulong, MusicAsset> m_ByNameHash;
 
@@ -17,7 +18,7 @@ namespace RPGFramework.Audio.Music
         {
             get
             {
-                for (int i = 0; i < m_MusicAssets.Count; i++)
+                for (int i = 0; i < m_MusicAssets.Length; i++)
                 {
                     MusicAsset asset = m_MusicAssets[i];
 
@@ -33,7 +34,7 @@ namespace RPGFramework.Audio.Music
 
         public IEnumerable<string> StemStateNamesOf(string assetName)
         {
-            for (int i = 0; i < m_MusicAssets.Count; i++)
+            for (int i = 0; i < m_MusicAssets.Length; i++)
             {
                 MusicAsset asset = m_MusicAssets[i];
 
@@ -52,7 +53,7 @@ namespace RPGFramework.Audio.Music
         {
             get
             {
-                for (int i = 0; i < m_MusicAssets.Count; i++)
+                for (int i = 0; i < m_MusicAssets.Length; i++)
                 {
                     MusicAsset asset = m_MusicAssets[i];
 
@@ -91,9 +92,9 @@ namespace RPGFramework.Audio.Music
 
         private void BuildLookup()
         {
-            m_ByNameHash = new Dictionary<ulong, MusicAsset>(m_MusicAssets.Count);
+            m_ByNameHash = new Dictionary<ulong, MusicAsset>(m_MusicAssets.Length);
 
-            for (int i = 0; i < m_MusicAssets.Count; i++)
+            for (int i = 0; i < m_MusicAssets.Length; i++)
             {
                 MusicAsset musicAsset = m_MusicAssets[i];
 

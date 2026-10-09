@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -7,9 +8,9 @@ namespace RPGFramework.Audio.Sfx
     public class SfxAsset : ScriptableObject, ISfxAsset
     {
         [SerializeField]
-        private List<Stem> m_Tracks = new List<Stem>();
+        private Stem[] m_Tracks = Array.Empty<Stem>();
         [SerializeField]
-        private List<SfxEventData> m_Events = new List<SfxEventData>();
+        private SfxEventData[] m_Events = Array.Empty<SfxEventData>();
         [SerializeField]
         private bool m_Loop;
         [SerializeField]

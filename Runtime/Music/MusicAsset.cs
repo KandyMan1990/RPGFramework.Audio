@@ -41,10 +41,10 @@ namespace RPGFramework.Audio.Music
         private bool m_Loop;
 
         [SerializeField]
-        private List<Stem> m_Tracks;
+        private Stem[] m_Tracks;
 
         [SerializeField]
-        private List<StemState> m_States;
+        private StemState[] m_States;
 
         // Kept whether or not PSX Reverb is installed, so a song's settings survive the package being removed and added
         // back; Unity would drop them on the next save of a field compiled out. Shown only when it is installed.
@@ -89,7 +89,7 @@ namespace RPGFramework.Audio.Music
                     yield break;
                 }
 
-                for (int i = 0; i < m_States.Count; i++)
+                for (int i = 0; i < m_States.Length; i++)
                 {
                     StemState state = m_States[i];
 
@@ -120,12 +120,12 @@ namespace RPGFramework.Audio.Music
                 return;
             }
 
-            if (m_StatesByNameHash.Count == m_States.Count)
+            if (m_StatesByNameHash.Count == m_States.Length)
             {
                 return;
             }
 
-            Debug.LogWarning($"{nameof(MusicAsset)} [{name}] has {m_States.Count} stem states but only {m_StatesByNameHash.Count} distinct names, so at least one can never be selected. Give every state its own name");
+            Debug.LogWarning($"{nameof(MusicAsset)} [{name}] has {m_States.Length} stem states but only {m_StatesByNameHash.Count} distinct names, so at least one can never be selected. Give every state its own name");
         }
 #endif
 
@@ -136,22 +136,20 @@ namespace RPGFramework.Audio.Music
                 return;
             }
 
-            m_States ??= new List<StemState>();
-
-            if (m_States.Count == 0)
+            if (m_States == null || m_States.Length == 0)
             {
-                m_States.Add(StemState.CreateAllStemsOn(m_Tracks.Count));
+                m_States = new[] { StemState.CreateAllStemsOn(m_Tracks.Length) };
 
                 BuildStateLookup();
 
                 return;
             }
 
-            for (int i = 0; i < m_States.Count; i++)
+            for (int i = 0; i < m_States.Length; i++)
             {
                 StemState state = m_States[i];
 
-                state.MatchStemCount(m_Tracks.Count);
+                state.MatchStemCount(m_Tracks.Length);
             }
 
             BuildStateLookup();
@@ -159,9 +157,9 @@ namespace RPGFramework.Audio.Music
 
         private void BuildStateLookup()
         {
-            m_StatesByNameHash = new Dictionary<ulong, StemState>(m_States.Count);
+            m_StatesByNameHash = new Dictionary<ulong, StemState>(m_States.Length);
 
-            for (int i = 0; i < m_States.Count; i++)
+            for (int i = 0; i < m_States.Length; i++)
             {
                 StemState state = m_States[i];
 

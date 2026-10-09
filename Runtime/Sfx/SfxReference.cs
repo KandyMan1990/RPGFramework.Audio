@@ -205,16 +205,17 @@ namespace RPGFramework.Audio.Sfx
 
         private IReadOnlyList<ISfxEventData> BuildPublishedEvents()
         {
-            List<ISfxEventData> published = new List<ISfxEventData>(m_Events.Count + 1);
+            bool            hasComplete = m_CompleteTriggerSamples >= 0;
+            ISfxEventData[] published   = new ISfxEventData[m_Events.Count + (hasComplete ? 1 : 0)];
 
             for (int i = 0; i < m_Events.Count; i++)
             {
-                published.Add(new SfxEventData(m_Events[i], m_SampleRate));
+                published[i] = new SfxEventData(m_Events[i], m_SampleRate);
             }
 
-            if (m_CompleteTriggerSamples >= 0)
+            if (hasComplete)
             {
-                published.Add(new SfxEventData(ISfxReference.SFX_COMPLETE, m_CompleteTriggerSamples, m_SampleRate));
+                published[m_Events.Count] = new SfxEventData(ISfxReference.SFX_COMPLETE, m_CompleteTriggerSamples, m_SampleRate);
             }
 
             return published;
