@@ -12,11 +12,17 @@ namespace RPGFramework.Audio.Music
     {
         private const string MUSIC_BUS_NAME         = "Music";
         private const string MUSIC_REVERB_SEND      = "MusicReverbSend";
+        private const string MUSIC_ECHO             = "MusicEcho";
         private const string MUSIC_GAME_OBJECT_NAME = "MusicPlayer";
         private const string REVERB_PRESET          = "ReverbPreset";
         private const string REVERB_DEPTH           = "ReverbDepth";
+        private const string ECHO_DELAY             = "EchoDelay";
+        private const string ECHO_DECAY             = "EchoDecay";
 
-        private static readonly string[] VOLUME_BUS_NAMES = { MUSIC_BUS_NAME, MUSIC_REVERB_SEND };
+        // A change of delay smaller than this is not worth a write.
+        private const float ECHO_DELAY_TOLERANCE_MS = 0.5f;
+
+        private static readonly string[] VOLUME_BUS_NAMES = { MUSIC_BUS_NAME, MUSIC_REVERB_SEND, MUSIC_ECHO };
 
         private const ulong NO_MUSIC = 0;
 
@@ -32,6 +38,7 @@ namespace RPGFramework.Audio.Music
         private AudioMixer              m_AudioMixer;
         private CancellationTokenSource m_CancellationTokenSource;
         private string[]                m_SendParameterNames;
+        private string[]                m_EchoSendParameterNames;
         private bool                    m_RegisteredForUpdate;
         private bool                    m_Disposed;
         private GameObject              m_PlayerObject;
@@ -167,7 +174,8 @@ namespace RPGFramework.Audio.Music
             m_AudioMixer         = groups[0].audioMixer;
             m_ChannelPool        = new MusicChannelPool(groups.Length);
             m_Sources            = new AudioSource[groups.Length];
-            m_SendParameterNames = new string[groups.Length];
+            m_SendParameterNames     = new string[groups.Length];
+            m_EchoSendParameterNames = new string[groups.Length];
 
             DestroyPlayerObject();
 
@@ -184,7 +192,8 @@ namespace RPGFramework.Audio.Music
                 m_Sources[i]                       = go.AddComponent<AudioSource>();
                 m_Sources[i].outputAudioMixerGroup = groups[i];
 
-                m_SendParameterNames[i] = $"{groups[i].name}_Send";
+                m_SendParameterNames[i]     = $"{groups[i].name}_Send";
+                m_EchoSendParameterNames[i] = $"{groups[i].name}_EchoSend";
             }
         }
 
@@ -232,6 +241,11 @@ namespace RPGFramework.Audio.Music
                 {
                     LoopIfPastEnd(song);
                 }
+            }
+
+            if (FollowsTempo(m_Playing))
+            {
+                ApplyEchoDelay(m_Playing, m_Sources[m_Playing.Channels[0]].time);
             }
         }
 
@@ -501,6 +515,9 @@ namespace RPGFramework.Audio.Music
                 float sendLevel = AudioUtils.PercentToDb(tracks[i].ReverbSendLevel);
                 m_AudioMixer.SetFloat(m_SendParameterNames[channel], sendLevel);
 
+                float echoSendLevel = AudioUtils.PercentToDb(tracks[i].EchoSendLevel);
+                m_AudioMixer.SetFloat(m_EchoSendParameterNames[channel], echoSendLevel);
+
                 source.PlayScheduled(scheduledStartTime);
             }
 
@@ -509,7 +526,8 @@ namespace RPGFramework.Audio.Music
 
             ApplyStemVolumes(song);
             ApplySongReverb(song.Asset.Reverb);
-            UpdateLoopRegistration();
+            ApplySongEcho(song);
+            UpdateTickRegistration();
 
             return true;
         }
@@ -525,6 +543,35 @@ namespace RPGFramework.Audio.Music
             {
                 m_This.SetReverbVolume(reverb.Volume);
             }
+        }
+
+        private void ApplySongEcho(Song song)
+        {
+            EchoSettings echo = song.Asset.Echo;
+
+            if (echo.Timing == EchoTiming.None)
+            {
+                return;
+            }
+
+            AudioUtils.SetParameter(m_AudioMixer, ECHO_DECAY, echo.Decay);
+
+            song.EchoDelay = -1f;
+            ApplyEchoDelay(song, song.StartTime);
+        }
+
+        // A note length's delay changes with the tempo; written only when it has.
+        private void ApplyEchoDelay(Song song, double seconds)
+        {
+            float delay = song.Asset.GetEchoDelayMilliseconds(seconds);
+
+            if (Math.Abs(delay - song.EchoDelay) < ECHO_DELAY_TOLERANCE_MS)
+            {
+                return;
+            }
+
+            song.EchoDelay = delay;
+            AudioUtils.SetParameter(m_AudioMixer, ECHO_DELAY, delay);
         }
 
         // The exposed parameters are PSX Reverb's, so a game without it has none to write.
@@ -593,7 +640,7 @@ namespace RPGFramework.Audio.Music
                 stem.Clip.UnloadAudioData();
             }
 
-            UpdateLoopRegistration();
+            UpdateTickRegistration();
         }
 
         // Two songs can share clips, and one still sounding needs them loaded.
@@ -622,9 +669,15 @@ namespace RPGFramework.Audio.Music
             return song.Scheduled && song.Asset.Loop;
         }
 
-        private void UpdateLoopRegistration()
+        // The song playing owns the echo; one fading out under it no longer moves it.
+        private bool FollowsTempo(Song song)
         {
-            bool registered = false;
+            return song != null && song == m_Playing && song.Scheduled && !song.Stopped && song.Asset.EchoFollowsTempo;
+        }
+
+        private void UpdateTickRegistration()
+        {
+            bool registered = FollowsTempo(m_Playing);
 
             for (int i = 0; i < m_Sounding.Count; i++)
             {
@@ -703,6 +756,9 @@ namespace RPGFramework.Audio.Music
             internal float MasterFade;
             internal bool  Scheduled;
             internal bool  Stopped;
+
+            // The echo delay last written for it, so a section that does not change it costs no write.
+            internal float EchoDelay;
 
             // Each master fade takes the next id, so one still running knows a later one has taken over.
             internal int MasterFadeId;

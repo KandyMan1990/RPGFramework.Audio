@@ -298,8 +298,8 @@ AudioMixerGroupController:
   m_Send: 00000000000000000000000000000000
   m_Effects:
   - {fileID: 1214918135170684224}
-  - {fileID: -3701676738356023793}
   - {fileID: -4463394244608920768}
+  - {fileID: -3701676738356023793}
   m_UserColorIndex: 0
   m_Mute: 0
   m_Solo: 0
@@ -949,7 +949,7 @@ AudioMixerController:
   m_ExposedParameters:
   - guid: 3cda3a09a35c2a04e877971ca9795db1
     name: Music
-  - guid: c2f6d70dd3dcda7469c9a5902155ee01
+  - guid: adc1f1814e1ee9741a83046d2102dce7
     name: MusicReverbSend
   - guid: 6246e9a5f647e0a4daa8250e91355f89
     name: MusicTrack0_Send
@@ -985,7 +985,7 @@ AudioMixerController:
     name: MusicTrack9_Send
   - guid: 50663971ddeab6444b733794e016ec7c
     name: Sfx
-  - guid: 2983480d556944b42a9e45d216d7fe8a
+  - guid: 0b4e9df826d3edf46aad440212619049
     name: SfxReverbSend
   - guid: 38be6cfd79853134fa31521c44e7511b
     name: SfxTrack0_Send
@@ -1127,6 +1127,8 @@ AudioMixerSnapshotController:
     0b4e9df826d3edf46aad440212619049: 0
     3cda3a09a35c2a04e877971ca9795db1: 0
     1fe90bcc562628141bd7c08ffd94c4ef: -2000
+    c2f6d70dd3dcda7469c9a5902155ee01: -80
+    2983480d556944b42a9e45d216d7fe8a: -80
     0b1d8efeb9c22644a8f8be3544ac2d96: 0.9
     1835dabf480349642a91dc140b2213d3: 4000
   m_TransitionOverrides: {}
@@ -1529,8 +1531,8 @@ AudioMixerGroupController:
   m_Send: 00000000000000000000000000000000
   m_Effects:
   - {fileID: 6494415528304090919}
-  - {fileID: 7818725625016474729}
   - {fileID: -8568010311161204412}
+  - {fileID: 7818725625016474729}
   m_UserColorIndex: 0
   m_Mute: 0
   m_Solo: 0

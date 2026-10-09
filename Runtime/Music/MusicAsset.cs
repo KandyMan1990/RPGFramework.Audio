@@ -50,6 +50,9 @@ namespace RPGFramework.Audio.Music
 #endif
         private ReverbSettings m_Reverb = new ReverbSettings();
 
+        [SerializeField]
+        private EchoSettings m_Echo = new EchoSettings();
+
         private Dictionary<ulong, StemState> m_StatesByNameHash;
 
         private double m_LoopStartTime;
@@ -62,6 +65,18 @@ namespace RPGFramework.Audio.Music
         bool IMusicAsset.                Loop          => m_Loop && m_LoopPointsValid;
         IReadOnlyList<IStem> IMusicAsset.Tracks        => m_Tracks;
         ReverbSettings IMusicAsset.      Reverb        => m_Reverb;
+        EchoSettings IMusicAsset.        Echo          => m_Echo;
+
+        bool IMusicAsset.EchoFollowsTempo => m_Echo.Timing == EchoTiming.NoteLength && m_Sections != null && m_Sections.Length > 1;
+
+        float IMusicAsset.GetEchoDelayMilliseconds(double seconds)
+        {
+            // A song whose sections cannot say has warned already; its echo falls back to 120 BPM rather than nothing.
+            double secondsPerQuarterNote = TryFindSection(seconds, out TempoSection section, out _) ? section.SecondsPerQuarterNote : 0.5;
+            float  delay                 = m_Echo.GetDelayMilliseconds(secondsPerQuarterNote);
+
+            return delay;
+        }
 
         bool[] IMusicAsset.GetStemsForState(ulong stateNameHash)
         {
@@ -108,32 +123,11 @@ namespace RPGFramework.Audio.Music
         /// </summary>
         internal bool TryGetBar(double seconds, out int bar)
         {
-            bar = 0;
+            bool found = TryFindSection(seconds, out TempoSection section, out double sectionStart);
 
-            if (FindSectionProblem() != null)
-            {
-                return false;
-            }
+            bar = found ? section.StartBar + (int)((seconds - sectionStart) / section.SecondsPerBar) : 0;
 
-            double sectionStart = 0.0;
-
-            for (int i = 0; i < m_Sections.Length; i++)
-            {
-                TempoSection section = m_Sections[i];
-                bool         isLast  = i == m_Sections.Length - 1;
-                double       length  = isLast ? double.MaxValue : (m_Sections[i + 1].StartBar - section.StartBar) * section.SecondsPerBar;
-
-                if (seconds < sectionStart + length)
-                {
-                    bar = section.StartBar + (int)((seconds - sectionStart) / section.SecondsPerBar);
-
-                    return true;
-                }
-
-                sectionStart += length;
-            }
-
-            return false;
+            return found;
         }
 
         /// <summary>
@@ -266,6 +260,38 @@ namespace RPGFramework.Audio.Music
             }
 
             return null;
+        }
+
+        /// <summary>
+        /// The section <paramref name="seconds" /> into the song is in, and when it starts. False when the sections cannot
+        /// say.
+        /// </summary>
+        private bool TryFindSection(double seconds, out TempoSection section, out double sectionStart)
+        {
+            section      = null;
+            sectionStart = 0.0;
+
+            if (FindSectionProblem() != null)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < m_Sections.Length; i++)
+            {
+                section = m_Sections[i];
+
+                bool   isLast = i == m_Sections.Length - 1;
+                double length = isLast ? double.MaxValue : (m_Sections[i + 1].StartBar - section.StartBar) * section.SecondsPerBar;
+
+                if (seconds < sectionStart + length)
+                {
+                    return true;
+                }
+
+                sectionStart += length;
+            }
+
+            return true;
         }
 
         /// <summary>

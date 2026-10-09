@@ -37,13 +37,14 @@ namespace RPGFramework.Audio.Music
 
         internal bool HasTempo => m_BPM > 0f && m_BeatsPerBar > 0 && Enum.IsDefined(typeof(NoteValue), m_BeatUnit);
 
+        internal double SecondsPerQuarterNote => 60.0 / m_BPM;
+
         internal double SecondsPerBar
         {
             get
             {
-                double secondsPerQuarterNote = 60.0 / m_BPM;
-                double secondsPerBeat        = 4.0 / (int)m_BeatUnit * secondsPerQuarterNote;
-                double secondsPerBar         = m_BeatsPerBar * secondsPerBeat;
+                double secondsPerBeat = 4.0 / (int)m_BeatUnit * SecondsPerQuarterNote;
+                double secondsPerBar  = m_BeatsPerBar * secondsPerBeat;
 
                 return secondsPerBar;
             }

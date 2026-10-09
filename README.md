@@ -28,13 +28,14 @@ The players expect a particular mixer graph, and it is worth setting up before w
 
 * Each music stem plays on its own mixer group (`MusicTrack0` … `MusicTrack15`), and those groups are children of a **Music** bus.
 * Each stem group sends a percentage of its output to a **MusicReverbSend** bus, through an exposed parameter named `{GroupName}_Send`, e.g. `MusicTrack0_Send`.
-* **MusicReverbSend** feeds a **Reverb** bus, which is wet only.
+* **MusicReverbSend** feeds a **Reverb** bus, which is wet only.  Its effects run Receive, then a Send into the Reverb bus's Receive, then its Attenuation, with that fader left at −80 dB: a group always plays into its parent, so a fader left open would add a second, dry copy of every stem's send to the mix.  The level of its Send is what's exposed as `MusicReverbSend`.
 * So Music is the dry path and MusicReverbSend is the wet path — two parallel signals, not a bus and one of its sends.
-* Sfx is arranged identically, with `Sfx`, `SfxReverbSend` and `SfxTrack{N}_Send`.
+* Each music stem group also sends to a **MusicEcho** bus, through `{GroupName}_EchoSend`.  MusicEcho holds a Receive, Unity's **Echo** with its Drymix at 0 and Wetmix at 100%, its Attenuation, and a Send on into the Reverb bus's Receive: it carries the echoes alone, and they reach the reverb too.  The Echo's Delay and Decay are exposed as `EchoDelay` and `EchoDecay`, and the bus's volume as `MusicEcho`.
+* Sfx is arranged like the reverb half, with `Sfx`, `SfxReverbSend` and `SfxTrack{N}_Send`; sound effects don't echo.
 
-`Music`, `MusicReverbSend`, `Sfx`, `SfxReverbSend` and every `{GroupName}_Send` must be exposed on the mixer, and with PSX Reverb installed, `ReverbPreset` and `ReverbDepth` too (see [PSX reverb](#psx-reverb)).  A volume bus or reverb parameter that isn't exposed logs an error naming it when the player reads or writes it.  A `{GroupName}_Send` that isn't exposed is skipped silently, so that stem simply sends nothing to the reverb.
+`Music`, `MusicReverbSend`, `MusicEcho`, `EchoDelay`, `EchoDecay`, `Sfx`, `SfxReverbSend`, every `{GroupName}_Send` and every `MusicTrack{N}_EchoSend` must be exposed on the mixer, and with PSX Reverb installed, `ReverbPreset` and `ReverbDepth` too (see [PSX reverb](#psx-reverb)).  A volume bus or reverb parameter that isn't exposed logs an error naming it when the player reads or writes it.  A `{GroupName}_Send` or `_EchoSend` that isn't exposed is skipped silently, so that stem simply sends nothing to the reverb or the echo.
 
-`SetVolume` writes the same dB to both the dry bus and the reverb send bus, which keeps the dry/wet ratio constant as volume changes.  Attenuating only the dry bus would leave the reverb ringing on its own channel.
+`SetVolume` writes the same dB to the dry bus, the reverb send bus and the echo bus, which keeps the dry/wet ratio constant as volume changes.  Attenuating only the dry bus would leave the reverb ringing on its own channel.
 
 Volume is a 0-1 percentage rather than dB, mapped with a perceptual curve so that a slider at half way sounds half as loud.  Zero maps to -80 dB.
 
@@ -116,7 +117,7 @@ Music is looped by bar: give the asset its tempo and the start and end bar to lo
 
 A bar's time adds up every section before it, then its place in its own, so changing a section moves where every later bar lands in the audio.  The first bar is bar 1, the end bar must come after the start bar, and each section must start after the one before it.  An asset marked to loop whose sections or bar range can't produce a loop logs a warning naming the asset and the problem, and plays through without looping.
 
-A track that doesn't loop costs nothing per frame — the update component is only enabled while there is a loop point to watch.  `IsPlaying` says whether a track is playing: from when it is asked for, while its clips load included, until it is stopped, paused, or reaches its end without looping.
+A track that doesn't loop costs nothing per frame — the update component is only enabled while there is a loop point to watch, or an echo following the song's tempo (below).  `IsPlaying` says whether a track is playing: from when it is asked for, while its clips load included, until it is stopped, paused, or reaches its end without looping.
 
 ### Pause and resume
 
@@ -137,6 +138,15 @@ await musicPlayer.ResumeAsync(overworld, 1f);
 * The player keeps no snapshot itself, so one can be kept as long as it is needed, and more than one at once.  `PlayAsync` of a paused track starts it from the beginning.
 * Pausing during a crossfade keeps the track fading in and stops both.
 * A paused track's clips are unloaded, and resuming loads them again.
+
+### Echo
+
+A song can echo some of its stems, on Unity's Echo effect on a bus of its own (see [Mixer setup](#mixer-setup)).  Each stem has an **Echo Send Level** beside its reverb send, for how much of it goes in, and the song's **Echo** settings say how far apart the repeats are and how quickly they fade:
+
+* **Timing** — *None* leaves the echo as the last song set it; a song whose stems send nothing to it needs nothing here.  *Milliseconds* sets the delay once, when the song starts.  *Note Length* takes it from the song's tempo, as a note value played straight, dotted or as a triplet, and follows it into each tempo section: a dotted eighth is 432.7 ms at 104 BPM.
+* **Decay** — each repeat as a share of the one before: 0.5 halves it, and 1 never fades.
+
+The delay is held between 10 and 5000 ms, the effect's own range.  The repeats go on into the reverb, so they sit in the song's room, and like the reverb's tail they die away naturally when the music is paused.  In a crossfade, the song coming in sets the echo.  The inspector's preview skips the mixer, so the echo is heard only in play mode.
 
 ### PSX reverb
 
@@ -252,5 +262,5 @@ The preview plays the stems together and loops them as the players do, but on it
 
 Two samples ship with the package and both include the mixer asset described above, already wired up with its exposed parameters.
 
-* **Music Sample** — a four stem track with per stem reverb sends, bar based looping, and three stem states to transition between.  The buttons enable and disable each other to show the order the system expects; that sequencing is the sample's, not the player's, as calling play while something is already playing can give strange results.
+* **Music Sample** — a four stem track with per stem reverb sends (its mixer has the echo bus too, though the sample's stems send nothing to it), bar based looping, and three stem states to transition between.  The buttons enable and disable each other to show the order the system expects; that sequencing is the sample's, not the player's, as calling play while something is already playing can give strange results.
 * **Sfx Sample** — a looping sound with events, a one shot, and a looping ambience, with looping set by start/end values measured in audio samples.

@@ -16,6 +16,7 @@ namespace RPGFramework.Audio
     {
         internal AudioClip Clip            { get; }
         internal float     ReverbSendLevel { get; }
+        internal float     EchoSendLevel   { get; }
     }
 
     internal interface IMusicAsset
@@ -26,7 +27,20 @@ namespace RPGFramework.Audio
         internal bool                 Loop          { get; }
         internal IReadOnlyList<IStem> Tracks        { get; }
         internal ReverbSettings       Reverb        { get; }
-        internal bool[]               GetStemsForState(ulong stateNameHash);
+        internal EchoSettings         Echo          { get; }
+
+        /// <summary>
+        /// Whether the echo's delay can change as the song plays: a note length, in a song with more than one tempo.
+        /// </summary>
+        internal bool EchoFollowsTempo { get; }
+
+        internal bool[] GetStemsForState(ulong stateNameHash);
+
+        /// <summary>
+        /// The echo's delay <paramref name="seconds" /> into the song: its milliseconds, or its note length at the tempo
+        /// there.
+        /// </summary>
+        internal float GetEchoDelayMilliseconds(double seconds);
     }
 
     public interface IMusicAssetProvider
