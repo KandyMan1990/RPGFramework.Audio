@@ -198,17 +198,7 @@ namespace RPGFramework.Audio.Editor
         /// <returns>The bar the playhead is in, counted from 1 as the loop's bars are, or nothing without a tempo.</returns>
         private string FormatBar(float seconds)
         {
-            float bpm         = serializedObject.FindProperty("m_BPM").floatValue;
-            int   beatsPerBar = serializedObject.FindProperty("m_BeatsPerBar").intValue;
-            int   beatUnit    = serializedObject.FindProperty("m_BeatUnit").intValue;
-
-            if (bpm <= 0f || beatsPerBar <= 0 || beatUnit <= 0)
-            {
-                return string.Empty;
-            }
-
-            double secondsPerBar = beatsPerBar * (4.0 / beatUnit) * (60.0 / bpm);
-            string bar           = $", bar {(int)(seconds / secondsPerBar) + 1}";
+            string bar = ((MusicAsset)target).TryGetBar(seconds, out int number) ? $", bar {number}" : string.Empty;
 
             return bar;
         }

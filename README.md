@@ -112,9 +112,9 @@ It is a straight gain on the track's stems, and fades go to it rather than to fu
 
 ### Looping
 
-Music can be looped by specifying the tempo, time signature, and the start/end bar to loop. The time signature is beats per bar plus the note that gets the beat, so compound signatures such as 6/8 or 12/8 give the correct bar length rather than being approximated in 4/4. BPM is read as quarter notes per minute, which is what a DAW reports, so a 6/8 bar at 120 BPM is 1.5 seconds.
+Music is looped by bar: give the asset its tempo and the start and end bar to loop. The tempo is a list of **sections**, each a start bar with its BPM and time signature.  The first starts at bar 1 and each runs until the next one starts, so a song that changes tempo or time signature part way through still loops on its bars; most songs need just the one.  The inspector heads each section with what it says, such as *From bar 9: 90 BPM, 6/8*.  The time signature is beats per bar plus the note that gets the beat, so compound signatures such as 6/8 or 12/8 give the correct bar length rather than being approximated in 4/4. BPM is read as quarter notes per minute, which is what a DAW reports, so a 6/8 bar at 120 BPM is 1.5 seconds.
 
-Loop points are authored as bars, so changing the time signature of an existing asset moves where those bars land in the audio.  The first bar is bar 1, and the end bar must come after the start bar.  An asset marked to loop with a BPM, beats per bar, or bar range that can't produce a loop logs a warning naming the asset and plays through without looping.
+A bar's time adds up every section before it, then its place in its own, so changing a section moves where every later bar lands in the audio.  The first bar is bar 1, the end bar must come after the start bar, and each section must start after the one before it.  An asset marked to loop whose sections or bar range can't produce a loop logs a warning naming the asset and the problem, and plays through without looping.
 
 A track that doesn't loop costs nothing per frame — the update component is only enabled while there is a loop point to watch.  `IsPlaying` says whether a track is playing: from when it is asked for, while its clips load included, until it is stopped, paused, or reaches its end without looping.
 
@@ -237,7 +237,7 @@ Generated files are overwritten on each run and carry a "do not modify" header.
 
 A music asset and an sfx asset can each be played from their inspector, below the usual fields, without entering play mode.
 
-* **Music** — *Play*, *Stop*, and *Play into the loop*, which starts four seconds before the loop's end to hear the jump back to its start without waiting for it.  A stem state dropdown and a toggle per stem switch what is audible while it plays, and the playhead shows the time and the bar, counted from 1 as the loop's bars are.
+* **Music** — *Play*, *Stop*, and *Play into the loop*, which starts four seconds before the loop's end to hear the jump back to its start without waiting for it.  A stem state dropdown and a toggle per stem switch what is audible while it plays, and the playhead shows the time and the bar, counted from 1 through the tempo sections as the loop's bars are.
 * **Sfx** — *Play* and *Stop*, and the asset's events listed with their times, each lit once the playhead passes it.  As the player does, a looping sound re-arms its events each time round unless they fire once, and a sound that doesn't loop raises any it never reached, then `SfxComplete`, as it ends.
 
 The preview plays the stems together and loops them as the players do, but on its own, not through the mixer, so a song's reverb sends and PSX Reverb aren't heard, and it plays at the clips' own volume.  Changing the asset, or selecting something else, stops it.
@@ -245,6 +245,7 @@ The preview plays the stems together and loops them as the players do, but on it
 ## Not in this version
 
 * **Music and sounds can't be loaded from asset bundles.**  A provider references its assets directly, so they ship inside the build, and content added after release can't bring its own.
+* **A tempo that changes gradually**, such as a ritardando, fits no list of sections, so a loop after one can't be given in bars.
 * **The players run in play mode only**, through a mixer set up as described above; the inspector preview is the way to hear an asset outside it.
 
 ## Samples

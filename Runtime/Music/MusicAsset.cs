@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using RPGFramework.Hashing;
 using UnityEngine;
 
@@ -23,19 +24,14 @@ namespace RPGFramework.Audio.Music
         private const ulong NO_STATE_NAMED = 0;
 
         [SerializeField]
-        private float m_BPM;
+        [Tooltip("The song's tempo and time signature, in sections. The first starts at bar 1 and each runs until the next one starts, so a song that changes either loops by bar all the same")]
+        private TempoSection[] m_Sections = Array.Empty<TempoSection>();
 
         [SerializeField]
         private int m_LoopStartBar;
 
         [SerializeField]
         private int m_LoopEndBar;
-
-        [SerializeField]
-        private int m_BeatsPerBar = 4;
-
-        [SerializeField]
-        private NoteValue m_BeatUnit = NoteValue.Quarter;
 
         [SerializeField]
         private bool m_Loop;
@@ -106,6 +102,48 @@ namespace RPGFramework.Audio.Music
         }
 
 #if UNITY_EDITOR
+        /// <summary>
+        /// The bar <paramref name="seconds" /> into the song is in, counted from 1 as the loop's bars are. False when the
+        /// sections cannot say.
+        /// </summary>
+        internal bool TryGetBar(double seconds, out int bar)
+        {
+            bar = 0;
+
+            if (FindSectionProblem() != null)
+            {
+                return false;
+            }
+
+            double sectionStart = 0.0;
+
+            for (int i = 0; i < m_Sections.Length; i++)
+            {
+                TempoSection section = m_Sections[i];
+                bool         isLast  = i == m_Sections.Length - 1;
+                double       length  = isLast ? double.MaxValue : (m_Sections[i + 1].StartBar - section.StartBar) * section.SecondsPerBar;
+
+                if (seconds < sectionStart + length)
+                {
+                    bar = section.StartBar + (int)((seconds - sectionStart) / section.SecondsPerBar);
+
+                    return true;
+                }
+
+                sectionStart += length;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// A new song starts with one section, at 120 BPM in 4/4, for its author to change.
+        /// </summary>
+        private void Reset()
+        {
+            m_Sections = new[] { new TempoSection(1, 120f, 4, NoteValue.Quarter) };
+        }
+
         private void OnValidate()
         {
             CalculateLoopPoints();
@@ -178,9 +216,11 @@ namespace RPGFramework.Audio.Music
                 return;
             }
 
-            if (m_BPM <= 0f || m_BeatsPerBar <= 0)
+            string sectionProblem = FindSectionProblem();
+
+            if (sectionProblem != null)
             {
-                Debug.LogWarning($"{nameof(MusicAsset)} [{name}] is marked to loop but has BPM [{m_BPM}] and beats per bar [{m_BeatsPerBar}]. Both must be greater than zero. It will play through without looping");
+                Debug.LogWarning($"{nameof(MusicAsset)} [{name}] is marked to loop but {sectionProblem}. It will play through without looping");
 
                 return;
             }
@@ -192,16 +232,62 @@ namespace RPGFramework.Audio.Music
                 return;
             }
 
-            m_LoopStartTime   = BarToSeconds(m_LoopStartBar - 1, m_BPM, m_BeatsPerBar, m_BeatUnit);
-            m_LoopEndTime     = BarToSeconds(m_LoopEndBar   - 1, m_BPM, m_BeatsPerBar, m_BeatUnit);
+            m_LoopStartTime   = BarToSeconds(m_LoopStartBar);
+            m_LoopEndTime     = BarToSeconds(m_LoopEndBar);
             m_LoopPointsValid = true;
         }
 
-        private static double BarToSeconds(int bar, float bpm, int beatsPerBar, NoteValue beatUnit)
+        /// <returns>What stops the sections giving a bar its time, or null when nothing does.</returns>
+        private string FindSectionProblem()
         {
-            double secondsPerQuarterNote = 60.0 / bpm;
-            double secondsPerBeat        = 4.0 / (int)beatUnit * secondsPerQuarterNote;
-            double seconds               = bar * beatsPerBar * secondsPerBeat;
+            if (m_Sections == null || m_Sections.Length == 0)
+            {
+                return "has no tempo sections";
+            }
+
+            if (m_Sections[0].StartBar != 1)
+            {
+                return $"its first tempo section starts at bar [{m_Sections[0].StartBar}] rather than bar 1";
+            }
+
+            for (int i = 0; i < m_Sections.Length; i++)
+            {
+                TempoSection section = m_Sections[i];
+
+                if (!section.HasTempo)
+                {
+                    return $"its tempo section at bar [{section.StartBar}] needs a BPM and beats per bar greater than zero";
+                }
+
+                if (i > 0 && section.StartBar <= m_Sections[i - 1].StartBar)
+                {
+                    return $"its tempo section at bar [{section.StartBar}] does not start after the one before it, at bar [{m_Sections[i - 1].StartBar}]";
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// When <paramref name="bar" />, counted from 1, starts: every whole section before it, then its place in its own.
+        /// </summary>
+        private double BarToSeconds(int bar)
+        {
+            double seconds = 0.0;
+
+            for (int i = 0; i < m_Sections.Length; i++)
+            {
+                TempoSection section = m_Sections[i];
+                int          end     = i == m_Sections.Length - 1 ? int.MaxValue : m_Sections[i + 1].StartBar;
+                int          bars    = Math.Min(bar, end) - section.StartBar;
+
+                if (bars <= 0)
+                {
+                    break;
+                }
+
+                seconds += bars * section.SecondsPerBar;
+            }
 
             return seconds;
         }

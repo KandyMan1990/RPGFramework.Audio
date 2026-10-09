@@ -12,11 +12,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a8bb781cc215bd749ad491914796912d, type: 3}
   m_Name: Music Sample
   m_EditorClassIdentifier: RPGFramework.Audio::RPGFramework.Audio.Music.MusicAsset
-  m_BPM: 104
+  m_Sections:
+  - m_StartBar: 1
+    m_BPM: 104
+    m_BeatsPerBar: 4
+    m_BeatUnit: 4
   m_LoopStartBar: 5
   m_LoopEndBar: 21
-  m_BeatsPerBar: 4
-  m_BeatUnit: 4
   m_Loop: 1
   m_Tracks:
   - m_AudioClip: {fileID: 8300000, guid: c93f6cb4f4df6214dbbda31b1f7d4671, type: 3}
