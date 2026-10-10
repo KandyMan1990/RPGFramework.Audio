@@ -211,7 +211,7 @@ Ideally, music stems should be imported with the following settings:
 
 An existing preset exists to copy/paste into the folder where music is stored to automatically apply these settings when music is imported
 
-The player loads a stem's sample data before scheduling it and releases it when the track stops, unless a track still sounding uses the same clip, and only for clips that were imported with Preload Audio Data off.  A stem imported without its preset gets Unity's default of preload on, and the player then leaves it alone entirely — it stays resident rather than silently failing to reload.
+The player loads a stem's sample data before scheduling it and releases it when the track stops, unless a track still sounding, or one preloaded, uses the same clip, and only for clips that were imported with Preload Audio Data off.  A stem imported without its preset gets Unity's default of preload on, and the player then leaves it alone entirely — it stays resident rather than silently failing to reload.
 
 ## Sfx
 
@@ -276,6 +276,10 @@ Hand-written string literals are easy to get wrong, so both provider inspectors 
 * **SFX Asset Provider** — *Generate class per Sfx for its Sfx event data* writes the same thing per asset instead, which keeps event names scoped to the sound they belong to.
 
 Generated files are overwritten on each run and carry a "do not modify" header.
+
+### Building bundles
+
+Both provider inspectors have **Build bundles**, which builds a bundle per song or sound the provider lists into `StreamingAssets/Audio/Music` or `StreamingAssets/Audio/Sfx`, for the bundled providers to read — see [Where the audio comes from](#where-the-audio-comes-from).  A game playing from the build never needs it.
 
 ### Previewing in the inspector
 
@@ -369,5 +373,5 @@ Some suggestions for fitting it in:
 
 Two samples ship with the package and both include the mixer asset described above, already wired up with its exposed parameters.
 
-* **Music Sample** — a four stem track with per stem reverb sends (its mixer has the echo bus too, though the sample's stems send nothing to it), bar based looping, and three stem states to transition between.  The buttons enable and disable each other to show the order the system expects; that sequencing is the sample's, not the player's, as calling play while something is already playing can give strange results.
+* **Music Sample** — a four stem track with per stem reverb sends (its mixer has the echo bus too, though the sample's stems send nothing to it), bar based looping, and three stem states to transition between.  The buttons enable and disable each other to keep the sample's own flow readable; the player takes any call at any time — playing the track already playing does nothing, and playing another cuts it.
 * **Sfx Sample** — a looping sound with events, a one shot, and a looping ambience, with looping set by start/end values measured in audio samples.

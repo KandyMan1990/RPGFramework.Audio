@@ -1,6 +1,6 @@
 {
   "name": "com.rpgframework.audio",
-  "version": "3.0.0",
+  "version": "4.0.0",
   "displayName": "RPG Framework Audio",
   "description": "Audio functionality for the RPG Framework",
   "dependencies": {
@@ -19,7 +19,7 @@
   "samples": [
     {
       "displayName": "Music Sample",
-      "description": "Contains an example of how to set up a music asset with multiple stems, each with their own reverb level and looping based on the tempo and start/end bars.  The buttons in the UI will enable/disable depending on the action taken.  This is not automatic in the system, merely a representation of how the system should be used, i.e. if you call Play while the system is already playing, you can get strange behaviour as the system expects you to have called Pause or Stop before hand, therefore the buttons are greyed out in the sample to show how to use the system correctly.",
+      "description": "A four stem track with per stem reverb sends, bar based looping, and three stem states to transition between. The buttons enable and disable each other to keep the sample's own flow readable; the player itself takes any call at any time.",
       "path": "Samples~/Music Sample"
     },
     {
