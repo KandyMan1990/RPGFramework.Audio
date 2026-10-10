@@ -1,5 +1,5 @@
 # RPGFramework.Audio
-Audio functionality for the RPG Framework
+Music in stems and sound effects for Unity: made for the RPG Framework, and usable in any Unity project on its own (see [Using it on its own](#using-it-on-its-own)).
 
 Requires Unity 6000.0 or newer. It references Unity, Unity.Mathematics and RPGFramework.Hashing, and nothing else — Hashing is a single static class with no dependencies of its own, so this package can still be dropped into a project that has none of the rest of the framework. It drives its own per frame update from a component on the GameObject each player creates for its audio sources, so there is no update manager to wire up.
 
@@ -12,7 +12,7 @@ When it comes to looping, be it music or sfx, there should be trailing sound aft
 Every call that asks for a track or a sound takes a `ulong` — the FNV-1a 64 hash of the asset's own name:
 
 ```csharp
-m_MusicPlayer.PlayAsync(Fnv1a64.Hash("Overworld")).FireAndForget();
+await m_MusicPlayer.PlayAsync(Fnv1a64.Hash("Overworld"));
 m_SfxPlayer.Play(Fnv1a64.Hash("Sword_Hit"));
 ```
 
@@ -251,6 +251,77 @@ A music asset and an sfx asset can each be played from their inspector, below th
 * **Sfx** — *Play* and *Stop*, and the asset's events listed with their times, each lit once the playhead passes it.  As the player does, a looping sound re-arms its events each time round unless they fire once, and a sound that doesn't loop raises any it never reached, then `SfxComplete`, as it ends.
 
 The preview plays the stems together and loops them as the players do, but on its own, not through the mixer, so a song's reverb sends and PSX Reverb aren't heard, and it plays at the clips' own volume.  Changing the asset, or selecting something else, stops it.
+
+## Using it on its own
+
+Nothing here needs the rest of the RPG Framework: the package depends only on RPGFramework.Hashing, and the players are plain C# objects your game creates and keeps.
+
+**Make one music player and one sfx player for the game's life**, before anything plays.  A small first scene that builds them and then loads the next is the simplest way to be sure of that:
+
+```csharp
+using RPGFramework.Audio;
+using RPGFramework.Audio.Music;
+using RPGFramework.Audio.Sfx;
+using UnityEngine;
+using UnityEngine.Audio;
+using UnityEngine.SceneManagement;
+
+public sealed class Boot : MonoBehaviour
+{
+    [SerializeField] private MusicAssetProvider m_MusicProvider;
+    [SerializeField] private SfxAssetProvider   m_SfxProvider;
+    [SerializeField] private AudioMixerGroup[]  m_MusicGroups;
+    [SerializeField] private AudioMixerGroup[]  m_SfxGroups;
+
+    public static IMusicPlayer Music { get; private set; }
+    public static ISfxPlayer   Sfx   { get; private set; }
+
+    private void Awake()
+    {
+        Music = new UnityMusicPlayer();
+        Music.SetMusicAssetProvider(m_MusicProvider);
+        Music.SetStemMixerGroups(m_MusicGroups);
+
+        Sfx = new UnitySfxPlayer();
+        Sfx.SetSfxAssetProvider(m_SfxProvider);
+        Sfx.SetStemMixerGroups(m_SfxGroups);
+
+        SceneManager.LoadScene("Title");
+    }
+}
+```
+
+The groups are the mixer's `MusicTrack` and `SfxTrack` groups, in order.  Hold the players however your game holds its services: a static as here, an object that is never destroyed, or your own dependency injection.  Each makes its own GameObject that survives scene loads, so nothing else has to.
+
+Some suggestions for fitting it in:
+
+- **Start from a sample's mixer.**  The Music Sample's has every group, send and exposed parameter described under [Mixer setup](#mixer-setup); copy it, and add or remove `MusicTrack` and `SfxTrack` groups to suit.
+- **Keep the player's volume choices** wherever your game keeps its settings, and pass them to `SetVolume` at start-up and whenever they change.  `SetVolume` is the player's own level; a scene that wants its music quieter uses the song's volume instead (see [Song volume](#song-volume)), so the two never fight.
+- **Name songs and sounds in code with a generated enum** (see [Generating names for code](#generating-names-for-code)), and **keep them as data** — in a save, or on a ScriptableObject — as their name hash, eight bytes for any name.
+- **Put music aside rather than stopping it** for something short, a battle or a cutscene: `Pause` hands back a snapshot, and `ResumeAsync` carries on from it (see [Pause and resume](#pause-and-resume)).
+- **Drive animation from a sound** with its events rather than timers, so the two can't drift (see [Events](#events)).
+- **Dispose the players** when your game shuts down.
+
+## In the RPG Framework
+
+- **The game's global installer builds both players** and binds them for every module, as the test project's does:
+
+  ```csharp
+  ISfxPlayer sfxPlayer = new UnitySfxPlayer();
+  sfxPlayer.SetSfxAssetProvider(m_SfxProvider);
+  sfxPlayer.SetStemMixerGroups(m_SfxMixerGroups);
+  container.BindSingletonFromInstance(sfxPlayer);
+
+  IMusicPlayer musicPlayer = new UnityMusicPlayer();
+  musicPlayer.SetMusicAssetProvider(m_MusicProvider);
+  musicPlayer.SetStemMixerGroups(m_MusicMixerGroups);
+  container.BindSingletonFromInstance(musicPlayer);
+  ```
+
+- **Field scripts play the music and sounds**: `PLAY_MUSIC`, `CROSSFADE_MUSIC`, `STOP_MUSIC`, `MUSIC_STEM_STATE`, `IS_MUSIC_PLAYING` and `PLAY_SOUND`; the song's volume with `SET_MUSIC_VOLUME`, `FADE_MUSIC_VOLUME`, `FADE_MUSIC_VOLUME_FROM` and `WAIT_FOR_MUSIC_VOLUME`, kept in Field's `MusicVolume` variable so it carries across fields and saves; and with PSX Reverb, `SET_REVERB_PRESET` and `SET_REVERB_VOLUME`.  The block editor offers each provider's songs, sounds and stem states by name.
+- **The menus set the player's volume**: the Config menu as the player changes it, and the title screen from the saved settings at start-up.
+- **Battle** stops the field's music and plays its victory music.
+- **Menus and dialogue make their sounds through Core's audio intents** — confirm, cancel, navigate — which the game maps to its own sound effects (the test project's `GameAudioIntentPlayer`), so Core never names a sound and Audio never hears of Core.
 
 ## Not in this version
 
