@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using RPGFramework.Hashing;
 using UnityEngine;
 
@@ -33,11 +34,19 @@ namespace RPGFramework.Audio.Sfx
         }
 #endif
 
-        ISfxAsset ISfxAssetProvider.GetSfxAsset(ulong nameHash)
+        // Every sound is in the build already, so there is nothing to load or unload.
+        Task<SfxAsset> ISfxAssetProvider.AcquireAsync(ulong nameHash)
         {
-            SfxAsset sfxAsset = m_ByNameHash[nameHash];
+            if (!m_ByNameHash.TryGetValue(nameHash, out SfxAsset sfxAsset))
+            {
+                throw new KeyNotFoundException($"{nameof(SfxAssetProvider)}::{nameof(ISfxAssetProvider.AcquireAsync)} [{name}] has no sound whose name hashes to [{nameHash}]");
+            }
 
-            return sfxAsset;
+            return Task.FromResult(sfxAsset);
+        }
+
+        void ISfxAssetProvider.Release(ulong nameHash)
+        {
         }
 
         private void OnEnable()

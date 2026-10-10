@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using RPGFramework.Hashing;
 using UnityEngine;
 
@@ -71,11 +72,21 @@ namespace RPGFramework.Audio.Music
         }
 #endif
 
-        IMusicAsset IMusicAssetProvider.GetMusicAsset(ulong nameHash)
+        // Every song is in the build already, so there is nothing to load or unload.
+        Task<MusicAsset> IMusicAssetProvider.AcquireAsync(ulong nameHash)
         {
-            IMusicAsset musicAsset = m_ByNameHash[nameHash];
+            if (!m_ByNameHash.TryGetValue(nameHash, out MusicAsset musicAsset))
+            {
+                throw new KeyNotFoundException($"{nameof(MusicAssetProvider)}::{nameof(IMusicAssetProvider.AcquireAsync)} [{name}] has no song whose name hashes to [{nameHash}]");
+            }
 
-            return musicAsset;
+            Task<MusicAsset> acquired = Task.FromResult(musicAsset);
+
+            return acquired;
+        }
+
+        void IMusicAssetProvider.Release(ulong nameHash)
+        {
         }
 
         private void OnEnable()

@@ -13,7 +13,7 @@ Every call that asks for a track or a sound takes a `ulong` — the FNV-1a 64 ha
 
 ```csharp
 await m_MusicPlayer.PlayAsync(Fnv1a64.Hash("Overworld"));
-m_SfxPlayer.Play(Fnv1a64.Hash("Sword_Hit"));
+await m_SfxPlayer.PlayAsync(Fnv1a64.Hash("Sword_Hit"));
 ```
 
 Each provider indexes its list by that hash when it is enabled.  These used to be list indices, which meant inserting or reordering an entry silently repointed every caller with nothing to report it — the wrong sound just played.  A name survives reordering, and a rename fails loudly at the call site instead.  Renaming an asset is now the thing that breaks callers.
@@ -59,6 +59,40 @@ sfxPlayer.SetStemMixerGroups(m_SfxMixerGroups);
 
 The package does not guard against being used before it is configured — there are no null-provider or mixer-group checks.  Those always pass once it is wired up correctly, and a mistake fails on the first frame of the first run.
 
+## Where the audio comes from
+
+The players ask a **provider** for each song and sound, and a game chooses one of two when it sets the players up.  Everything else — the players, the mixer, the inspector preview, the generated enums — is the same either way.
+
+| | In the build | From bundles |
+| --- | --- | --- |
+| Provider | The `MusicAssetProvider` and `SfxAssetProvider` assets, listing every song and sound | `new BundledMusicAssetProvider()` and `new BundledSfxAssetProvider()`, made in code |
+| Where the audio lives | Inside the player | A bundle per song and per sound in `StreamingAssets/Audio/Music` and `StreamingAssets/Audio/Sfx`, each named by its name hash |
+| Build step | None | **Build bundles** on each provider asset, again whenever its songs or sounds change |
+| Playing something new | Load its audio data | Open its bundle, load it, load its audio data: two or three frames more |
+| When it stops | Unload its audio data | Unload its audio data, and its bundle once nothing holds it |
+| Suits | Samples, prototypes, a game with no plans for content packs | A game that wants content packs, or its audio out of memory between scenes |
+
+**From bundles**, the provider assets are still where songs and sounds are listed and named, and where Build bundles is pressed — but nothing the game builds may reference them, or Unity puts every song in the player as well.  Make the bundled providers in code instead:
+
+```csharp
+musicPlayer.SetMusicAssetProvider(new BundledMusicAssetProvider());
+sfxPlayer.SetSfxAssetProvider(new BundledSfxAssetProvider());
+```
+
+**Build bundles** builds a bundle per song or sound the provider lists, for the editor's active platform, with LZ4 compression; it rebuilds only what changed, and removes the bundles of songs and sounds no longer listed.  Play mode reads the bundles too, so build them again after changing a song or sound.  A clip two songs or sounds share is copied into each bundle, so the build warns naming it.  On Android and the web, where StreamingAssets can't be read from the file system, the bundles are fetched by web request.
+
+**Preloading** is optional, on both players and with either provider:
+
+```csharp
+await sfxPlayer.PreloadAsync(new[] { Fnv1a64.Hash("Menu_Move"), Fnv1a64.Hash("Menu_Confirm") });
+// ...a play of either starts on the frame it's asked for...
+sfxPlayer.Unload(new[] { Fnv1a64.Hash("Menu_Move"), Fnv1a64.Hash("Menu_Confirm") });
+```
+
+It loads each song or sound and its audio data, and keeps them until `Unload`, so a play starts at once.  Anything not preloaded plays all the same, a little later.  A song or sound still playing when it's unloaded stays until it stops.
+
+A game can write a provider of its own — Addressables, a server, an archive — by implementing `IMusicAssetProvider` or `ISfxAssetProvider`: `AcquireAsync` hands back a song or sound, held until the player's matching `Release`.
+
 ## Music
 
 The 16 channels give the option of playing music via stems instead of a bounced track, where each stem can send to a realtime reverb bus for live processing of reverb with varying send amounts per stem.
@@ -76,7 +110,7 @@ await musicPlayer.SetStemStateFadeAsync(Fnv1a64.Hash("Combat"), 2f);
 musicPlayer.SetStemStateImmediate(Fnv1a64.Hash("Exploration"));
 ```
 
-A zero fade length routes to the immediate path, so one call covers both.  `PlayAsync` takes an optional state hash too, so a track can start already layered, along with an optional fade in time.
+A zero fade length routes to the immediate path, so one call covers both, and with no track playing both do nothing.  `PlayAsync` takes an optional state hash too, so a track can start already layered, along with an optional fade in time.
 
 Two things happen automatically when an asset loads, in builds as well as in the editor:
 
@@ -183,7 +217,7 @@ The player loads a stem's sample data before scheduling it and releases it when 
 
 Sound effects behave similarly to music, however since a sfx won't have a tempo/bpm, they can be looped by specifying start/end time in audio samples
 
-`Play` returns an `ISfxReference` for that one playing sound, which is what `Pause`, `Resume` and `Stop` take.  `PauseAll`, `ResumeAll` and `StopAll` act on everything currently playing.
+`PlayAsync` returns an `ISfxReference` for that one playing sound once it has loaded and started, which is what `Pause`, `Resume` and `Stop` take; a preloaded sound starts on the frame it's asked for.  `PauseAll`, `ResumeAll` and `StopAll` act on everything currently playing, and a sound still loading when `PauseAll` or `StopAll` comes never starts: its reference comes back already stopped, so there's no null to check for.
 
 ### Voices
 
@@ -197,7 +231,7 @@ Events can also be specified in the sfx asset, with a name and time to raise the
 For example, if you have an enemy death sfx and you want to tie animation starting to a sudden change in the sfx like an explosion, raise an event at that point in the sfx asset and listen for it in code
 
 ```csharp
-ISfxReference sfxReference = sfxPlayer.Play(Fnv1a64.Hash("Enemy_Death"));
+ISfxReference sfxReference = await sfxPlayer.PlayAsync(Fnv1a64.Hash("Enemy_Death"));
 sfxReference.OnEvent += (eventName, source) => Debug.Log($"{eventName} fired");
 ```
 
@@ -212,7 +246,7 @@ A few behaviours worth knowing:
 ### Import settings
 
 Ideally, sfx stems should be imported with the following settings:
-* Load In Background unchecked
+* Load In Background checked
 * Load Type: Decompress on Load
 * Preload Audio Data unchecked
 * Compression Format: ADPCM
@@ -222,7 +256,7 @@ An existing preset exists to copy/paste into the folder where sfx are stored to 
 
 ADPCM is roughly 3.5:1 against PCM, trivially cheap to decode, and the format the PSX SPU itself used.  With decompress on load the saving is in build size rather than memory, since the clip is decompressed when it loads either way; compressed in memory with ADPCM is the lower-RAM alternative if a module's resident set is still too large.
 
-Preload audio data must be off for the player to manage residency at all, as described under [Voices](#voices) above.  Load In Background stays off deliberately: the player loads a clip immediately before scheduling it, and that load only blocks until the data is ready while this is unchecked.  Turning it on would let a sound start before its samples had arrived.
+Preload audio data must be off for the player to manage residency at all, as described under [Voices](#voices) above, whichever provider the game uses.  Load In Background is on so a clip decompresses off the main thread: the player waits for its audio data before starting it, a frame or two at most, and a preloaded sound has it already.
 
 ## Editor tooling
 
@@ -291,7 +325,7 @@ public sealed class Boot : MonoBehaviour
 }
 ```
 
-The groups are the mixer's `MusicTrack` and `SfxTrack` groups, in order.  Hold the players however your game holds its services: a static as here, an object that is never destroyed, or your own dependency injection.  Each makes its own GameObject that survives scene loads, so nothing else has to.
+The groups are the mixer's `MusicTrack` and `SfxTrack` groups, in order.  To play from bundles instead, drop the two provider fields and make `new BundledMusicAssetProvider()` and `new BundledSfxAssetProvider()` (see [Where the audio comes from](#where-the-audio-comes-from)).  Hold the players however your game holds its services: a static as here, an object that is never destroyed, or your own dependency injection.  Each makes its own GameObject that survives scene loads, so nothing else has to.
 
 Some suggestions for fitting it in:
 
@@ -299,6 +333,7 @@ Some suggestions for fitting it in:
 - **Keep the player's volume choices** wherever your game keeps its settings, and pass them to `SetVolume` at start-up and whenever they change.  `SetVolume` is the player's own level; a scene that wants its music quieter uses the song's volume instead (see [Song volume](#song-volume)), so the two never fight.
 - **Name songs and sounds in code with a generated enum** (see [Generating names for code](#generating-names-for-code)), and **keep them as data** — in a save, or on a ScriptableObject — as their name hash, eight bytes for any name.
 - **Put music aside rather than stopping it** for something short, a battle or a cutscene: `Pause` hands back a snapshot, and `ResumeAsync` carries on from it (see [Pause and resume](#pause-and-resume)).
+- **Preload what a screen plays the moment it's asked**, such as its menu sounds, as it opens, and unload them as it closes, so they start on the frame they're asked for.
 - **Drive animation from a sound** with its events rather than timers, so the two can't drift (see [Events](#events)).
 - **Dispose the players** when your game shuts down.
 
@@ -318,6 +353,7 @@ Some suggestions for fitting it in:
   container.BindSingletonFromInstance(musicPlayer);
   ```
 
+- **The game's installer chooses the provider**, in the build or from bundles; the test project's has an **Audio From Bundles** tick.  The modules don't preload anything yet, so with bundles a song or sound opens when it's first played.
 - **Field scripts play the music and sounds**: `PLAY_MUSIC`, `CROSSFADE_MUSIC`, `STOP_MUSIC`, `MUSIC_STEM_STATE`, `IS_MUSIC_PLAYING` and `PLAY_SOUND`; the song's volume with `SET_MUSIC_VOLUME`, `FADE_MUSIC_VOLUME`, `FADE_MUSIC_VOLUME_FROM` and `WAIT_FOR_MUSIC_VOLUME`, kept in Field's `MusicVolume` variable so it carries across fields and saves; and with PSX Reverb, `SET_REVERB_PRESET` and `SET_REVERB_VOLUME`.  The block editor offers each provider's songs, sounds and stem states by name.
 - **The menus set the player's volume**: the Config menu as the player changes it, and the title screen from the saved settings at start-up.
 - **Battle** stops the field's music and plays its victory music.
@@ -325,7 +361,7 @@ Some suggestions for fitting it in:
 
 ## Not in this version
 
-* **Music and sounds can't be loaded from asset bundles.**  A provider references its assets directly, so they ship inside the build, and content added after release can't bring its own.
+* **Content packs can't add bundles yet.**  A bundled provider reads the game's own folders; reading a content pack's beside them comes with the framework's content packs.
 * **A tempo that changes gradually**, such as a ritardando, fits no list of sections, so a loop after one can't be given in bars.
 * **The players run in play mode only**, through a mixer set up as described above; the inspector preview is the way to hear an asset outside it.
 

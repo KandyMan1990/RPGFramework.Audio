@@ -35,6 +35,11 @@ namespace RPGFramework.Audio.Editor
             root.Add(generateEnumBtn);
             root.Add(generateAllSfxEventsBtn);
             root.Add(generateAllSfxEventsIndividuallyBtn);
+            root.Add(new Button(OnBuildBundlesClicked)
+                     {
+                         text    = "Build bundles",
+                         tooltip = $"Builds a bundle per sound in StreamingAssets/{BundledSfxAssetProvider.FOLDER}, which {nameof(BundledSfxAssetProvider)} reads, for the editor's active platform"
+                     });
 
             return root;
         }
@@ -49,6 +54,11 @@ namespace RPGFramework.Audio.Editor
         {
             m_SfxEventGeneratorEditor = new SfxEventGeneratorEditor();
             m_SfxEventGeneratorEditor.OpenModal(serializedObject, "SfxEvents", true);
+        }
+
+        private void OnBuildBundlesClicked()
+        {
+            AudioBundleBuilder.Build(AudioBundleBuilder.ListedAssets(serializedObject, "m_SfxAssets"), BundledSfxAssetProvider.FOLDER);
         }
 
         private void OnGenerateAllSfxEventsIndividuallyClicked()

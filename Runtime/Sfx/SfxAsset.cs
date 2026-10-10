@@ -18,7 +18,7 @@ namespace RPGFramework.Audio.Sfx
         [SerializeField]
         private int m_LoopEnd;
 
-        IReadOnlyList<IStem> ISfxAsset.        Tracks    => m_Tracks;
+        IReadOnlyList<IStem> IAudioAsset.      Tracks    => m_Tracks;
         IReadOnlyList<ISfxEventData> ISfxAsset.Events    => m_Events;
         bool ISfxAsset.                        Loop      => m_Loop;
         int ISfxAsset.                         LoopStart => m_LoopStart;

@@ -22,8 +22,18 @@ namespace RPGFramework.Audio.Editor
                             };
 
             root.Add(button);
+            root.Add(new Button(OnBuildBundlesClicked)
+                     {
+                         text    = "Build bundles",
+                         tooltip = $"Builds a bundle per song in StreamingAssets/{BundledMusicAssetProvider.FOLDER}, which {nameof(BundledMusicAssetProvider)} reads, for the editor's active platform"
+                     });
 
             return root;
+        }
+
+        private void OnBuildBundlesClicked()
+        {
+            AudioBundleBuilder.Build(AudioBundleBuilder.ListedAssets(serializedObject, "m_MusicAssets"), BundledMusicAssetProvider.FOLDER);
         }
 
         private void OnButtonClicked()

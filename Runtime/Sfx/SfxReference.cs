@@ -14,10 +14,12 @@ namespace RPGFramework.Audio.Sfx
 
         IReadOnlyList<ISfxEventData> ISfxReference.Events => m_PublishedEvents ??= BuildPublishedEvents();
 
-        ISfxAsset ISfxReference.Asset => m_SfxAsset;
+        ISfxAsset ISfxReference.Asset    => m_SfxAsset;
+        ulong ISfxReference.    NameHash => m_NameHash;
 
         private Action<string, ISfxReference> m_OnEvent;
 
+        private readonly ulong                        m_NameHash;
         private readonly AudioSource[]                m_AudioSources;
         private readonly IReadOnlyList<ISfxEventData> m_Events;
         private readonly Action<ISfxReference>        m_OnAllEventsCompleted;
@@ -35,8 +37,13 @@ namespace RPGFramework.Audio.Sfx
 
         private bool m_Completed;
 
-        internal SfxReference(AudioSource[] audioSources, ISfxAsset sfxAsset, double scheduledStartDspTime, Action<ISfxReference> onAllEventsCompleted)
+        internal SfxReference(ulong                 nameHash,
+                              AudioSource[]         audioSources,
+                              ISfxAsset             sfxAsset,
+                              double                scheduledStartDspTime,
+                              Action<ISfxReference> onAllEventsCompleted)
         {
+            m_NameHash     = nameHash;
             m_AudioSources = audioSources;
             m_SfxAsset     = sfxAsset;
 

@@ -26,21 +26,18 @@ namespace RPGFramework.Audio.Music
         [SerializeField]
         [Tooltip("The song's tempo and time signature, in sections. The first starts at bar 1 and each runs until the next one starts, so a song that changes either loops by bar all the same")]
         private TempoSection[] m_Sections = Array.Empty<TempoSection>();
-
         [SerializeField]
         private int m_LoopStartBar;
-
         [SerializeField]
         private int m_LoopEndBar;
-
         [SerializeField]
         private bool m_Loop;
-
         [SerializeField]
         private Stem[] m_Tracks;
-
         [SerializeField]
         private StemState[] m_States;
+        [SerializeField]
+        private EchoSettings m_Echo = new EchoSettings();
 
         // Kept whether or not PSX Reverb is installed, so a song's settings survive the package being removed and added
         // back; Unity would drop them on the next save of a field compiled out. Shown only when it is installed.
@@ -50,24 +47,19 @@ namespace RPGFramework.Audio.Music
 #endif
         private ReverbSettings m_Reverb = new ReverbSettings();
 
-        [SerializeField]
-        private EchoSettings m_Echo = new EchoSettings();
-
         private Dictionary<ulong, StemState> m_StatesByNameHash;
+        private double                       m_LoopStartTime;
+        private double                       m_LoopEndTime;
+        private bool                         m_LoopPointsValid;
 
-        private double m_LoopStartTime;
-        private double m_LoopEndTime;
-        private bool   m_LoopPointsValid;
-
-        string IMusicAsset.              Name          => name;
-        double IMusicAsset.              LoopStartTime => m_LoopStartTime;
-        double IMusicAsset.              LoopEndTime   => m_LoopEndTime;
-        bool IMusicAsset.                Loop          => m_Loop && m_LoopPointsValid;
-        IReadOnlyList<IStem> IMusicAsset.Tracks        => m_Tracks;
-        ReverbSettings IMusicAsset.      Reverb        => m_Reverb;
-        EchoSettings IMusicAsset.        Echo          => m_Echo;
-
-        bool IMusicAsset.EchoFollowsTempo => m_Echo.Timing == EchoTiming.NoteLength && m_Sections != null && m_Sections.Length > 1;
+        IReadOnlyList<IStem> IAudioAsset.Tracks           => m_Tracks;
+        string IMusicAsset.              Name             => name;
+        double IMusicAsset.              LoopStartTime    => m_LoopStartTime;
+        double IMusicAsset.              LoopEndTime      => m_LoopEndTime;
+        bool IMusicAsset.                Loop             => m_Loop && m_LoopPointsValid;
+        ReverbSettings IMusicAsset.      Reverb           => m_Reverb;
+        EchoSettings IMusicAsset.        Echo             => m_Echo;
+        bool IMusicAsset.                EchoFollowsTempo => m_Echo.Timing == EchoTiming.NoteLength && m_Sections != null && m_Sections.Length > 1;
 
         float IMusicAsset.GetEchoDelayMilliseconds(double seconds)
         {

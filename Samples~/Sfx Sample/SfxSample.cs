@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using RPGFramework.Audio.Sfx;
 using RPGFramework.Hashing;
 using UnityEngine;
@@ -79,8 +80,15 @@ namespace RPGFramework.Audio.Sfx_Sample
 
         private void OnPlaySfx1Button()
         {
-            // trigger a sound
-            m_SfxReference0 = m_SfxPlayer.Play(Fnv1a64.Hash(ONE_SHOT));
+            // async void is bad, but button callbacks have to be void
+            // We don't want to await so we call fire and forget to ensure any exceptions get captured
+            Run().FireAndForget();
+
+            async Task Run()
+            {
+                // trigger a sound
+                m_SfxReference0 = await m_SfxPlayer.PlayAsync(Fnv1a64.Hash(ONE_SHOT));
+            }
         }
 
         private void OnStopSfx1Button()
@@ -91,28 +99,38 @@ namespace RPGFramework.Audio.Sfx_Sample
 
         private void OnPlaySfx0ButtonWithLoopAndEvent()
         {
-            // trigger a sound
-            ISfxReference sfxReference = m_SfxPlayer.Play(Fnv1a64.Hash(LOOPING_SOUND));
+            Run().FireAndForget();
 
-            // see when each event will be triggered in seconds
-            IReadOnlyList<ISfxEventData> events = sfxReference.Events;
-
-            for (int i = 0; i < events.Count; i++)
+            async Task Run()
             {
-                ISfxEventData sfxEventData = events[i];
+                // trigger a sound
+                ISfxReference sfxReference = await m_SfxPlayer.PlayAsync(Fnv1a64.Hash(LOOPING_SOUND));
 
-                Debug.Log($"{sfxEventData.EventName} {sfxEventData.EventTriggerTime}");
+                // see when each event will be triggered in seconds
+                IReadOnlyList<ISfxEventData> events = sfxReference.Events;
+
+                for (int i = 0; i < events.Count; i++)
+                {
+                    ISfxEventData sfxEventData = events[i];
+
+                    Debug.Log($"{sfxEventData.EventName} {sfxEventData.EventTriggerTime}");
+                }
+
+                sfxReference.OnEvent += SfxReferenceOnEvent;
             }
-
-            sfxReference.OnEvent += SfxReferenceOnEvent;
         }
 
         private void OnPlayAmbienceButton()
         {
-            // trigger ambience
-            ISfxReference sfxReference = m_SfxReference0 = m_SfxPlayer.Play(Fnv1a64.Hash(AMBIENCE));
+            Run().FireAndForget();
 
-            sfxReference.OnEvent += SfxReferenceOnEvent;
+            async Task Run()
+            {
+                // trigger ambience
+                ISfxReference sfxReference = m_SfxReference0 = await m_SfxPlayer.PlayAsync(Fnv1a64.Hash(AMBIENCE));
+
+                sfxReference.OnEvent += SfxReferenceOnEvent;
+            }
         }
 
         private void OnStopAllSfxButton()

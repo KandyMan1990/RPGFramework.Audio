@@ -2,7 +2,7 @@ using System;
 using System.Threading.Tasks;
 using UnityEngine;
 
-namespace RPGFramework.Audio.Music_Sample
+namespace RPGFramework.Audio.Sfx_Sample
 {
     internal static class TaskExtensions
     {

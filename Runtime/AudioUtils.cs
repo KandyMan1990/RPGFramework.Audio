@@ -85,5 +85,18 @@ namespace RPGFramework.Audio
 
             return result;
         }
+
+        internal static bool UsesClip(IAudioAsset asset, AudioClip clip)
+        {
+            for (int i = 0; i < asset.Tracks.Count; i++)
+            {
+                if (ReferenceEquals(asset.Tracks[i].Clip, clip))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
     }
 }

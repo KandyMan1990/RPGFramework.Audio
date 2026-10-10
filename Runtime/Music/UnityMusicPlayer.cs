@@ -10,27 +10,26 @@ namespace RPGFramework.Audio.Music
 {
     public class UnityMusicPlayer : IMusicPlayer, IAudioUpdatable
     {
-        private const string MUSIC_BUS_NAME         = "Music";
-        private const string MUSIC_REVERB_SEND      = "MusicReverbSend";
-        private const string MUSIC_ECHO             = "MusicEcho";
-        private const string MUSIC_GAME_OBJECT_NAME = "MusicPlayer";
-        private const string REVERB_PRESET          = "ReverbPreset";
-        private const string REVERB_DEPTH           = "ReverbDepth";
-        private const string ECHO_DELAY             = "EchoDelay";
-        private const string ECHO_DECAY             = "EchoDecay";
-
-        // A change of delay smaller than this is not worth a write.
-        private const float ECHO_DELAY_TOLERANCE_MS = 0.5f;
+        private const string MUSIC_BUS_NAME          = "Music";
+        private const string MUSIC_REVERB_SEND       = "MusicReverbSend";
+        private const string MUSIC_ECHO              = "MusicEcho";
+        private const string MUSIC_GAME_OBJECT_NAME  = "MusicPlayer";
+        private const string REVERB_PRESET           = "ReverbPreset";
+        private const string REVERB_DEPTH            = "ReverbDepth";
+        private const string ECHO_DELAY              = "EchoDelay";
+        private const string ECHO_DECAY              = "EchoDecay";
+        private const float  ECHO_DELAY_TOLERANCE_MS = 0.5f;
+        private const ulong  NO_MUSIC                = 0;
 
         private static readonly string[] VOLUME_BUS_NAMES = { MUSIC_BUS_NAME, MUSIC_REVERB_SEND, MUSIC_ECHO };
 
-        private const ulong NO_MUSIC = 0;
+        private readonly IMusicPlayer                   m_This;
+        private readonly List<Song>                     m_Sounding;
+        private readonly Dictionary<ulong, int>         m_Preloads;
+        private readonly Dictionary<ulong, IMusicAsset> m_Preloaded;
 
-        private readonly IMusicPlayer m_This;
-
-        // The playing song, and while a crossfade or a stop lasts, the songs fading out under it.
-        private readonly List<Song> m_Sounding = new List<Song>(2);
-
+        private int                     m_Requests;
+        private int                     m_PreloadRequests;
         private IMusicAssetProvider     m_MusicAssetProvider;
         private Song                    m_Playing;
         private MusicChannelPool        m_ChannelPool;
@@ -46,62 +45,101 @@ namespace RPGFramework.Audio.Music
 
         public UnityMusicPlayer()
         {
-            m_This = this;
+            m_Sounding  = new List<Song>(2);
+            m_Preloads  = new Dictionary<ulong, int>();
+            m_Preloaded = new Dictionary<ulong, IMusicAsset>();
+            m_This      = this;
         }
 
-        Task IMusicPlayer.PlayAsync(ulong nameHash, ulong initialStemStateHash, float fadeInTime, float volume)
+        async Task IMusicPlayer.PlayAsync(ulong nameHash, ulong initialStemStateHash, float fadeInTime, float volume)
         {
             if (IsCurrentSong(nameHash))
             {
-                return Task.CompletedTask;
+                return;
             }
 
-            IMusicAsset musicAsset = m_MusicAssetProvider.GetMusicAsset(nameHash);
+            IMusicAsset musicAsset = await AcquireAsync(nameHash);
             bool[]      stems      = musicAsset.GetStemsForState(initialStemStateHash);
 
             CancelCts();
             StopAllSongs();
 
-            return StartSong(nameHash, musicAsset, stems, 0f, fadeInTime, volume, null);
+            await StartSong(nameHash, musicAsset, stems, 0f, fadeInTime, volume, null);
         }
 
-        Task IMusicPlayer.CrossfadeAsync(ulong nameHash, ulong initialStemStateHash, float seconds, float volume)
+        async Task IMusicPlayer.CrossfadeAsync(ulong nameHash, ulong initialStemStateHash, float seconds, float volume)
         {
             if (IsCurrentSong(nameHash))
             {
-                return Task.CompletedTask;
+                return;
             }
 
-            IMusicAsset musicAsset = m_MusicAssetProvider.GetMusicAsset(nameHash);
+            IMusicAsset musicAsset = await AcquireAsync(nameHash);
             bool[]      stems      = musicAsset.GetStemsForState(initialStemStateHash);
             Song        outgoing   = m_Playing;
 
             CancelCts();
             StopSongsFadingOut();
 
-            return StartSong(nameHash, musicAsset, stems, 0f, seconds, volume, outgoing);
+            await StartSong(nameHash, musicAsset, stems, 0f, seconds, volume, outgoing);
         }
 
-        Task IMusicPlayer.ResumeAsync(MusicSnapshot snapshot, float seconds, float volume)
+        async Task IMusicPlayer.ResumeAsync(MusicSnapshot snapshot, float seconds, float volume)
         {
             // Nothing was playing when it was taken, so nothing should be now.
             if (snapshot.NameHash == NO_MUSIC)
             {
-                return m_This.StopAsync(seconds);
+                await m_This.StopAsync(seconds);
+
+                return;
             }
 
             if (IsCurrentSong(snapshot.NameHash))
             {
-                return Task.CompletedTask;
+                return;
             }
 
-            IMusicAsset musicAsset = m_MusicAssetProvider.GetMusicAsset(snapshot.NameHash);
+            IMusicAsset musicAsset = await AcquireAsync(snapshot.NameHash);
             Song        outgoing   = m_Playing;
 
             CancelCts();
             StopSongsFadingOut();
 
-            return StartSong(snapshot.NameHash, musicAsset, snapshot.Stems, snapshot.Position, seconds, volume, outgoing);
+            await StartSong(snapshot.NameHash, musicAsset, snapshot.Stems, snapshot.Position, seconds, volume, outgoing);
+        }
+
+        Task IMusicPlayer.PreloadAsync(IReadOnlyList<ulong> nameHashes)
+        {
+            Task[] preloads = new Task[nameHashes.Count];
+
+            for (int i = 0; i < nameHashes.Count; i++)
+            {
+                preloads[i] = PreloadAsync(nameHashes[i]);
+            }
+
+            return Task.WhenAll(preloads);
+        }
+
+        void IMusicPlayer.Unload(IReadOnlyList<ulong> nameHashes)
+        {
+            for (int i = 0; i < nameHashes.Count; i++)
+            {
+                ulong nameHash = nameHashes[i];
+
+                if (!m_Preloads.Remove(nameHash))
+                {
+                    continue;
+                }
+
+                // Still loading, it lets go itself when it finishes.
+                if (!m_Preloaded.Remove(nameHash, out IMusicAsset musicAsset))
+                {
+                    continue;
+                }
+
+                UnloadUnusedClips(musicAsset);
+                m_MusicAssetProvider.Release(nameHash);
+            }
         }
 
         Task IMusicPlayer.SetSongVolumeAsync(float volume, float seconds)
@@ -124,6 +162,8 @@ namespace RPGFramework.Audio.Music
 
         MusicSnapshot IMusicPlayer.Pause()
         {
+            m_Requests++;
+
             MusicSnapshot snapshot = m_This.IsPlaying() ? TakeSnapshot(m_Playing) : default;
 
             CancelCts();
@@ -134,6 +174,8 @@ namespace RPGFramework.Audio.Music
 
         Task IMusicPlayer.StopAsync(float fadeTime)
         {
+            m_Requests++;
+
             if (m_Sounding.Count == 0)
             {
                 return Task.CompletedTask;
@@ -171,9 +213,9 @@ namespace RPGFramework.Audio.Music
             CancelCts();
             StopAllSongs();
 
-            m_AudioMixer         = groups[0].audioMixer;
-            m_ChannelPool        = new MusicChannelPool(groups.Length);
-            m_Sources            = new AudioSource[groups.Length];
+            m_AudioMixer             = groups[0].audioMixer;
+            m_ChannelPool            = new MusicChannelPool(groups.Length);
+            m_Sources                = new AudioSource[groups.Length];
             m_SendParameterNames     = new string[groups.Length];
             m_EchoSendParameterNames = new string[groups.Length];
 
@@ -199,6 +241,11 @@ namespace RPGFramework.Audio.Music
 
         Task IMusicPlayer.SetStemStateFadeAsync(ulong stemStateHash, float transitionLength)
         {
+            if (m_Playing == null)
+            {
+                return Task.CompletedTask;
+            }
+
             bool[] state = m_Playing.Asset.GetStemsForState(stemStateHash);
 
             return SetStemStateFadeAsync(m_Playing, state, transitionLength);
@@ -206,6 +253,11 @@ namespace RPGFramework.Audio.Music
 
         void IMusicPlayer.SetStemStateImmediate(ulong stemStateHash)
         {
+            if (m_Playing == null)
+            {
+                return;
+            }
+
             bool[] state = m_Playing.Asset.GetStemsForState(stemStateHash);
 
             SetStemStateImmediate(m_Playing, state);
@@ -418,7 +470,7 @@ namespace RPGFramework.Audio.Music
             return true;
         }
 
-        private static async Task EnsureAudioClipLoaded(AudioClip audioClip, Song song)
+        private static async Task EnsureAudioClipLoaded(AudioClip audioClip, Func<bool> abandoned)
         {
             if (audioClip.preloadAudioData || audioClip.loadState == AudioDataLoadState.Loaded)
             {
@@ -437,7 +489,7 @@ namespace RPGFramework.Audio.Music
                 }
 
                 // Stopping the song unloads the clip, so it would never finish loading.
-                if (song.Stopped)
+                if (abandoned())
                 {
                     return;
                 }
@@ -488,7 +540,7 @@ namespace RPGFramework.Audio.Music
 
             for (int i = 0; i < tracks.Count; i++)
             {
-                loads[i] = EnsureAudioClipLoaded(tracks[i].Clip, song);
+                loads[i] = EnsureAudioClipLoaded(tracks[i].Clip, () => song.Stopped);
             }
 
             await Task.WhenAll(loads);
@@ -628,9 +680,88 @@ namespace RPGFramework.Audio.Music
 
             m_ChannelPool.Free(song.Channels);
 
-            for (int i = 0; i < song.Asset.Tracks.Count; i++)
+            UnloadUnusedClips(song.Asset);
+            m_MusicAssetProvider.Release(song.NameHash);
+
+            UpdateTickRegistration();
+        }
+
+        // A song's clips can still be wanted after it stops: by the same song, preloaded, or, from the in-build provider,
+        // by another song using the same clip.
+        private bool IsClipSounding(AudioClip clip)
+        {
+            for (int i = 0; i < m_Sounding.Count; i++)
             {
-                IStem stem = song.Asset.Tracks[i];
+                if (AudioUtils.UsesClip(m_Sounding[i].Asset, clip))
+                {
+                    return true;
+                }
+            }
+
+            foreach (IMusicAsset preloaded in m_Preloaded.Values)
+            {
+                if (AudioUtils.UsesClip(preloaded, clip))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <returns>The song, held, or null when something asked for later has taken over, which lets it go again.</returns>
+        private async Task<IMusicAsset> AcquireAsync(ulong nameHash)
+        {
+            int         request    = ++m_Requests;
+            IMusicAsset musicAsset = await m_MusicAssetProvider.AcquireAsync(nameHash);
+
+            if (request != m_Requests)
+            {
+                m_MusicAssetProvider.Release(nameHash);
+                musicAsset = null;
+            }
+
+            return musicAsset;
+        }
+
+        private async Task PreloadAsync(ulong nameHash)
+        {
+            if (m_Preloads.ContainsKey(nameHash))
+            {
+                return;
+            }
+
+            int request = ++m_PreloadRequests;
+            m_Preloads.Add(nameHash, request);
+
+            IMusicAsset musicAsset = await m_MusicAssetProvider.AcquireAsync(nameHash);
+
+            // Unloaded while it loaded, and perhaps preloaded again since, by a request that keeps it instead.
+            if (!m_Preloads.TryGetValue(nameHash, out int current) || current != request)
+            {
+                m_MusicAssetProvider.Release(nameHash);
+
+                return;
+            }
+
+            m_Preloaded.Add(nameHash, musicAsset);
+
+            IReadOnlyList<IStem> tracks = musicAsset.Tracks;
+            Task[]               loads  = new Task[tracks.Count];
+
+            for (int i = 0; i < tracks.Count; i++)
+            {
+                loads[i] = EnsureAudioClipLoaded(tracks[i].Clip, () => !m_Preloaded.ContainsKey(nameHash));
+            }
+
+            await Task.WhenAll(loads);
+        }
+
+        private void UnloadUnusedClips(IMusicAsset musicAsset)
+        {
+            for (int i = 0; i < musicAsset.Tracks.Count; i++)
+            {
+                IStem stem = musicAsset.Tracks[i];
 
                 if (stem.Clip.preloadAudioData || IsClipSounding(stem.Clip))
                 {
@@ -639,29 +770,6 @@ namespace RPGFramework.Audio.Music
 
                 stem.Clip.UnloadAudioData();
             }
-
-            UpdateTickRegistration();
-        }
-
-        // Two songs can share clips, and one still sounding needs them loaded.
-        private bool IsClipSounding(AudioClip clip)
-        {
-            for (int i = 0; i < m_Sounding.Count; i++)
-            {
-                Song song = m_Sounding[i];
-
-                for (int j = 0; j < song.Asset.Tracks.Count; j++)
-                {
-                    IStem stem = song.Asset.Tracks[j];
-
-                    if (stem.Clip == clip)
-                    {
-                        return true;
-                    }
-                }
-            }
-
-            return false;
         }
 
         private static bool ChecksLoop(Song song)
@@ -711,6 +819,7 @@ namespace RPGFramework.Audio.Music
 
             CancelCts();
             StopAllSongs();
+            m_This.Unload(new List<ulong>(m_Preloads.Keys));
             DestroyPlayerObject();
         }
 
