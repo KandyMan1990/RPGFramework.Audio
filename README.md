@@ -155,7 +155,7 @@ A track that doesn't loop costs nothing per frame — the update component is on
 
 ### Pause and resume
 
-`Pause` stops the music and returns a `MusicSnapshot` of what was playing — the track, where it was, and which stems it had — for you to keep.  `ResumeAsync` plays it again from there, so music can be put aside for a battle and its victory music, and picked up afterwards:
+`Pause` stops the music and returns a `MusicSnapshot` of what was playing — the track, where it was, which stems it had, and the echo and reverb in force — for you to keep.  `ResumeAsync` plays it again from there, so music can be put aside for a battle and its victory music, and picked up afterwards:
 
 ```csharp
 MusicSnapshot overworld = musicPlayer.Pause();
@@ -168,6 +168,7 @@ await musicPlayer.ResumeAsync(overworld, 1f);
 ```
 
 * `ResumeAsync` fades whatever is playing out under the resumed track over the seconds given, as `CrossfadeAsync` does; zero cuts.  It takes a volume, as `PlayAsync` does, rather than restoring the one the track was paused at.
+* It puts back the echo, and with PSX Reverb the reverb's preset and volume, as they were when the track was paused — whatever set them, the track, an earlier one or a call to `SetReverbPreset` — rather than the track's own, so nothing played in between leaves its settings behind.
 * Pausing with nothing playing returns an empty snapshot, and resuming an empty snapshot fades out whatever is playing, since nothing was when it was taken.
 * The player keeps no snapshot itself, so one can be kept as long as it is needed, and more than one at once.  `PlayAsync` of a paused track starts it from the beginning.
 * Pausing during a crossfade keeps the track fading in and stops both.
@@ -180,11 +181,11 @@ A song can echo some of its stems, on Unity's Echo effect on a bus of its own (s
 * **Timing** — *None* leaves the echo as the last song set it; a song whose stems send nothing to it needs nothing here.  *Milliseconds* sets the delay once, when the song starts.  *Note Length* takes it from the song's tempo, as a note value played straight, dotted or as a triplet, and follows it into each tempo section: a dotted eighth is 432.7 ms at 104 BPM.
 * **Decay** — each repeat as a share of the one before: 0.5 halves it, and 1 never fades.
 
-The delay is held between 10 and 5000 ms, the effect's own range.  The repeats go on into the reverb, so they sit in the song's room, and like the reverb's tail they die away naturally when the music is paused.  In a crossfade, the song coming in sets the echo.  The inspector's preview skips the mixer, so the echo is heard only in play mode.
+The delay is held between 10 and 5000 ms, the effect's own range.  The repeats go on into the reverb, so they sit in the song's room, and like the reverb's tail they die away naturally when the music is paused.  In a crossfade, the song coming in sets the echo, and a resumed song puts back the echo it was paused with.  The inspector's preview skips the mixer, so the echo is heard only in play mode.
 
 ### PSX reverb
 
-With [PSX Reverb](https://github.com/KandyMan1990/RPGFramework.PSXReverb) (`com.rpgframework.psxreverb`) installed on the Reverb bus, a music asset gains a **Reverb** group: an optional preset and an optional volume, each applied when the song starts, including when a paused song resumes.  A setting left unticked leaves the reverb as the last song or script set it.  The volume can be set with its 0 to 1 slider or as PSX Reverb's depth, 0 to 127, and each row has a **Default** button that puts back PSX Reverb's own: studio C, and depth 40.
+With [PSX Reverb](https://github.com/KandyMan1990/RPGFramework.PSXReverb) (`com.rpgframework.psxreverb`) installed on the Reverb bus, a music asset gains a **Reverb** group: an optional preset and an optional volume, each applied when the song starts.  A paused song resumes with the reverb as it was when it was paused instead (see [Pause and resume](#pause-and-resume)).  A setting left unticked leaves the reverb as the last song or script set it.  The volume can be set with its 0 to 1 slider or as PSX Reverb's depth, 0 to 127, and each row has a **Default** button that puts back PSX Reverb's own: studio C, and depth 40.
 
 The volume is 0 to 1, and goes to PSX Reverb's Depth, 0 to 127, in a straight line.  It is how loud the reverb plays for every sound while the song is on, sound effects included, where a stem's send level is how much of that one stem goes in.  A different preset clears the reverb, cutting its tail.
 
@@ -358,9 +359,9 @@ Some suggestions for fitting it in:
   ```
 
 - **The game's installer chooses the provider**, in the build or from bundles; the test project's has an **Audio From Bundles** tick.  The modules don't preload anything yet, so with bundles a song or sound opens when it's first played.
-- **Field scripts play the music and sounds**: `PLAY_MUSIC`, `CROSSFADE_MUSIC`, `STOP_MUSIC`, `MUSIC_STEM_STATE`, `IS_MUSIC_PLAYING` and `PLAY_SOUND`; the song's volume with `SET_MUSIC_VOLUME`, `FADE_MUSIC_VOLUME`, `FADE_MUSIC_VOLUME_FROM` and `WAIT_FOR_MUSIC_VOLUME`, kept in Field's `MusicVolume` variable so it carries across fields and saves; and with PSX Reverb, `SET_REVERB_PRESET` and `SET_REVERB_VOLUME`.  The block editor offers each provider's songs, sounds and stem states by name.
+- **Field scripts play the music and sounds**: `PLAY_MUSIC`, `CROSSFADE_MUSIC`, `STOP_MUSIC`, `MUSIC_STEM_STATE`, `IS_MUSIC_PLAYING` and `PLAY_SOUND`; the song's volume with `SET_MUSIC_VOLUME`, `FADE_MUSIC_VOLUME`, `FADE_MUSIC_VOLUME_FROM` and `WAIT_FOR_MUSIC_VOLUME`, kept in Core's `MusicVolume` variable so it carries across fields and saves; the battle music with `SET_BATTLE_MUSIC`; and with PSX Reverb, `SET_REVERB_PRESET` and `SET_REVERB_VOLUME`.  The block editor offers each provider's songs, sounds and stem states by name.
 - **The menus set the player's volume**: the Config menu as the player changes it, and the title screen from the saved settings at start-up.
-- **Battle** stops the field's music and plays its victory music.
+- **A battle pauses the field's music**: the module router pauses it and starts the battle music as the battle begins, and the field resumes it as it returns, over a second at its music volume.  Battle plays its victory music.
 - **Menus and dialogue make their sounds through Core's audio intents** — confirm, cancel, navigate — which the game maps to its own sound effects (the test project's `GameAudioIntentPlayer`), so Core never names a sound and Audio never hears of Core.
 
 ## Not in this version

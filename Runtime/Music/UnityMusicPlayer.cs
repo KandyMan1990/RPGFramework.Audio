@@ -64,7 +64,7 @@ namespace RPGFramework.Audio.Music
             CancelCts();
             StopAllSongs();
 
-            await StartSong(nameHash, musicAsset, stems, 0f, fadeInTime, volume, null);
+            await StartSong(nameHash, musicAsset, stems, 0f, fadeInTime, volume, null, default);
         }
 
         async Task IMusicPlayer.CrossfadeAsync(ulong nameHash, ulong initialStemStateHash, float seconds, float volume)
@@ -81,7 +81,7 @@ namespace RPGFramework.Audio.Music
             CancelCts();
             StopSongsFadingOut();
 
-            await StartSong(nameHash, musicAsset, stems, 0f, seconds, volume, outgoing);
+            await StartSong(nameHash, musicAsset, stems, 0f, seconds, volume, outgoing, default);
         }
 
         async Task IMusicPlayer.ResumeAsync(MusicSnapshot snapshot, float seconds, float volume)
@@ -105,7 +105,7 @@ namespace RPGFramework.Audio.Music
             CancelCts();
             StopSongsFadingOut();
 
-            await StartSong(snapshot.NameHash, musicAsset, snapshot.Stems, snapshot.Position, seconds, volume, outgoing);
+            await StartSong(snapshot.NameHash, musicAsset, snapshot.Stems, snapshot.Position, seconds, volume, outgoing, snapshot.Effects);
         }
 
         Task IMusicPlayer.PreloadAsync(IReadOnlyList<ulong> nameHashes)
@@ -312,8 +312,14 @@ namespace RPGFramework.Audio.Music
         private MusicSnapshot TakeSnapshot(Song song)
         {
             float position = song.Scheduled ? m_Sources[song.Channels[0]].time : song.StartTime;
+            MusicEffects effects = new MusicEffects(AudioUtils.GetParameter(m_AudioMixer, ECHO_DELAY),
+                                                    AudioUtils.GetParameter(m_AudioMixer, ECHO_DECAY),
+                                                    GetReverbParameter(REVERB_PRESET),
+                                                    GetReverbParameter(REVERB_DEPTH));
 
-            return new MusicSnapshot(song.NameHash, position, (bool[])song.Stems.Clone());
+            MusicSnapshot snapshot = new MusicSnapshot(effects, song.NameHash, position, (bool[])song.Stems.Clone());
+
+            return snapshot;
         }
 
         private bool IsCurrentSong(ulong nameHash)
@@ -498,14 +504,22 @@ namespace RPGFramework.Audio.Music
             }
         }
 
-        private Task StartSong(ulong nameHash, IMusicAsset musicAsset, bool[] stems, float startTime, float fadeSeconds, float volume, Song outgoing)
+        private Task StartSong(ulong        nameHash,
+                               IMusicAsset  musicAsset,
+                               bool[]       stems,
+                               float        startTime,
+                               float        fadeSeconds,
+                               float        volume,
+                               Song         outgoing,
+                               MusicEffects effects)
         {
             int[] channels = m_ChannelPool.Take(musicAsset.Name, musicAsset.Tracks.Count);
-            Song  song     = new Song(nameHash, musicAsset, channels);
 
+            Song song = new Song(nameHash, musicAsset, channels);
             song.Volume    = math.clamp(volume, 0f, 1f);
             song.StartTime = startTime;
             song.Stems     = stems;
+            song.Effects   = effects;
 
             SetStemLevels(song, stems);
 
@@ -577,8 +591,17 @@ namespace RPGFramework.Audio.Music
             song.MasterFade = fadesIn ? 0f : song.Volume;
 
             ApplyStemVolumes(song);
-            ApplySongReverb(song.Asset.Reverb);
-            ApplySongEcho(song);
+
+            if (song.Effects.Taken)
+            {
+                ApplyPausedEffects(song);
+            }
+            else
+            {
+                ApplySongReverb(song.Asset.Reverb);
+                ApplySongEcho(song);
+            }
+
             UpdateTickRegistration();
 
             return true;
@@ -612,6 +635,20 @@ namespace RPGFramework.Audio.Music
             ApplyEchoDelay(song, song.StartTime);
         }
 
+        // A resumed song puts back the echo and reverb as they were when it was paused, which a script or an earlier
+        // song may have set rather than its own. An echo following its tempo carries on from there.
+        private void ApplyPausedEffects(Song song)
+        {
+            MusicEffects effects = song.Effects;
+
+            AudioUtils.SetParameter(m_AudioMixer, ECHO_DELAY, effects.EchoDelay);
+            AudioUtils.SetParameter(m_AudioMixer, ECHO_DECAY, effects.EchoDecay);
+            SetReverbParameter(REVERB_PRESET, effects.ReverbPreset);
+            SetReverbParameter(REVERB_DEPTH,  effects.ReverbDepth);
+
+            song.EchoDelay = effects.EchoDelay;
+        }
+
         // A note length's delay changes with the tempo; written only when it has.
         private void ApplyEchoDelay(Song song, double seconds)
         {
@@ -631,6 +668,17 @@ namespace RPGFramework.Audio.Music
         {
 #if RPGFRAMEWORK_PSXREVERB
             AudioUtils.SetParameter(m_AudioMixer, parameter, value);
+#endif
+        }
+
+        private float GetReverbParameter(string parameter)
+        {
+#if RPGFRAMEWORK_PSXREVERB
+            float value = AudioUtils.GetParameter(m_AudioMixer, parameter);
+
+            return value;
+#else
+            return 0f;
 #endif
         }
 
@@ -686,8 +734,8 @@ namespace RPGFramework.Audio.Music
             UpdateTickRegistration();
         }
 
-        // A song's clips can still be wanted after it stops: by the same song, preloaded, or, from the in-build provider,
-        // by another song using the same clip.
+        // A song's clips can still be wanted after it stops: by the same song, preloaded, or, from the in-build
+        // provider, by another song using the same clip.
         private bool IsClipSounding(AudioClip clip)
         {
             for (int i = 0; i < m_Sounding.Count; i++)
@@ -868,6 +916,9 @@ namespace RPGFramework.Audio.Music
 
             // The echo delay last written for it, so a section that does not change it costs no write.
             internal float EchoDelay;
+
+            // A resumed song's echo and reverb as they were when it was paused, put back instead of its own.
+            internal MusicEffects Effects;
 
             // Each master fade takes the next id, so one still running knows a later one has taken over.
             internal int MasterFadeId;

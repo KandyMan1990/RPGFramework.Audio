@@ -69,8 +69,8 @@ namespace RPGFramework.Audio
         internal bool[] GetStemsForState(ulong stateNameHash);
 
         /// <summary>
-        /// The echo's delay <paramref name="seconds" /> into the song: its milliseconds, or its note length at the tempo
-        /// there.
+        /// The echo's delay <paramref name="seconds" /> into the song: its milliseconds, or its note length at the
+        /// tempo there.
         /// </summary>
         internal float GetEchoDelayMilliseconds(double seconds);
     }
@@ -112,24 +112,25 @@ namespace RPGFramework.Audio
         Task CrossfadeAsync(ulong nameHash, ulong initialStemStateHash, float seconds, float volume = 1f);
 
         /// <summary>
-        /// Sets the playing track's own volume, 0 to 1, over <paramref name="seconds" />, zero at once. A linear gain on
-        /// its stems, under <see cref="SetVolume" />, which is the player's volume from the game's settings. Does
+        /// Sets the playing track's own volume, 0 to 1, over <paramref name="seconds" />, zero at once. A linear gain
+        /// on its stems, under <see cref="SetVolume" />, which is the player's volume from the game's settings. Does
         /// nothing with no track playing; the next track plays at the volume it is started with.
         /// </summary>
         Task SetSongVolumeAsync(float volume, float seconds = 0f);
 
         /// <summary>
-        /// Stops every track and unloads it, and returns what was playing — which track, where, and which stems — for
-        /// the caller to keep and hand to <see cref="ResumeAsync" />. The player keeps nothing itself. With no track
-        /// playing, or one that has reached its end, the snapshot is empty.
+        /// Stops every track and unloads it, and returns what was playing — which track, where, which stems, and the
+        /// echo and reverb in force — for the caller to keep and hand to <see cref="ResumeAsync" />. The player keeps
+        /// nothing itself. With no track playing, or one that has reached its end, the snapshot is empty.
         /// </summary>
         MusicSnapshot Pause();
 
         /// <summary>
         /// Plays a paused track again from where it was, with the stems it had, fading whatever is playing out under it
-        /// over <paramref name="seconds" /> as <see cref="CrossfadeAsync" /> does, zero cutting. It plays at
-        /// <paramref name="volume" />, as <see cref="PlayAsync" /> does, not the volume it was paused at. An empty
-        /// snapshot fades out whatever is playing instead, since nothing was playing when it was taken.
+        /// over <paramref name="seconds" /> as <see cref="CrossfadeAsync" /> does, zero cutting. It plays at <paramref
+        /// name="volume" />, as <see cref="PlayAsync" /> does, not the volume it was paused at. It puts back the echo
+        /// and reverb as they were when it was paused, not the track's own, so what a script set comes back too. An
+        /// empty snapshot fades out whatever is playing instead, since nothing was playing when it was taken.
         /// </summary>
         Task ResumeAsync(MusicSnapshot snapshot, float seconds = 0f, float volume = 1f);
 
@@ -140,8 +141,8 @@ namespace RPGFramework.Audio
         Task StopAsync(float fadeTime = 0.001f);
 
         /// <summary>
-        /// Whether a track is playing: from when it is asked for, its clips still loading included, until it is stopped,
-        /// paused, or reaches its end without looping. A track fading out under a stop is not.
+        /// Whether a track is playing: from when it is asked for, its clips still loading included, until it is
+        /// stopped, paused, or reaches its end without looping. A track fading out under a stop is not.
         /// </summary>
         bool IsPlaying();
 
@@ -149,8 +150,8 @@ namespace RPGFramework.Audio
         void SetMusicAssetProvider(IMusicAssetProvider provider);
 
         /// <summary>
-        /// Builds the player, stopping whatever is playing: a music channel per mixer group, each playing one stem, so a
-        /// track needs a group per stem and a crossfade's two tracks share them. The groups share one mixer, whose
+        /// Builds the player, stopping whatever is playing: a music channel per mixer group, each playing one stem, so
+        /// a track needs a group per stem and a crossfade's two tracks share them. The groups share one mixer, whose
         /// exposed parameters the player sets.
         /// </summary>
         void SetStemMixerGroups(AudioMixerGroup[] groups);

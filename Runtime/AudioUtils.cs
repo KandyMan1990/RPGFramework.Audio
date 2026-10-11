@@ -37,6 +37,16 @@ namespace RPGFramework.Audio
             }
         }
 
+        internal static float GetParameter(AudioMixer mixer, string parameter)
+        {
+            if (!mixer.GetFloat(parameter, out float value))
+            {
+                Debug.LogError($"{nameof(AudioUtils)}::{nameof(GetParameter)} Parameter [{parameter}] is not exposed on mixer [{mixer.name}]. Expose it in the mixer for this setting to take effect");
+            }
+
+            return value;
+        }
+
         internal static void SetParameter(AudioMixer mixer, string parameter, float value)
         {
             if (mixer.SetFloat(parameter, value))
