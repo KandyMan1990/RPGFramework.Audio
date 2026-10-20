@@ -7,7 +7,7 @@ using UnityEngine.UIElements;
 
 namespace RPGFramework.Audio.Music_Sample
 {
-    public class MusicSample : MonoBehaviour
+    public sealed class MusicSample : MonoBehaviour
     {
         // The stem states the music asset declares, in the order they are authored on it. Which stems
         // each one turns on is decided on the asset, so this sample only has to know what it wants to

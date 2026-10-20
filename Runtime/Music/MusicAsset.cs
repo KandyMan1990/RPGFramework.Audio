@@ -19,7 +19,7 @@ namespace RPGFramework.Audio.Music
     }
 
     [CreateAssetMenu(fileName = "Music Asset", menuName = "RPG Framework/Audio/Music Asset")]
-    public class MusicAsset : ScriptableObject, IMusicAsset
+    public sealed class MusicAsset : ScriptableObject, IMusicAsset
     {
         private const ulong NO_STATE_NAMED = 0;
 

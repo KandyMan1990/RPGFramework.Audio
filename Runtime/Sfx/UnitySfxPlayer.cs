@@ -6,7 +6,7 @@ using UnityEngine.Audio;
 
 namespace RPGFramework.Audio.Sfx
 {
-    public class UnitySfxPlayer : ISfxPlayer, IAudioUpdatable
+    public sealed class UnitySfxPlayer : ISfxPlayer, IAudioUpdatable
     {
         private const string SFX_BUS_NAME         = "Sfx";
         private const string SFX_REVERB_SEND      = "SfxReverbSend";

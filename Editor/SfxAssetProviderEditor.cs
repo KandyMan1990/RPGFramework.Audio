@@ -6,7 +6,7 @@ using UnityEngine.UIElements;
 namespace RPGFramework.Audio.Editor
 {
     [CustomEditor(typeof(SfxAssetProvider))]
-    internal class SfxAssetProviderEditor : UnityEditor.Editor
+    internal sealed class SfxAssetProviderEditor : UnityEditor.Editor
     {
         private AudioAssetProviderHelper<SfxAsset> m_AudioAssetProviderHelper;
         private SfxEventGeneratorEditor            m_SfxEventGeneratorEditor;

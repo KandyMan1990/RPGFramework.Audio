@@ -6,7 +6,7 @@ using UnityEngine.UIElements;
 namespace RPGFramework.Audio.Editor
 {
     [CustomEditor(typeof(MusicAssetProvider))]
-    internal class MusicAssetProviderEditor : UnityEditor.Editor
+    internal sealed class MusicAssetProviderEditor : UnityEditor.Editor
     {
         private AudioAssetProviderHelper<MusicAsset> m_AudioAssetProviderHelper;
 

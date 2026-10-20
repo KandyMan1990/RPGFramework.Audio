@@ -7,7 +7,7 @@ using UnityEngine;
 namespace RPGFramework.Audio.Music
 {
     [CreateAssetMenu(fileName = "Music Asset Provider", menuName = "RPG Framework/Audio/Music Asset Provider")]
-    public class MusicAssetProvider : ScriptableObject, IMusicAssetProvider
+    public sealed class MusicAssetProvider : ScriptableObject, IMusicAssetProvider
     {
         [SerializeField]
         private MusicAsset[] m_MusicAssets = Array.Empty<MusicAsset>();

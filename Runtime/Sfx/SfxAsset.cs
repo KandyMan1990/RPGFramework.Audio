@@ -5,7 +5,7 @@ using UnityEngine;
 namespace RPGFramework.Audio.Sfx
 {
     [CreateAssetMenu(fileName = "SFX Asset", menuName = "RPG Framework/Audio/SFX Asset")]
-    public class SfxAsset : ScriptableObject, ISfxAsset
+    public sealed class SfxAsset : ScriptableObject, ISfxAsset
     {
         [SerializeField]
         private Stem[] m_Tracks = Array.Empty<Stem>();

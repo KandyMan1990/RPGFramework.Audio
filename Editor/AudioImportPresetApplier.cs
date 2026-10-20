@@ -4,7 +4,7 @@ using UnityEditor.Presets;
 
 namespace RPGFramework.Audio.Editor
 {
-    internal class AudioImportPresetApplier : AssetPostprocessor
+    internal sealed class AudioImportPresetApplier : AssetPostprocessor
     {
         private void OnPreprocessAudio()
         {

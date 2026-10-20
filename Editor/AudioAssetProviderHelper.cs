@@ -8,7 +8,7 @@ using UnityEngine;
 
 namespace RPGFramework.Audio.Editor
 {
-    internal class AudioAssetProviderHelper<T> where T : ScriptableObject
+    internal sealed class AudioAssetProviderHelper<T> where T : ScriptableObject
     {
         private AudioAssetProviderModalWindow m_Window;
         private string                        m_AssetList;

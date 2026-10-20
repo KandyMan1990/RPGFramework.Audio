@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace RPGFramework.Audio.Sfx
 {
-    internal class SfxReference : ISfxReference
+    internal sealed class SfxReference : ISfxReference
     {
         event Action<string, ISfxReference> ISfxReference.OnEvent
         {

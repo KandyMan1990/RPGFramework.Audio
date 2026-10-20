@@ -8,7 +8,7 @@ using UnityEngine.UIElements;
 
 namespace RPGFramework.Audio.Sfx_Sample
 {
-    public class SfxSample : MonoBehaviour
+    public sealed class SfxSample : MonoBehaviour
     {
         // Sounds are named, and the name is hashed so that reordering the provider's list cannot
         // repoint a caller. Each name is the SFX asset's own.
