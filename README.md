@@ -151,7 +151,7 @@ Music is looped by bar: give the asset its tempo and the start and end bar to lo
 
 A bar's time adds up every section before it, then its place in its own, so changing a section moves where every later bar lands in the audio.  The first bar is bar 1, the end bar must come after the start bar, and each section must start after the one before it.  An asset marked to loop whose sections or bar range can't produce a loop logs a warning naming the asset and the problem, and plays through without looping.
 
-A track that doesn't loop costs nothing per frame — the update component is only enabled while there is a loop point to watch, or an echo following the song's tempo (below).  `IsPlaying` says whether a track is playing: from when it is asked for, while its clips load included, until it is stopped, paused, or reaches its end without looping.
+A track that doesn't loop costs nothing per frame — the update component is only enabled while there is a loop point to watch, or an echo following the song's tempo (below).  `IsPlaying()` says whether a track is playing: from when it is asked for, while its clips load included, until it is stopped, paused, or reaches its end without looping.
 
 ### Pause and resume
 
@@ -363,6 +363,22 @@ Some suggestions for fitting it in:
 - **The menus set the player's volume**: the Config menu as the player changes it, and the title screen from the saved settings at start-up.
 - **A battle pauses the field's music**: the module router pauses it and starts the battle music as the battle begins, and the field resumes it as it returns, over a second at its music volume.  Battle plays its victory music.
 - **Menus and dialogue make their sounds through Core's audio intents** — confirm, cancel, navigate — which the game maps to its own sound effects (the test project's `GameAudioIntentPlayer`), so Core never names a sound and Audio never hears of Core.
+
+## Tests
+
+The tests are in `Tests/Editor`, on Unity's Test Framework. They compile only in a project that lists the package as testable: add it to `testables` in `Packages/manifest.json`,
+
+```json
+"testables": [
+  "com.rpgframework.audio"
+]
+```
+
+then open **Window › General › Test Runner** and run the **EditMode** tests.  They test the assets and the bookkeeping behind the players, not the players themselves, which need a mixer playing in real time; the samples and the inspector preview are where those are heard.
+
+## In this version
+
+**4.1.1** adds the tests: a song's loop points across tempo sections and the warning when it can't loop, its stem states as stems are added and removed, its echo's delay and a new song's defaults, the music channels songs share in a crossfade, and bundles opened and closed as songs are held and let go.  The API and its behaviour are unchanged.
 
 ## Not in this version
 
