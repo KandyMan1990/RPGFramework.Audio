@@ -8,6 +8,9 @@ namespace RPGFramework.Audio.Music
 {
     [CreateAssetMenu(fileName = "Music Asset Provider", menuName = "RPG Framework/Audio/Music Asset Provider")]
     public sealed class MusicAssetProvider : ScriptableObject, IMusicAssetProvider
+#if ENABLE_RPG_FRAMEWORK_DEBUG
+        , IDebugMusicAssetProvider
+#endif
     {
         [SerializeField]
         private MusicAsset[] m_MusicAssets = Array.Empty<MusicAsset>();
@@ -88,6 +91,30 @@ namespace RPGFramework.Audio.Music
         void IMusicAssetProvider.Release(ulong nameHash)
         {
         }
+
+#if ENABLE_RPG_FRAMEWORK_DEBUG
+        Task<IReadOnlyList<string>> IDebugMusicAssetProvider.LoadNamesAsync()
+        {
+            List<string> names = new List<string>(m_MusicAssets.Length);
+
+            for (int i = 0; i < m_MusicAssets.Length; i++)
+            {
+                if (m_MusicAssets[i] != null)
+                {
+                    names.Add(m_MusicAssets[i].name);
+                }
+            }
+
+            return Task.FromResult<IReadOnlyList<string>>(names);
+        }
+
+        Task<IReadOnlyList<string>> IDebugMusicAssetProvider.LoadStemStateNamesAsync(ulong nameHash)
+        {
+            IReadOnlyList<string> names = new List<string>(m_ByNameHash[nameHash].StemStateNames);
+
+            return Task.FromResult(names);
+        }
+#endif
 
         private void OnEnable()
         {

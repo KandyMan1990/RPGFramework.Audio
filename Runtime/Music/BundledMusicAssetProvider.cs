@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using RPGFramework.Audio.Bundles;
 
@@ -8,6 +9,9 @@ namespace RPGFramework.Audio.Music
     /// when it is first played or preloaded and closed when nothing holds it.
     /// </summary>
     public sealed class BundledMusicAssetProvider : IMusicAssetProvider
+#if ENABLE_RPG_FRAMEWORK_DEBUG
+        , IDebugMusicAssetProvider
+#endif
     {
         internal const string FOLDER = "Audio/Music";
 
@@ -29,5 +33,22 @@ namespace RPGFramework.Audio.Music
         {
             m_Holds.Release(nameHash);
         }
+
+#if ENABLE_RPG_FRAMEWORK_DEBUG
+        Task<IReadOnlyList<string>> IDebugMusicAssetProvider.LoadNamesAsync()
+        {
+            return m_Holds.LoadNamesAsync(FOLDER);
+        }
+
+        async Task<IReadOnlyList<string>> IDebugMusicAssetProvider.LoadStemStateNamesAsync(ulong nameHash)
+        {
+            MusicAsset   song  = await m_Holds.AcquireAsync(nameHash);
+            List<string> names = new List<string>(song.StemStateNames);
+
+            m_Holds.Release(nameHash);
+
+            return names;
+        }
+#endif
     }
 }

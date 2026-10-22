@@ -8,6 +8,9 @@ namespace RPGFramework.Audio.Sfx
 {
     [CreateAssetMenu(fileName = "SFX Asset Provider", menuName = "RPG Framework/Audio/SFX Asset Provider")]
     public sealed class SfxAssetProvider : ScriptableObject, ISfxAssetProvider
+#if ENABLE_RPG_FRAMEWORK_DEBUG
+        , IDebugSfxAssetProvider
+#endif
     {
         [SerializeField]
         private SfxAsset[] m_SfxAssets = Array.Empty<SfxAsset>();
@@ -48,6 +51,23 @@ namespace RPGFramework.Audio.Sfx
         void ISfxAssetProvider.Release(ulong nameHash)
         {
         }
+
+#if ENABLE_RPG_FRAMEWORK_DEBUG
+        Task<IReadOnlyList<string>> IDebugSfxAssetProvider.LoadNamesAsync()
+        {
+            List<string> names = new List<string>(m_SfxAssets.Length);
+
+            for (int i = 0; i < m_SfxAssets.Length; i++)
+            {
+                if (m_SfxAssets[i] != null)
+                {
+                    names.Add(m_SfxAssets[i].name);
+                }
+            }
+
+            return Task.FromResult<IReadOnlyList<string>>(names);
+        }
+#endif
 
         private void OnEnable()
         {

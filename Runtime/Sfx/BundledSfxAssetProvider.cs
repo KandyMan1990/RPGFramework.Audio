@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using RPGFramework.Audio.Bundles;
 
@@ -8,6 +9,9 @@ namespace RPGFramework.Audio.Sfx
     /// when it is first played or preloaded and closed when nothing holds it.
     /// </summary>
     public sealed class BundledSfxAssetProvider : ISfxAssetProvider
+#if ENABLE_RPG_FRAMEWORK_DEBUG
+        , IDebugSfxAssetProvider
+#endif
     {
         internal const string FOLDER = "Audio/Sfx";
 
@@ -29,5 +33,12 @@ namespace RPGFramework.Audio.Sfx
         {
             m_Holds.Release(nameHash);
         }
+
+#if ENABLE_RPG_FRAMEWORK_DEBUG
+        Task<IReadOnlyList<string>> IDebugSfxAssetProvider.LoadNamesAsync()
+        {
+            return m_Holds.LoadNamesAsync(FOLDER);
+        }
+#endif
     }
 }

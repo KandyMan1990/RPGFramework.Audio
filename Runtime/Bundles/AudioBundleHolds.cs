@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.IO;
 using System.Threading.Tasks;
 using UnityEngine;
 
@@ -71,6 +72,40 @@ namespace RPGFramework.Audio.Bundles
             hold.Loading   = null;
             hold.Unloading = UnloadAsync(nameHash, loading);
         }
+
+#if ENABLE_RPG_FRAMEWORK_DEBUG
+        /// <summary>
+        /// The name of every asset in a folder's bundles, each held for long enough to read it. Only where StreamingAssets
+        /// is on the file system: on Android and the web it cannot be listed, so none are.
+        /// </summary>
+        internal async Task<IReadOnlyList<string>> LoadNamesAsync(string folder)
+        {
+            string       path  = Path.Combine(Application.streamingAssetsPath, folder);
+            List<string> names = new List<string>();
+
+            if (!Directory.Exists(path))
+            {
+                return names;
+            }
+
+            string[] files = Directory.GetFiles(path);
+
+            for (int i = 0; i < files.Length; i++)
+            {
+                if (!ulong.TryParse(Path.GetFileName(files[i]), out ulong nameHash))
+                {
+                    continue;
+                }
+
+                TAsset asset = await AcquireAsync(nameHash);
+
+                names.Add(asset.name);
+                Release(nameHash);
+            }
+
+            return names;
+        }
+#endif
 
         private async Task<TAsset> LoadAsync(ulong nameHash, Hold hold)
         {

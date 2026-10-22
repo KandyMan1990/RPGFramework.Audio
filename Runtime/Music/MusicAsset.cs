@@ -79,7 +79,7 @@ namespace RPGFramework.Audio.Music
             return stemState.ActiveStems;
         }
 
-#if UNITY_EDITOR
+#if UNITY_EDITOR || ENABLE_RPG_FRAMEWORK_DEBUG
         /// <summary>
         /// The state names a script can use with this asset, for tooling that offers them as a choice.
         /// </summary>
