@@ -422,7 +422,7 @@ namespace RPGFramework.Audio.Music
 
                 ApplyStemVolumes(song);
 
-                progress += Time.deltaTime / transitionLength;
+                progress += Time.unscaledDeltaTime / transitionLength;
 
                 await Awaitable.NextFrameAsync(cts.Token);
             }
@@ -454,7 +454,7 @@ namespace RPGFramework.Audio.Music
 
             while (t < 1f)
             {
-                t += Time.deltaTime / duration;
+                t += Time.unscaledDeltaTime / duration;
 
                 song.MasterFade = math.lerp(start, target, math.min(t, 1f));
 
