@@ -145,6 +145,8 @@ await musicPlayer.SetSongVolumeAsync(0.25f, 2f);
 
 It is a straight gain on the track's stems, and fades go to it rather than to full.  With nothing playing it does nothing, so a game that wants a level kept from one track to the next keeps it and passes it to the next `PlayAsync`, as the field does.
 
+Every fade — a song's volume, a crossfade, a stem state, a stop and a resume — runs on unscaled time, so it carries on while `Time.timeScale` is 0, as the music itself does: a game that freezes time under its menu doesn't freeze a fade halfway.
+
 ### Looping
 
 Music is looped by bar: give the asset its tempo and the start and end bar to loop. The tempo is a list of **sections**, each a start bar with its BPM and time signature.  The first starts at bar 1 and each runs until the next one starts, so a song that changes tempo or time signature part way through still loops on its bars; most songs need just the one.  The inspector heads each section with what it says, such as *From bar 9: 90 BPM, 6/8*.  The time signature is beats per bar plus the note that gets the beat, so compound signatures such as 6/8 or 12/8 give the correct bar length rather than being approximated in 4/4. BPM is read as quarter notes per minute, which is what a DAW reports, so a 6/8 bar at 120 BPM is 1.5 seconds.
@@ -362,6 +364,7 @@ Some suggestions for fitting it in:
 - **Field scripts play the music and sounds**: `PLAY_MUSIC`, `CROSSFADE_MUSIC`, `STOP_MUSIC`, `MUSIC_STEM_STATE`, `IS_MUSIC_PLAYING` and `PLAY_SOUND`; the song's volume with `SET_MUSIC_VOLUME`, `FADE_MUSIC_VOLUME`, `FADE_MUSIC_VOLUME_FROM` and `WAIT_FOR_MUSIC_VOLUME`, kept in Core's `MusicVolume` variable so it carries across fields and saves; the battle music with `SET_BATTLE_MUSIC`; and with PSX Reverb, `SET_REVERB_PRESET` and `SET_REVERB_VOLUME`.  The block editor offers each provider's songs, sounds and stem states by name.
 - **The menus set the player's volume**: the Config menu as the player changes it, and the title screen from the saved settings at start-up.
 - **A battle pauses the field's music**: the module router pauses it and starts the battle music as the battle begins, and the field resumes it as it returns, over a second at its music volume.  Battle plays its victory music.
+- **The debug room lists what the providers hold**: with `ENABLE_RPG_FRAMEWORK_DEBUG` defined, a provider is also an `IDebugMusicAssetProvider` — its songs and each song's stem states — or an `IDebugSfxAssetProvider` — its sounds — which the game's installer binds for the room's Audio page.
 - **Menus and dialogue make their sounds through Core's audio intents** — confirm, cancel, navigate — which the game maps to its own sound effects (the test project's `GameAudioIntentPlayer`), so Core never names a sound and Audio never hears of Core.
 
 ## Tests
@@ -375,16 +378,6 @@ The tests are in `Tests/Editor`, on Unity's Test Framework. They compile only in
 ```
 
 then open **Window › General › Test Runner** and run the **EditMode** tests.  They test the assets and the bookkeeping behind the players, not the players themselves, which need a mixer playing in real time; the samples and the inspector preview are where those are heard.
-
-## In this version
-
-**4.1.1** adds the tests: a song's loop points across tempo sections and the warning when it can't loop, its stem states as stems are added and removed, its echo's delay and a new song's defaults, the music channels songs share in a crossfade, and bundles opened and closed as songs are held and let go.  The API and its behaviour are unchanged.
-
-## Not in this version
-
-* **Content packs can't add bundles yet.**  A bundled provider reads the game's own folders; reading a content pack's beside them comes with the framework's content packs.
-* **A tempo that changes gradually**, such as a ritardando, fits no list of sections, so a loop after one can't be given in bars.
-* **The players run in play mode only**, through a mixer set up as described above; the inspector preview is the way to hear an asset outside it.
 
 ## Samples
 
