@@ -243,7 +243,8 @@ Event times are authored in samples, the same as loop points.  `ISfxReference.Ev
 A few behaviours worth knowing:
 
 * On a looping sound, events re-arm each time it loops, unless **Remove Event Once Triggered** is ticked on that event.
-* A sound that doesn't loop raises a final `ISfxReference.SFX_COMPLETE` event when it finishes, and that event appears in the `Events` list.  Looping sounds never complete, so they get neither.
+* A sound that doesn't loop raises a final `ISfxReference.SFX_COMPLETE` event when it finishes, and that event appears in the `Events` list.  Looping sounds never finish by themselves, so they get neither.
+* A sound stopped before its end raises nothing more, `SFX_COMPLETE` included.  To wait for a sound however it ends, await `ISfxReference.Completion`: it completes as the sound plays out, or as it's stopped by `Stop`, `StopAll` or a sound taking its voices, and a sound that loops ends only when stopped.
 * If a non-looping sound finishes with events that never fired, those are raised before the complete event, so nothing listening is left waiting.
 
 ### Import settings
@@ -365,7 +366,7 @@ Some suggestions for fitting it in:
 - **The menus set the player's volume**: the Config menu as the player changes it, and the title screen from the saved settings at start-up.
 - **A battle pauses the field's music**: the module router pauses it and starts the battle music as the battle begins, and the field resumes it as it returns, over a second at its music volume.  Battle plays its victory music.
 - **The debug room lists what the providers hold**: with `ENABLE_RPG_FRAMEWORK_DEBUG` defined, a provider is also an `IDebugMusicAssetProvider` — its songs and each song's stem states — or an `IDebugSfxAssetProvider` — its sounds — which the game's installer binds for the room's Audio page.
-- **Menus and dialogue make their sounds through Core's audio intents** — confirm, cancel, navigate — which the game maps to its own sound effects (the test project's `GameAudioIntentPlayer`), so Core never names a sound and Audio never hears of Core.
+- **Menus and dialogue play the game's system sounds** — the cursor, confirm, cancel, error — which the game picks by name in Core's **System Sound Config**; the menus and the dialogue play them through the `ISfxPlayer`, so Core never names a sound and Audio never hears of Core.  The framework keeps every sound it names as data, picked by name in an inspector, and never uses the generated enums, which are for a game using Audio on its own: a sound added after release, in a content pack, could not be in one.
 
 ## Tests
 

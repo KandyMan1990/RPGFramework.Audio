@@ -252,6 +252,14 @@ namespace RPGFramework.Audio
         /// </summary>
         IReadOnlyList<ISfxEventData> Events { get; }
 
+        /// <summary>
+        /// Completes once the sound has ended, however it ends: played to its end, or stopped — by
+        /// <see cref="ISfxPlayer.Stop" />, <see cref="ISfxPlayer.StopAll" />, or another sound taking its voices. A sound
+        /// that loops ends only when stopped; one <see cref="ISfxPlayer.PlayAsync" /> hands back stopped has ended
+        /// already. Unlike <see cref="SFX_COMPLETE" />, which a stopped sound never raises, it always comes.
+        /// </summary>
+        Task Completion { get; }
+
         /// <summary>The sound being played.</summary>
         internal ISfxAsset Asset { get; }
 

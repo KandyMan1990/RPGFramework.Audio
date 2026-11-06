@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using UnityEngine;
 
 namespace RPGFramework.Audio.Sfx
@@ -13,6 +14,8 @@ namespace RPGFramework.Audio.Sfx
         }
 
         IReadOnlyList<ISfxEventData> ISfxReference.Events => m_PublishedEvents ??= BuildPublishedEvents();
+
+        Task ISfxReference.Completion => m_Completion.Task;
 
         ISfxAsset ISfxReference.Asset    => m_SfxAsset;
         ulong ISfxReference.    NameHash => m_NameHash;
@@ -29,6 +32,7 @@ namespace RPGFramework.Audio.Sfx
         private readonly int                          m_CompleteTriggerSamples;
         private readonly double                       m_ScheduledStartDspTime;
         private readonly double                       m_CompleteDspTime;
+        private readonly TaskCompletionSource<bool>   m_Completion;
 
         private double m_PausedAtDspTime;
         private double m_PausedDuration;
@@ -58,6 +62,7 @@ namespace RPGFramework.Audio.Sfx
             m_CompleteDspTime       = scheduledStartDspTime + (double)clip.samples / clip.frequency;
 
             m_OnAllEventsCompleted = onAllEventsCompleted;
+            m_Completion           = new TaskCompletionSource<bool>();
         }
 
         void ISfxReference.CheckForEventToRaise()
@@ -177,6 +182,7 @@ namespace RPGFramework.Audio.Sfx
         void ISfxReference.Stop()
         {
             m_Completed = true;
+            m_Completion.TrySetResult(true);
         }
 
         private void Complete()
@@ -193,6 +199,7 @@ namespace RPGFramework.Audio.Sfx
             m_OnEvent?.Invoke(ISfxReference.SFX_COMPLETE, this);
 
             m_OnAllEventsCompleted(this);
+            m_Completion.TrySetResult(true);
         }
 
         private void RaiseUntriggeredEvents()
