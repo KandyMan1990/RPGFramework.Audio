@@ -260,6 +260,12 @@ namespace RPGFramework.Audio
         /// </summary>
         Task Completion { get; }
 
+        /// <summary>Whether the sound loops, so that only a stop ends it.</summary>
+        bool Loops { get; }
+
+        /// <summary>How far into the sound it has got, in seconds.</summary>
+        float Position { get; }
+
         /// <summary>The sound being played.</summary>
         internal ISfxAsset Asset { get; }
 
@@ -277,6 +283,18 @@ namespace RPGFramework.Audio
         /// <see cref="SFX_COMPLETE" />.
         /// </summary>
         internal void CheckForEventToRaise();
+
+        /// <summary>Takes its volume to a new level, at once or over time.</summary>
+        internal void SetVolume(float volume, float seconds);
+
+        /// <summary>Takes its pan to a new place, at once or over time.</summary>
+        internal void SetPan(float pan, float seconds);
+
+        /// <summary>Moves any change of volume or pan under way on, and puts what has changed on its stems.</summary>
+        /// <param name="deltaTime">The frame's real time.</param>
+        /// <param name="allVolume">The level every sound is at, which its own volume is scaled by.</param>
+        /// <param name="allChanged">Whether that level has changed since the last call.</param>
+        internal void UpdateLevels(float deltaTime, float allVolume, bool allChanged);
 
         /// <summary>Pauses its stems, holding its events back for as long as it stays paused.</summary>
         internal void Pause();
@@ -316,6 +334,27 @@ namespace RPGFramework.Audio
         /// <see cref="StopAll" /> or <see cref="PauseAll" /> comes never starts, and its reference comes back stopped.
         /// </summary>
         Task<ISfxReference> PlayAsync(ulong nameHash);
+
+        /// <summary>
+        /// Plays a sound at a volume and pan, from a point in it, otherwise as <see cref="PlayAsync(ulong)" /> does.
+        /// </summary>
+        /// <param name="nameHash">The sound's name hash.</param>
+        /// <param name="volume">0 to 1, under <see cref="SetVolume(float)" />.</param>
+        /// <param name="pan">-1 full left, 0 centred, 1 full right.</param>
+        /// <param name="startSeconds">How far into the sound to start. An event before that point does not raise.</param>
+        Task<ISfxReference> PlayAsync(ulong nameHash, float volume, float pan, float startSeconds);
+
+        /// <summary>Takes one sound's volume, 0 to 1, to a new level over the given real seconds; none goes at once.</summary>
+        void SetSoundVolume(ISfxReference sfxReference, float volume, float seconds);
+
+        /// <summary>Takes one sound's pan, -1 to 1, to a new place over the given real seconds; none goes at once.</summary>
+        void SetSoundPan(ISfxReference sfxReference, float pan, float seconds);
+
+        /// <summary>
+        /// Takes every sound's volume, 0 to 1 and playing or still to come, to a new level over the given real seconds;
+        /// none goes at once. It scales each sound's own, and is not the game's setting, <see cref="SetVolume(float)" />.
+        /// </summary>
+        void SetAllSoundsVolume(float volume, float seconds);
 
         /// <summary>Pauses one sound where it is, until <see cref="Resume" />.</summary>
         void Pause(ISfxReference sfxReference);

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Audio;
 
@@ -32,6 +33,7 @@ namespace RPGFramework.Audio.Sfx
         private AudioUpdateDriver m_UpdateDriver;
         private int               m_Stops;
         private int               m_PreloadRequests;
+        private SfxLevel          m_AllVolume;
 
         public UnitySfxPlayer()
         {
@@ -41,9 +43,20 @@ namespace RPGFramework.Audio.Sfx
             m_Preloads      = new Dictionary<ulong, int>();
             m_Preloaded     = new Dictionary<ulong, ISfxAsset>();
             m_This          = this;
+            m_AllVolume     = new SfxLevel(1f);
         }
 
-        async Task<ISfxReference> ISfxPlayer.PlayAsync(ulong nameHash)
+        Task<ISfxReference> ISfxPlayer.PlayAsync(ulong nameHash)
+        {
+            return PlayAsync(nameHash, 1f, 0f, 0f);
+        }
+
+        Task<ISfxReference> ISfxPlayer.PlayAsync(ulong nameHash, float volume, float pan, float startSeconds)
+        {
+            return PlayAsync(nameHash, math.saturate(volume), math.clamp(pan, -1f, 1f), startSeconds);
+        }
+
+        private async Task<ISfxReference> PlayAsync(ulong nameHash, float volume, float pan, float startSeconds)
         {
             int       stops    = m_Stops;
             ISfxAsset sfxAsset = await m_SfxAssetProvider.AcquireAsync(nameHash);
@@ -69,7 +82,7 @@ namespace RPGFramework.Audio.Sfx
                 return stopped;
             }
 
-            ISfxReference playing = ScheduleSfx(nameHash, sfxAsset, 0f);
+            ISfxReference playing = ScheduleSfx(nameHash, sfxAsset, startSeconds, volume, pan);
 
             return playing;
         }
@@ -106,6 +119,21 @@ namespace RPGFramework.Audio.Sfx
                 UnloadUnusedClips(sfxAsset);
                 m_SfxAssetProvider.Release(nameHash);
             }
+        }
+
+        void ISfxPlayer.SetSoundVolume(ISfxReference sfxReference, float volume, float seconds)
+        {
+            sfxReference.SetVolume(math.saturate(volume), seconds);
+        }
+
+        void ISfxPlayer.SetSoundPan(ISfxReference sfxReference, float pan, float seconds)
+        {
+            sfxReference.SetPan(math.clamp(pan, -1f, 1f), seconds);
+        }
+
+        void ISfxPlayer.SetAllSoundsVolume(float volume, float seconds)
+        {
+            m_AllVolume.MoveTo(math.saturate(volume), seconds);
         }
 
         void ISfxPlayer.Pause(ISfxReference sfxReference)
@@ -209,6 +237,9 @@ namespace RPGFramework.Audio.Sfx
 
         void IAudioUpdatable.Update()
         {
+            float deltaTime  = Time.unscaledDeltaTime;
+            bool  allChanged = m_AllVolume.Tick(deltaTime);
+
             if (m_SfxReferences.Count == 0)
             {
                 return;
@@ -228,6 +259,7 @@ namespace RPGFramework.Audio.Sfx
 
                 sfxReference.CheckForEventToRaise();
                 sfxReference.CheckForLoop();
+                sfxReference.UpdateLevels(deltaTime, m_AllVolume.Current, allChanged);
             }
         }
 
@@ -287,14 +319,14 @@ namespace RPGFramework.Audio.Sfx
 
         private static ISfxReference StoppedReference(ulong nameHash, ISfxAsset sfxAsset)
         {
-            ISfxReference stopped = new SfxReference(nameHash, Array.Empty<AudioSource>(), sfxAsset, AudioSettings.dspTime, _ => { });
+            ISfxReference stopped = new SfxReference(nameHash, Array.Empty<AudioSource>(), sfxAsset, AudioSettings.dspTime, 0f, 1f, 0f, _ => { });
 
             stopped.Stop();
 
             return stopped;
         }
 
-        private ISfxReference ScheduleSfx(ulong nameHash, ISfxAsset sfxAsset, float startTime)
+        private ISfxReference ScheduleSfx(ulong nameHash, ISfxAsset sfxAsset, float startTime, float volume, float pan)
         {
             int stemCount = sfxAsset.Tracks.Count;
 
@@ -329,7 +361,8 @@ namespace RPGFramework.Audio.Sfx
                 source.clip                  = sfxAsset.Tracks[i].Clip;
                 source.playOnAwake           = false;
                 source.loop                  = false;
-                source.volume                = 1f;
+                source.volume                = volume * m_AllVolume.Current;
+                source.panStereo             = pan;
                 source.time                  = startTime;
                 source.outputAudioMixerGroup = m_StemMixerGroups[voice];
 
@@ -339,7 +372,7 @@ namespace RPGFramework.Audio.Sfx
                 source.PlayScheduled(scheduledStartTime);
             }
 
-            SfxReference sfxRef = new SfxReference(nameHash, audioSourceReferences, sfxAsset, scheduledStartTime, RemoveSfxReference);
+            SfxReference sfxRef = new SfxReference(nameHash, audioSourceReferences, sfxAsset, scheduledStartTime, startTime, volume, pan, RemoveSfxReference);
 
             TakeOwnership(audioSourceReferences, sfxRef);
 

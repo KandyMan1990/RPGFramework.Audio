@@ -222,6 +222,8 @@ Sound effects behave similarly to music, however since a sfx won't have a tempo/
 
 `PlayAsync` returns an `ISfxReference` for that one playing sound once it has loaded and started, which is what `Pause`, `Resume` and `Stop` take; a preloaded sound starts on the frame it's asked for.  `PauseAll`, `ResumeAll` and `StopAll` act on everything currently playing, and a sound still loading when `PauseAll` or `StopAll` comes never starts: its reference comes back already stopped, so there's no null to check for.
 
+A sound can be played at a volume and pan, and from a point in it, with `PlayAsync(nameHash, volume, pan, startSeconds)`. `SetSoundVolume` and `SetSoundPan` take a playing sound to a new level, at once or over seconds of real time, and `ISfxReference.Position` says how far it has got, so a looping sound stopped for a while can be started again from where it was. `SetAllSoundsVolume` does the same for every sound, those still to come included; it scales each sound's own volume, and is separate from `SetVolume`, the game's setting.
+
 ### Voices
 
 Sfx voices are a pool, and running out of them is a normal runtime condition rather than an error.  A sound with more stems than there are voices plays as many as it can, and a sound arriving when every voice is busy evicts the oldest playing sound.  This is the opposite of how music handles a shortage of channels, on purpose: a missing music layer is far more noticeable than a missing sfx voice.
