@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
+using RPGFramework.Hashing;
 using UnityEngine;
 
 namespace RPGFramework.Audio.Bundles
@@ -38,9 +39,23 @@ namespace RPGFramework.Audio.Bundles
 
             m_Open[nameHash] = bundle;
 
-            TAsset asset = (TAsset)request.allAssets[0];
+            TAsset asset = (TAsset)Named(request.allAssets, nameHash);
 
             return asset;
+        }
+
+        // A bundle can hold more than the asset it is named for: a collection brings its sounds with it.
+        private static Object Named(Object[] assets, ulong nameHash)
+        {
+            for (int i = 0; i < assets.Length; i++)
+            {
+                if (Fnv1a64.Hash(assets[i].name) == nameHash)
+                {
+                    return assets[i];
+                }
+            }
+
+            return assets[0];
         }
 
         async Task IAudioBundleSource.UnloadAsync(ulong nameHash)

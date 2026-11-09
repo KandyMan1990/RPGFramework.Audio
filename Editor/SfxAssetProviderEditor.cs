@@ -8,8 +8,8 @@ namespace RPGFramework.Audio.Editor
     [CustomEditor(typeof(SfxAssetProvider))]
     internal sealed class SfxAssetProviderEditor : UnityEditor.Editor
     {
-        private AudioAssetProviderHelper<SfxAsset> m_AudioAssetProviderHelper;
-        private SfxEventGeneratorEditor            m_SfxEventGeneratorEditor;
+        private AudioAssetProviderHelper<SfxPlayable> m_AudioAssetProviderHelper;
+        private SfxEventGeneratorEditor               m_SfxEventGeneratorEditor;
 
         public override VisualElement CreateInspectorGUI()
         {
@@ -46,7 +46,7 @@ namespace RPGFramework.Audio.Editor
 
         private void OnGenerateEnumButtonClicked()
         {
-            m_AudioAssetProviderHelper = new AudioAssetProviderHelper<SfxAsset>();
+            m_AudioAssetProviderHelper = new AudioAssetProviderHelper<SfxPlayable>();
             m_AudioAssetProviderHelper.OpenModal("Sfx", "Generate Sfx Asset Enum's", "SfxEnum.cs", "m_SfxAssets", serializedObject);
         }
 

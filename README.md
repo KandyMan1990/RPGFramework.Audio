@@ -224,6 +224,8 @@ Sound effects behave similarly to music, however since a sfx won't have a tempo/
 
 A sound can be played at a volume and pan, and from a point in it, with `PlayAsync(nameHash, volume, pan, startSeconds)`. `SetSoundVolume` and `SetSoundPan` take a playing sound to a new level, at once or over seconds of real time, and `ISfxReference.Position` says how far it has got, so a looping sound stopped for a while can be started again from where it was. `SetAllSoundsVolume` does the same for every sound, those still to come included; it scales each sound's own volume, and is separate from `SetVolume`, the game's setting.
 
+An `SfxCollection` is a sound that varies. It lists `SfxAsset`s and plays one of them each time at a pitch up to its Pitch Variation either way from normal: at random, never the same one twice running, or, with its Order set to In Order, one after another. A caller keeping its own count can pass it as the position to `PlayAsync` to start the order over. List it in the provider as you would a sound, and ask for it by name; its sounds need not be listed as well, and a bundle built for it carries them.
+
 ### Voices
 
 Sfx voices are a pool, and running out of them is a normal runtime condition rather than an error.  A sound with more stems than there are voices plays as many as it can, and a sound arriving when every voice is busy evicts the oldest playing sound.  This is the opposite of how music handles a shortage of channels, on purpose: a missing music layer is far more noticeable than a missing sfx voice.

@@ -9,7 +9,7 @@ namespace RPGFramework.Audio.Bundles
     /// Counts what holds each asset, so its bundle opens on the first hold and closes when the last lets go. An asset
     /// already held comes back as a finished task, so a caller awaiting it carries on in the same frame.
     /// </summary>
-    internal sealed class AudioBundleHolds<TAsset> where TAsset : ScriptableObject, IAudioAsset
+    internal sealed class AudioBundleHolds<TAsset> where TAsset : ScriptableObject
     {
         private readonly IAudioBundleSource      m_Source;
         private readonly Dictionary<ulong, Hold> m_Holds;

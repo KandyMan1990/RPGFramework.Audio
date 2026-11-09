@@ -15,12 +15,13 @@ namespace RPGFramework.Audio.Sfx
 
         private static readonly string[] VOLUME_BUS_NAMES = { SFX_BUS_NAME, SFX_REVERB_SEND };
 
-        private readonly ISfxPlayer                   m_This;
-        private readonly List<ISfxReference>          m_SfxReferences;
-        private readonly List<ISfxReference>          m_UpdateBuffer;
-        private readonly List<ISfxAsset>              m_Loading;
-        private readonly Dictionary<ulong, int>       m_Preloads;
-        private readonly Dictionary<ulong, ISfxAsset> m_Preloaded;
+        private readonly ISfxPlayer                     m_This;
+        private readonly List<ISfxReference>            m_SfxReferences;
+        private readonly List<ISfxReference>            m_UpdateBuffer;
+        private readonly List<ISfxAsset>                m_Loading;
+        private readonly Dictionary<ulong, int>         m_Preloads;
+        private readonly Dictionary<ulong, SfxPlayable> m_Preloaded;
+        private readonly Dictionary<ulong, int>         m_LastPicked;
 
         private ISfxAssetProvider m_SfxAssetProvider;
         private AudioSource[]     m_CurrentSources;
@@ -41,25 +42,28 @@ namespace RPGFramework.Audio.Sfx
             m_UpdateBuffer  = new List<ISfxReference>();
             m_Loading       = new List<ISfxAsset>();
             m_Preloads      = new Dictionary<ulong, int>();
-            m_Preloaded     = new Dictionary<ulong, ISfxAsset>();
+            m_Preloaded     = new Dictionary<ulong, SfxPlayable>();
+            m_LastPicked    = new Dictionary<ulong, int>();
             m_This          = this;
             m_AllVolume     = new SfxLevel(1f);
         }
 
         Task<ISfxReference> ISfxPlayer.PlayAsync(ulong nameHash)
         {
-            return PlayAsync(nameHash, 1f, 0f, 0f);
+            return PlayAsync(nameHash, 1f, 0f, 0f, ISfxPlayer.NEXT_IN_ORDER);
         }
 
-        Task<ISfxReference> ISfxPlayer.PlayAsync(ulong nameHash, float volume, float pan, float startSeconds)
+        Task<ISfxReference> ISfxPlayer.PlayAsync(ulong nameHash, float volume, float pan, float startSeconds, int position)
         {
-            return PlayAsync(nameHash, math.saturate(volume), math.clamp(pan, -1f, 1f), startSeconds);
+            return PlayAsync(nameHash, math.saturate(volume), math.clamp(pan, -1f, 1f), startSeconds, position);
         }
 
-        private async Task<ISfxReference> PlayAsync(ulong nameHash, float volume, float pan, float startSeconds)
+        private async Task<ISfxReference> PlayAsync(ulong nameHash, float volume, float pan, float startSeconds, int position)
         {
-            int       stops    = m_Stops;
-            ISfxAsset sfxAsset = await m_SfxAssetProvider.AcquireAsync(nameHash);
+            int         stops    = m_Stops;
+            SfxPlayable playable = await m_SfxAssetProvider.AcquireAsync(nameHash);
+            ISfxAsset   sfxAsset = PickRecording(nameHash, playable, position);
+            float       pitch    = SfxVariation.PickPitch(playable.PitchVariation, UnityEngine.Random.value);
 
             m_Loading.Add(sfxAsset);
 
@@ -82,7 +86,7 @@ namespace RPGFramework.Audio.Sfx
                 return stopped;
             }
 
-            ISfxReference playing = ScheduleSfx(nameHash, sfxAsset, startSeconds, volume, pan);
+            ISfxReference playing = ScheduleSfx(nameHash, sfxAsset, startSeconds, volume, pan, pitch);
 
             return playing;
         }
@@ -111,12 +115,16 @@ namespace RPGFramework.Audio.Sfx
                 }
 
                 // Still loading, it lets go itself when it finishes.
-                if (!m_Preloaded.Remove(nameHash, out ISfxAsset sfxAsset))
+                if (!m_Preloaded.Remove(nameHash, out SfxPlayable playable))
                 {
                     continue;
                 }
 
-                UnloadUnusedClips(sfxAsset);
+                for (int j = 0; j < playable.Recordings.Count; j++)
+                {
+                    UnloadUnusedClips(playable.Recordings[j]);
+                }
+
                 m_SfxAssetProvider.Release(nameHash);
             }
         }
@@ -279,7 +287,7 @@ namespace RPGFramework.Audio.Sfx
             int request = ++m_PreloadRequests;
             m_Preloads.Add(nameHash, request);
 
-            ISfxAsset sfxAsset = await m_SfxAssetProvider.AcquireAsync(nameHash);
+            SfxPlayable playable = await m_SfxAssetProvider.AcquireAsync(nameHash);
 
             // Unloaded while it loaded, and perhaps preloaded again since, by a request that keeps it instead.
             if (!m_Preloads.TryGetValue(nameHash, out int current) || current != request)
@@ -289,9 +297,31 @@ namespace RPGFramework.Audio.Sfx
                 return;
             }
 
-            m_Preloaded.Add(nameHash, sfxAsset);
+            m_Preloaded.Add(nameHash, playable);
 
-            await LoadClipsAsync(sfxAsset);
+            for (int i = 0; i < playable.Recordings.Count; i++)
+            {
+                await LoadClipsAsync(playable.Recordings[i]);
+            }
+        }
+
+        private ISfxAsset PickRecording(ulong nameHash, SfxPlayable playable, int position)
+        {
+            IReadOnlyList<ISfxAsset> recordings = playable.Recordings;
+
+            if (recordings.Count == 1)
+            {
+                return recordings[0];
+            }
+
+            int last = m_LastPicked.TryGetValue(nameHash, out int picked) ? picked : SfxVariation.NONE;
+            int index = playable.PlaysInOrder
+                            ? SfxVariation.InOrderIndex(recordings.Count, last, position)
+                            : SfxVariation.PickIndex(recordings.Count, last, UnityEngine.Random.value);
+
+            m_LastPicked[nameHash] = index;
+
+            return recordings[index];
         }
 
         private static async Task LoadClipsAsync(ISfxAsset sfxAsset)
@@ -319,14 +349,14 @@ namespace RPGFramework.Audio.Sfx
 
         private static ISfxReference StoppedReference(ulong nameHash, ISfxAsset sfxAsset)
         {
-            ISfxReference stopped = new SfxReference(nameHash, Array.Empty<AudioSource>(), sfxAsset, AudioSettings.dspTime, 0f, 1f, 0f, _ => { });
+            ISfxReference stopped = new SfxReference(nameHash, Array.Empty<AudioSource>(), sfxAsset, AudioSettings.dspTime, 0f, 1f, 0f, 1f, _ => { });
 
             stopped.Stop();
 
             return stopped;
         }
 
-        private ISfxReference ScheduleSfx(ulong nameHash, ISfxAsset sfxAsset, float startTime, float volume, float pan)
+        private ISfxReference ScheduleSfx(ulong nameHash, ISfxAsset sfxAsset, float startTime, float volume, float pan, float pitch)
         {
             int stemCount = sfxAsset.Tracks.Count;
 
@@ -363,6 +393,7 @@ namespace RPGFramework.Audio.Sfx
                 source.loop                  = false;
                 source.volume                = volume * m_AllVolume.Current;
                 source.panStereo             = pan;
+                source.pitch                 = pitch;
                 source.time                  = startTime;
                 source.outputAudioMixerGroup = m_StemMixerGroups[voice];
 
@@ -372,7 +403,7 @@ namespace RPGFramework.Audio.Sfx
                 source.PlayScheduled(scheduledStartTime);
             }
 
-            SfxReference sfxRef = new SfxReference(nameHash, audioSourceReferences, sfxAsset, scheduledStartTime, startTime, volume, pan, RemoveSfxReference);
+            SfxReference sfxRef = new SfxReference(nameHash, audioSourceReferences, sfxAsset, scheduledStartTime, startTime, volume, pan, pitch, RemoveSfxReference);
 
             TakeOwnership(audioSourceReferences, sfxRef);
 
@@ -527,11 +558,14 @@ namespace RPGFramework.Audio.Sfx
                 }
             }
 
-            foreach (ISfxAsset preloaded in m_Preloaded.Values)
+            foreach (SfxPlayable preloaded in m_Preloaded.Values)
             {
-                if (AudioUtils.UsesClip(preloaded, clip))
+                for (int i = 0; i < preloaded.Recordings.Count; i++)
                 {
-                    return true;
+                    if (AudioUtils.UsesClip(preloaded.Recordings[i], clip))
+                    {
+                        return true;
+                    }
                 }
             }
 

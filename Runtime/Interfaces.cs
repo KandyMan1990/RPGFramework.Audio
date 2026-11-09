@@ -313,10 +313,10 @@ namespace RPGFramework.Audio
     public interface ISfxAssetProvider
     {
         /// <summary>
-        /// The sound with this name hash, held until a matching <see cref="Release" />: held twice, it needs releasing
-        /// twice. One held already comes back as a finished task. Throws for a name the provider does not have.
+        /// The sound or collection with this name hash, held until a matching <see cref="Release" />: held twice, it needs
+        /// releasing twice. One held already comes back as a finished task. Throws for a name the provider does not have.
         /// </summary>
-        Task<SfxAsset> AcquireAsync(ulong nameHash);
+        Task<SfxPlayable> AcquireAsync(ulong nameHash);
 
         /// <summary>
         /// Lets go of one hold, so a provider that loaded the sound can unload it once nothing holds it.
@@ -329,6 +329,9 @@ namespace RPGFramework.Audio
     /// </summary>
     public interface ISfxPlayer : IDisposable
     {
+        /// <summary>For a collection that plays in order, the sound after the one it played last.</summary>
+        const int NEXT_IN_ORDER = -1;
+
         /// <summary>
         /// Plays a sound once it and its audio data have loaded, at once if it was preloaded. One still loading when
         /// <see cref="StopAll" /> or <see cref="PauseAll" /> comes never starts, and its reference comes back stopped.
@@ -342,7 +345,11 @@ namespace RPGFramework.Audio
         /// <param name="volume">0 to 1, under <see cref="SetVolume(float)" />.</param>
         /// <param name="pan">-1 full left, 0 centred, 1 full right.</param>
         /// <param name="startSeconds">How far into the sound to start. An event before that point does not raise.</param>
-        Task<ISfxReference> PlayAsync(ulong nameHash, float volume, float pan, float startSeconds);
+        /// <param name="position">
+        /// For a collection that plays in order, which of its sounds, counted from 0 and going round, so a caller counting
+        /// its own plays can start it over; <see cref="NEXT_IN_ORDER" /> for the next. Anything else ignores it.
+        /// </param>
+        Task<ISfxReference> PlayAsync(ulong nameHash, float volume, float pan, float startSeconds, int position);
 
         /// <summary>Takes one sound's volume, 0 to 1, to a new level over the given real seconds; none goes at once.</summary>
         void SetSoundVolume(ISfxReference sfxReference, float volume, float seconds);
@@ -417,7 +424,7 @@ namespace RPGFramework.Audio
         /// Opens the bundle of the song or sound with this name hash and loads the one asset in it, keeping the bundle
         /// open until <see cref="UnloadAsync" />.
         /// </summary>
-        Task<TAsset> LoadAsync<TAsset>(ulong nameHash) where TAsset : ScriptableObject, IAudioAsset;
+        Task<TAsset> LoadAsync<TAsset>(ulong nameHash) where TAsset : ScriptableObject;
 
         /// <summary>Closes the bundle <see cref="LoadAsync{TAsset}" /> opened, destroying its asset.</summary>
         Task UnloadAsync(ulong nameHash);

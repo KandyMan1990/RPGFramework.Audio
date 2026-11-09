@@ -55,6 +55,7 @@ namespace RPGFramework.Audio.Sfx
                               float                 startSeconds,
                               float                 volume,
                               float                 pan,
+                              float                 pitch,
                               Action<ISfxReference> onAllEventsCompleted)
         {
             m_NameHash     = nameHash;
@@ -69,7 +70,7 @@ namespace RPGFramework.Audio.Sfx
             m_CompleteTriggerSamples = sfxAsset.Loop ? -1 : clip.samples;
 
             m_ScheduledStartDspTime = scheduledStartDspTime;
-            m_CompleteDspTime       = scheduledStartDspTime + (double)clip.samples / clip.frequency - startSeconds;
+            m_CompleteDspTime       = scheduledStartDspTime + ((double)clip.samples / clip.frequency - startSeconds) / pitch;
 
             m_Volume = new SfxLevel(volume);
             m_Pan    = new SfxLevel(pan);

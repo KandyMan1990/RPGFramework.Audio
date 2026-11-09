@@ -130,14 +130,28 @@ namespace RPGFramework.Audio.Editor
 
         private static SfxAsset[] GetSfxAssets(SerializedProperty sfxAssets)
         {
-            SfxAsset[] assets = new SfxAsset[sfxAssets.arraySize];
+            int count = 0;
+
+            for (int i = 0; i < sfxAssets.arraySize; i++)
+            {
+                if (sfxAssets.GetArrayElementAtIndex(i).objectReferenceValue is SfxAsset)
+                {
+                    count++;
+                }
+            }
+
+            SfxAsset[] assets = new SfxAsset[count];
+
+            int next = 0;
 
             for (int i = 0; i < sfxAssets.arraySize; i++)
             {
                 SerializedProperty sfxAssetSerializedProperty = sfxAssets.GetArrayElementAtIndex(i);
-                SfxAsset           sfxAsset                   = (SfxAsset)sfxAssetSerializedProperty.objectReferenceValue;
 
-                assets[i] = sfxAsset;
+                if (sfxAssetSerializedProperty.objectReferenceValue is SfxAsset sfxAsset)
+                {
+                    assets[next++] = sfxAsset;
+                }
             }
 
             return assets;

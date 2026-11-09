@@ -15,16 +15,16 @@ namespace RPGFramework.Audio.Sfx
     {
         internal const string FOLDER = "Audio/Sfx";
 
-        private readonly AudioBundleHolds<SfxAsset> m_Holds;
+        private readonly AudioBundleHolds<SfxPlayable> m_Holds;
 
         public BundledSfxAssetProvider()
         {
-            m_Holds = new AudioBundleHolds<SfxAsset>(new StreamingAudioBundleSource(FOLDER));
+            m_Holds = new AudioBundleHolds<SfxPlayable>(new StreamingAudioBundleSource(FOLDER));
         }
 
-        Task<SfxAsset> ISfxAssetProvider.AcquireAsync(ulong nameHash)
+        Task<SfxPlayable> ISfxAssetProvider.AcquireAsync(ulong nameHash)
         {
-            Task<SfxAsset> asset = m_Holds.AcquireAsync(nameHash);
+            Task<SfxPlayable> asset = m_Holds.AcquireAsync(nameHash);
 
             return asset;
         }

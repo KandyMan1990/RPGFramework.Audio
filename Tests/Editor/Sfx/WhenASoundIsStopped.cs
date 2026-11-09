@@ -25,7 +25,7 @@ namespace RPGFramework.Audio.Tests.Sfx
             tracks.GetArrayElementAtIndex(0).FindPropertyRelative("m_AudioClip").objectReferenceValue = m_Clip;
             asset.ApplyModifiedPropertiesWithoutUndo();
 
-            m_Reference = new SfxReference(1UL, Array.Empty<AudioSource>(), m_Sound, AudioSettings.dspTime, 0f, 1f, 0f, _ => { });
+            m_Reference = new SfxReference(1UL, Array.Empty<AudioSource>(), m_Sound, AudioSettings.dspTime, 0f, 1f, 0f, 1f, _ => { });
             m_Reference.Stop();
         }
 

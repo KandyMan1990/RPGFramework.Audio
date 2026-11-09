@@ -32,7 +32,7 @@ namespace RPGFramework.Audio.Tests.Sfx
 
             m_Stems = new[] { m_Player.AddComponent<AudioSource>(), m_Player.AddComponent<AudioSource>() };
 
-            m_Reference = new SfxReference(1UL, m_Stems, m_Sound, AudioSettings.dspTime, 0f, 0.5f, 0.25f, _ => { });
+            m_Reference = new SfxReference(1UL, m_Stems, m_Sound, AudioSettings.dspTime, 0f, 0.5f, 0.25f, 1f, _ => { });
         }
 
         [TearDown]

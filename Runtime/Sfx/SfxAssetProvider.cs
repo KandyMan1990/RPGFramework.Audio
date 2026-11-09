@@ -13,9 +13,9 @@ namespace RPGFramework.Audio.Sfx
 #endif
     {
         [SerializeField]
-        private SfxAsset[] m_SfxAssets = Array.Empty<SfxAsset>();
+        private SfxPlayable[] m_SfxAssets = Array.Empty<SfxPlayable>();
 
-        private Dictionary<ulong, SfxAsset> m_ByNameHash;
+        private Dictionary<ulong, SfxPlayable> m_ByNameHash;
 
 #if UNITY_EDITOR
         public IEnumerable<string> AssetNames
@@ -24,7 +24,7 @@ namespace RPGFramework.Audio.Sfx
             {
                 for (int i = 0; i < m_SfxAssets.Length; i++)
                 {
-                    SfxAsset asset = m_SfxAssets[i];
+                    SfxPlayable asset = m_SfxAssets[i];
 
                     if (asset == null)
                     {
@@ -38,9 +38,9 @@ namespace RPGFramework.Audio.Sfx
 #endif
 
         // Every sound is in the build already, so there is nothing to load or unload.
-        Task<SfxAsset> ISfxAssetProvider.AcquireAsync(ulong nameHash)
+        Task<SfxPlayable> ISfxAssetProvider.AcquireAsync(ulong nameHash)
         {
-            if (!m_ByNameHash.TryGetValue(nameHash, out SfxAsset sfxAsset))
+            if (!m_ByNameHash.TryGetValue(nameHash, out SfxPlayable sfxAsset))
             {
                 throw new KeyNotFoundException($"{nameof(SfxAssetProvider)}::{nameof(ISfxAssetProvider.AcquireAsync)} [{name}] has no sound whose name hashes to [{nameHash}]");
             }
@@ -83,11 +83,11 @@ namespace RPGFramework.Audio.Sfx
 
         private void BuildLookup()
         {
-            m_ByNameHash = new Dictionary<ulong, SfxAsset>(m_SfxAssets.Length);
+            m_ByNameHash = new Dictionary<ulong, SfxPlayable>(m_SfxAssets.Length);
 
             for (int i = 0; i < m_SfxAssets.Length; i++)
             {
-                SfxAsset sfxAsset = m_SfxAssets[i];
+                SfxPlayable sfxAsset = m_SfxAssets[i];
 
                 if (sfxAsset == null)
                 {
