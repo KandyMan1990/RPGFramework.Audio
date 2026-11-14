@@ -274,7 +274,6 @@ namespace RPGFramework.Audio.Sfx
         void IDisposable.Dispose()
         {
             Dispose();
-            GC.SuppressFinalize(this);
         }
 
         private async Task PreloadAsync(ulong nameHash)

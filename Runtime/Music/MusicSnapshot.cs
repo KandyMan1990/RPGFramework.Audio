@@ -11,16 +11,19 @@
         internal readonly ulong        NameHash;
         internal readonly float        Position;
         internal readonly bool[]       Stems;
+        internal readonly ulong        StemStateHash;
 
         internal MusicSnapshot(MusicEffects effects,
                                ulong        nameHash,
                                float        position,
-                               bool[]       stems)
+                               bool[]       stems,
+                               ulong        stemStateHash)
         {
-            Effects  = effects;
-            NameHash = nameHash;
-            Position = position;
-            Stems    = stems;
+            Effects       = effects;
+            NameHash      = nameHash;
+            Position      = position;
+            Stems         = stems;
+            StemStateHash = stemStateHash;
         }
     }
 }

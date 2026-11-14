@@ -130,7 +130,7 @@ await musicPlayer.CrossfadeAsync(Fnv1a64.Hash("World Map"), Fnv1a64.Hash("Explor
 * **The two tracks share the music channels while both sound**, each stem on a free one, so nothing extra is needed in the mixer.  If the two together have more stems than there are channels, it throws, naming both tracks, the channels they need and the channels there are — sixteen channels cannot crossfade a ten-stem track into an eight-stem one.  Add music groups to the mixer and to `SetStemMixerGroups`.
 * **At most two tracks sound.**  A crossfade asked for while another is still fading a track out cuts that track.
 * The track fading out plays on at full volume until the new one's clips have loaded, so nothing dips while they load.
-* Crossfading to the track already playing does nothing, as `PlayAsync` does.  With nothing playing, it is a fade in.
+* Crossfading to the track already playing does nothing, as `PlayAsync` does, and a track still loading for either is let go, so the one playing plays on.  With nothing playing, it is a fade in.
 * Stem states apply to the track fading in.  Its reverb settings apply when it starts, and a different preset cuts the reverb's tail under the track fading out.
 * `StopAsync` fades out both.
 * An optional last argument is the volume it fades in to, 0 to 1 — see [Song volume](#song-volume).
@@ -143,7 +143,7 @@ Each track has a volume of its own, 0 to 1, for the game to set — quiet music 
 await musicPlayer.SetSongVolumeAsync(0.25f, 2f);
 ```
 
-It is a straight gain on the track's stems, and fades go to it rather than to full.  With nothing playing it does nothing, so a game that wants a level kept from one track to the next keeps it and passes it to the next `PlayAsync`, as the field does.
+It is a straight gain on the track's stems, and fades go to it rather than to full.  With nothing playing it does nothing, so a game that wants a level kept from one track to the next keeps it and passes it to the next `PlayAsync`, as the field does.  A track still loading counts as playing: it starts at a volume set meanwhile, a fade asked for runs as it starts, the task finishing with the fade, and a stem state set meanwhile is the one it starts in.
 
 Every fade — a song's volume, a crossfade, a stem state, a stop and a resume — runs on unscaled time, so it carries on while `Time.timeScale` is 0, as the music itself does: a game that freezes time under its menu doesn't freeze a fade halfway.
 
@@ -153,7 +153,7 @@ Music is looped by bar: give the asset its tempo and the start and end bar to lo
 
 A bar's time adds up every section before it, then its place in its own, so changing a section moves where every later bar lands in the audio.  The first bar is bar 1, the end bar must come after the start bar, and each section must start after the one before it.  An asset marked to loop whose sections or bar range can't produce a loop logs a warning naming the asset and the problem, and plays through without looping.
 
-A track that doesn't loop costs nothing per frame — the update component is only enabled while there is a loop point to watch, or an echo following the song's tempo (below).  `IsPlaying()` says whether a track is playing: from when it is asked for, while its clips load included, until it is stopped, paused, or reaches its end without looping.
+A track that doesn't loop costs nothing per frame — the update component is only enabled while there is a loop point to watch, or an echo following the song's tempo (below).  `IsPlaying()` says whether a track is playing: from when it is asked for, while it loads included, until it is stopped, paused, or reaches its end without looping.
 
 ### Pause and resume
 

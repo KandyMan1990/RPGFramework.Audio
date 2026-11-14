@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Threading;
 using System.Threading.Tasks;
 using Unity.Mathematics;
 using UnityEngine;
@@ -32,10 +31,11 @@ namespace RPGFramework.Audio.Music
         private int                     m_PreloadRequests;
         private IMusicAssetProvider     m_MusicAssetProvider;
         private Song                    m_Playing;
+        private AskedSong               m_Asked;
         private MusicChannelPool        m_ChannelPool;
         private AudioSource[]           m_Sources;
         private AudioMixer              m_AudioMixer;
-        private CancellationTokenSource m_CancellationTokenSource;
+        private int                     m_StemFadeId;
         private string[]                m_SendParameterNames;
         private string[]                m_EchoSendParameterNames;
         private bool                    m_RegisteredForUpdate;
@@ -53,35 +53,47 @@ namespace RPGFramework.Audio.Music
 
         async Task IMusicPlayer.PlayAsync(ulong nameHash, ulong initialStemStateHash, float fadeInTime, float volume)
         {
-            if (IsCurrentSong(nameHash))
+            if (KeepsCurrentSong(nameHash))
             {
                 return;
             }
 
+            AskedSong   asked      = Ask(new AskedSong(nameHash, initialStemStateHash, null, 0f, volume, default));
             IMusicAsset musicAsset = await AcquireAsync(nameHash);
-            bool[]      stems      = musicAsset.GetStemsForState(initialStemStateHash);
 
-            CancelCts();
+            // Something asked for since took over, and let this one go.
+            if (musicAsset == null)
+            {
+                return;
+            }
+
+            CancelStemFade();
             StopAllSongs();
 
-            await StartSong(nameHash, musicAsset, stems, 0f, fadeInTime, volume, null, default);
+            await StartSong(asked, musicAsset, fadeInTime, null);
         }
 
         async Task IMusicPlayer.CrossfadeAsync(ulong nameHash, ulong initialStemStateHash, float seconds, float volume)
         {
-            if (IsCurrentSong(nameHash))
+            if (KeepsCurrentSong(nameHash))
             {
                 return;
             }
 
+            AskedSong   asked      = Ask(new AskedSong(nameHash, initialStemStateHash, null, 0f, volume, default));
             IMusicAsset musicAsset = await AcquireAsync(nameHash);
-            bool[]      stems      = musicAsset.GetStemsForState(initialStemStateHash);
-            Song        outgoing   = m_Playing;
 
-            CancelCts();
+            if (musicAsset == null)
+            {
+                return;
+            }
+
+            Song outgoing = m_Playing;
+
+            CancelStemFade();
             StopSongsFadingOut();
 
-            await StartSong(nameHash, musicAsset, stems, 0f, seconds, volume, outgoing, default);
+            await StartSong(asked, musicAsset, seconds, outgoing);
         }
 
         async Task IMusicPlayer.ResumeAsync(MusicSnapshot snapshot, float seconds, float volume)
@@ -94,18 +106,25 @@ namespace RPGFramework.Audio.Music
                 return;
             }
 
-            if (IsCurrentSong(snapshot.NameHash))
+            if (KeepsCurrentSong(snapshot.NameHash))
             {
                 return;
             }
 
+            AskedSong   asked      = Ask(new AskedSong(snapshot.NameHash, snapshot.StemStateHash, snapshot.Stems, snapshot.Position, volume, snapshot.Effects));
             IMusicAsset musicAsset = await AcquireAsync(snapshot.NameHash);
-            Song        outgoing   = m_Playing;
 
-            CancelCts();
+            if (musicAsset == null)
+            {
+                return;
+            }
+
+            Song outgoing = m_Playing;
+
+            CancelStemFade();
             StopSongsFadingOut();
 
-            await StartSong(snapshot.NameHash, musicAsset, snapshot.Stems, snapshot.Position, seconds, volume, outgoing, snapshot.Effects);
+            await StartSong(asked, musicAsset, seconds, outgoing);
         }
 
         Task IMusicPlayer.PreloadAsync(IReadOnlyList<ulong> nameHashes)
@@ -144,29 +163,36 @@ namespace RPGFramework.Audio.Music
 
         Task IMusicPlayer.SetSongVolumeAsync(float volume, float seconds)
         {
+            float target = math.clamp(volume, 0f, 1f);
+
+            if (m_Asked != null)
+            {
+                return AskVolume(target, seconds, ref m_Asked.Volume, ref m_Asked.Fade);
+            }
+
             if (m_Playing == null)
             {
                 return Task.CompletedTask;
             }
 
-            m_Playing.Volume = math.clamp(volume, 0f, 1f);
-
-            // Not started yet, it starts at the new volume, or fades in to it.
             if (!m_Playing.Scheduled)
             {
-                return Task.CompletedTask;
+                return AskVolume(target, seconds, ref m_Playing.Volume, ref m_Playing.Fade);
             }
 
-            return FadeMasterAsync(m_Playing, m_Playing.Volume, seconds);
+            m_Playing.Volume = target;
+
+            return FadeMasterAsync(m_Playing, target, seconds);
         }
 
         MusicSnapshot IMusicPlayer.Pause()
         {
             m_Requests++;
 
-            MusicSnapshot snapshot = m_This.IsPlaying() ? TakeSnapshot(m_Playing) : default;
+            MusicSnapshot snapshot = m_Asked != null ? TakeSnapshot(m_Asked) : m_This.IsPlaying() ? TakeSnapshot(m_Playing) : default;
 
-            CancelCts();
+            DropAsked();
+            CancelStemFade();
             StopAllSongs();
 
             return snapshot;
@@ -176,12 +202,14 @@ namespace RPGFramework.Audio.Music
         {
             m_Requests++;
 
+            DropAsked();
+
             if (m_Sounding.Count == 0)
             {
                 return Task.CompletedTask;
             }
 
-            CancelCts();
+            CancelStemFade();
 
             m_Playing = null;
 
@@ -198,7 +226,7 @@ namespace RPGFramework.Audio.Music
 
         bool IMusicPlayer.IsPlaying()
         {
-            bool playing = m_Playing != null && (!m_Playing.Scheduled || m_Sources[m_Playing.Channels[0]].isPlaying);
+            bool playing = m_Asked != null || (m_Playing != null && (!m_Playing.Scheduled || m_Sources[m_Playing.Channels[0]].isPlaying));
 
             return playing;
         }
@@ -210,7 +238,7 @@ namespace RPGFramework.Audio.Music
 
         void IMusicPlayer.SetStemMixerGroups(AudioMixerGroup[] groups)
         {
-            CancelCts();
+            CancelStemFade();
             StopAllSongs();
 
             m_AudioMixer             = groups[0].audioMixer;
@@ -241,6 +269,13 @@ namespace RPGFramework.Audio.Music
 
         Task IMusicPlayer.SetStemStateFadeAsync(ulong stemStateHash, float transitionLength)
         {
+            if (m_Asked != null)
+            {
+                m_Asked.AskState(stemStateHash);
+
+                return Task.CompletedTask;
+            }
+
             if (m_Playing == null)
             {
                 return Task.CompletedTask;
@@ -253,6 +288,13 @@ namespace RPGFramework.Audio.Music
 
         void IMusicPlayer.SetStemStateImmediate(ulong stemStateHash)
         {
+            if (m_Asked != null)
+            {
+                m_Asked.AskState(stemStateHash);
+
+                return;
+            }
+
             if (m_Playing == null)
             {
                 return;
@@ -304,7 +346,6 @@ namespace RPGFramework.Audio.Music
         void IDisposable.Dispose()
         {
             Dispose();
-            GC.SuppressFinalize(this);
         }
 
         // A song still loading has not moved from where it was asked to start. The stems are copied, so the snapshot
@@ -312,19 +353,87 @@ namespace RPGFramework.Audio.Music
         private MusicSnapshot TakeSnapshot(Song song)
         {
             float position = song.Scheduled ? m_Sources[song.Channels[0]].time : song.StartTime;
-            MusicEffects effects = new MusicEffects(AudioUtils.GetParameter(m_AudioMixer, ECHO_DELAY),
-                                                    AudioUtils.GetParameter(m_AudioMixer, ECHO_DECAY),
-                                                    GetReverbParameter(REVERB_PRESET),
-                                                    GetReverbParameter(REVERB_DEPTH));
 
-            MusicSnapshot snapshot = new MusicSnapshot(effects, song.NameHash, position, (bool[])song.Stems.Clone());
+            MusicSnapshot snapshot = new MusicSnapshot(EffectsInForce(), song.NameHash, position, (bool[])song.Stems.Clone(), MusicAsset.NO_STATE_NAMED);
 
             return snapshot;
         }
 
-        private bool IsCurrentSong(ulong nameHash)
+        private MusicSnapshot TakeSnapshot(AskedSong asked)
         {
-            return m_Playing != null && m_Playing.NameHash == nameHash;
+            MusicEffects effects = asked.Effects.Taken ? asked.Effects : EffectsInForce();
+            bool[]       stems   = asked.Stems != null ? (bool[])asked.Stems.Clone() : null;
+
+            return new MusicSnapshot(effects, asked.NameHash, asked.StartTime, stems, asked.StemStateHash);
+        }
+
+        private MusicEffects EffectsInForce()
+        {
+            return new MusicEffects(AudioUtils.GetParameter(m_AudioMixer, ECHO_DELAY),
+                                    AudioUtils.GetParameter(m_AudioMixer, ECHO_DECAY),
+                                    GetReverbParameter(REVERB_PRESET),
+                                    GetReverbParameter(REVERB_DEPTH));
+        }
+
+        private bool KeepsCurrentSong(ulong nameHash)
+        {
+            if (m_Asked == null)
+            {
+                return m_Playing != null && m_Playing.NameHash == nameHash;
+            }
+
+            if (m_Asked.NameHash == nameHash)
+            {
+                return true;
+            }
+
+            if (m_Playing == null || m_Playing.NameHash != nameHash)
+            {
+                return false;
+            }
+
+            m_Requests++;
+
+            DropAsked();
+
+            return true;
+        }
+
+        private AskedSong Ask(AskedSong asked)
+        {
+            DropAsked();
+
+            m_Asked = asked;
+
+            return asked;
+        }
+
+        private void DropAsked()
+        {
+            if (m_Asked == null)
+            {
+                return;
+            }
+
+            m_Asked.Fade?.Done.TrySetResult(false);
+            m_Asked = null;
+        }
+
+        private static Task AskVolume(float target, float seconds, ref float volume, ref PendingFade fade)
+        {
+            fade?.Done.TrySetResult(false);
+            fade = null;
+
+            if (seconds <= 0f)
+            {
+                volume = target;
+
+                return Task.CompletedTask;
+            }
+
+            fade = new PendingFade(target, seconds);
+
+            return fade.Done.Task;
         }
 
         private void LoopIfPastEnd(Song song)
@@ -367,7 +476,7 @@ namespace RPGFramework.Audio.Music
 
         private void SetStemStateImmediate(Song song, bool[] state)
         {
-            CancelCts();
+            CancelStemFade();
 
             song.Stems = state;
 
@@ -393,11 +502,7 @@ namespace RPGFramework.Audio.Music
 
         private async Task FadeStemsAsync(Song song, bool[] stemValues, float transitionLength)
         {
-            CancelCts();
-
-            CancellationTokenSource cts = new CancellationTokenSource();
-
-            m_CancellationTokenSource = cts;
+            int fadeId = ++m_StemFadeId;
 
             for (int i = 0; i < song.StemLevels.Length; i++)
             {
@@ -408,11 +513,6 @@ namespace RPGFramework.Audio.Music
 
             while (progress < 1f)
             {
-                if (cts.IsCancellationRequested)
-                {
-                    return;
-                }
-
                 for (int i = 0; i < stemValues.Length; i++)
                 {
                     float target = stemValues[i] ? 1f : 0f;
@@ -424,7 +524,12 @@ namespace RPGFramework.Audio.Music
 
                 progress += Time.unscaledDeltaTime / transitionLength;
 
-                await Awaitable.NextFrameAsync(cts.Token);
+                await Awaitable.NextFrameAsync();
+
+                if (fadeId != m_StemFadeId)
+                {
+                    return;
+                }
             }
 
             SetStemStateImmediate(song, stemValues);
@@ -504,22 +609,19 @@ namespace RPGFramework.Audio.Music
             }
         }
 
-        private Task StartSong(ulong        nameHash,
-                               IMusicAsset  musicAsset,
-                               bool[]       stems,
-                               float        startTime,
-                               float        fadeSeconds,
-                               float        volume,
-                               Song         outgoing,
-                               MusicEffects effects)
+        private Task StartSong(AskedSong asked, IMusicAsset musicAsset, float fadeSeconds, Song outgoing)
         {
-            int[] channels = m_ChannelPool.Take(musicAsset.Name, musicAsset.Tracks.Count);
+            m_Asked = null;
 
-            Song song = new Song(nameHash, musicAsset, channels);
-            song.Volume    = math.clamp(volume, 0f, 1f);
-            song.StartTime = startTime;
+            int[]  channels = m_ChannelPool.Take(musicAsset.Name, musicAsset.Tracks.Count);
+            bool[] stems    = asked.Stems ?? musicAsset.GetStemsForState(asked.StemStateHash);
+
+            Song song = new Song(asked.NameHash, musicAsset, channels);
+            song.Volume    = asked.Volume;
+            song.StartTime = asked.StartTime;
             song.Stems     = stems;
-            song.Effects   = effects;
+            song.Effects   = asked.Effects;
+            song.Fade      = asked.Fade;
 
             SetStemLevels(song, stems);
 
@@ -539,11 +641,30 @@ namespace RPGFramework.Audio.Music
                 return;
             }
 
-            // The song fading out keeps playing in full until this one can be heard.
+            // The song fading out keeps playing in full until this one can be heard. A fade asked of it while it loaded
+            // starts after the fade-in, so it takes over.
             Task fadeIn  = fadesIn ? FadeMasterAsync(song, song.Volume, fadeSeconds) : Task.CompletedTask;
             Task fadeOut = outgoing != null ? FadeOutAndStopAsync(outgoing, fadeSeconds) : Task.CompletedTask;
+            Task asked   = RunAskedFadeAsync(song);
 
-            await Task.WhenAll(fadeIn, fadeOut);
+            await Task.WhenAll(fadeIn, fadeOut, asked);
+        }
+
+        private async Task RunAskedFadeAsync(Song song)
+        {
+            PendingFade fade = song.Fade;
+
+            if (fade == null)
+            {
+                return;
+            }
+
+            song.Fade   = null;
+            song.Volume = fade.Target;
+
+            bool faded = await FadeMasterAsync(song, fade.Target, fade.Seconds);
+
+            fade.Done.TrySetResult(faded);
         }
 
         /// <returns>False when another song took over while this one's clips loaded, so it never sounded.</returns>
@@ -711,6 +832,9 @@ namespace RPGFramework.Audio.Music
 
             song.Stopped = true;
 
+            song.Fade?.Done.TrySetResult(false);
+            song.Fade = null;
+
             m_Sounding.Remove(song);
 
             if (m_Playing == song)
@@ -865,7 +989,8 @@ namespace RPGFramework.Audio.Music
 
             m_Disposed = true;
 
-            CancelCts();
+            DropAsked();
+            CancelStemFade();
             StopAllSongs();
             m_This.Unload(new List<ulong>(m_Preloads.Keys));
             DestroyPlayerObject();
@@ -886,11 +1011,9 @@ namespace RPGFramework.Audio.Music
             m_UpdateDriver = null;
         }
 
-        private void CancelCts()
+        private void CancelStemFade()
         {
-            m_CancellationTokenSource?.Cancel();
-            m_CancellationTokenSource?.Dispose();
-            m_CancellationTokenSource = null;
+            m_StemFadeId++;
         }
 
         /// <summary>
@@ -904,24 +1027,16 @@ namespace RPGFramework.Audio.Music
             internal readonly float[]     StemLevels;
             internal readonly float[]     FadeStartLevels;
 
-            // The state its stems were last sent to, for a snapshot: a stem fade under way counts as finished.
-            internal bool[] Stems;
-            internal float  StartTime;
-
-            // Where the song's fades take it, and where they have got to, each a gain on every stem.
-            internal float Volume;
-            internal float MasterFade;
-            internal bool  Scheduled;
-            internal bool  Stopped;
-
-            // The echo delay last written for it, so a section that does not change it costs no write.
-            internal float EchoDelay;
-
-            // A resumed song's echo and reverb as they were when it was paused, put back instead of its own.
+            internal bool[]       Stems;
+            internal float        StartTime;
+            internal float        Volume;
+            internal float        MasterFade;
+            internal bool         Scheduled;
+            internal bool         Stopped;
+            internal float        EchoDelay;
             internal MusicEffects Effects;
-
-            // Each master fade takes the next id, so one still running knows a later one has taken over.
-            internal int MasterFadeId;
+            internal int          MasterFadeId;
+            internal PendingFade  Fade;
 
             internal Song(ulong nameHash, IMusicAsset asset, int[] channels)
             {
@@ -930,6 +1045,55 @@ namespace RPGFramework.Audio.Music
                 Channels        = channels;
                 StemLevels      = new float[channels.Length];
                 FadeStartLevels = new float[channels.Length];
+            }
+        }
+
+        /// <summary>
+        /// A song asked for whose asset is still on its way: playing, as far as anyone asking can tell, and starting
+        /// with what has been asked of it since — a volume, a fade to run once it is heard, a stem state.
+        /// </summary>
+        private sealed class AskedSong
+        {
+            internal readonly ulong        NameHash;
+            internal readonly float        StartTime;
+            internal readonly MusicEffects Effects;
+
+            internal bool[] Stems;
+            internal ulong  StemStateHash;
+
+            internal float       Volume;
+            internal PendingFade Fade;
+
+            internal AskedSong(ulong nameHash, ulong stemStateHash, bool[] stems, float startTime, float volume, MusicEffects effects)
+            {
+                NameHash      = nameHash;
+                StemStateHash = stemStateHash;
+                Stems         = stems;
+                StartTime     = startTime;
+                Volume        = math.clamp(volume, 0f, 1f);
+                Effects       = effects;
+                Fade          = null;
+            }
+
+            internal void AskState(ulong stemStateHash)
+            {
+                StemStateHash = stemStateHash;
+                Stems         = null;
+            }
+        }
+
+        /// <summary>A volume fade asked for before its song was heard, its task finishing with the fade.</summary>
+        private sealed class PendingFade
+        {
+            internal readonly float                      Target;
+            internal readonly float                      Seconds;
+            internal readonly TaskCompletionSource<bool> Done;
+
+            internal PendingFade(float target, float seconds)
+            {
+                Target  = target;
+                Seconds = seconds;
+                Done    = new TaskCompletionSource<bool>();
             }
         }
     }

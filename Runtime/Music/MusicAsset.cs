@@ -21,7 +21,7 @@ namespace RPGFramework.Audio.Music
     [CreateAssetMenu(fileName = "Music Asset", menuName = "RPG Framework/Audio/Music Asset")]
     public sealed class MusicAsset : ScriptableObject, IMusicAsset
     {
-        private const ulong NO_STATE_NAMED = 0;
+        internal const ulong NO_STATE_NAMED = 0;
 
         [SerializeField]
         [Tooltip("The song's tempo and time signature, in sections. The first starts at bar 1 and each runs until the next one starts, so a song that changes either loops by bar all the same")]
