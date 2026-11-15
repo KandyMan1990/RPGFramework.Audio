@@ -33,6 +33,10 @@ namespace RPGFramework.Audio.Editor
         private VisualElement[] m_SampleFields;
         private VisualElement[] m_BarFields;
         private HelpBox         m_RateHelp;
+        private HelpBox         m_ReadHelp;
+        private Button          m_UseStemsLoop;
+        private AudioClip[]     m_StemClips;
+        private StemLoopReading m_Offered;
 
         private Button        m_Play;
         private Button        m_PlayIntoLoop;
@@ -96,6 +100,7 @@ namespace RPGFramework.Audio.Editor
             m_Stems = new VisualElement();
             root.Add(m_Stems);
 
+            m_StemClips = CurrentClips();
             Rebuild();
 
             // A change to the asset can change its stems, states or loop, which a preview under way would not follow.
@@ -132,6 +137,130 @@ namespace RPGFramework.Audio.Editor
 
             m_SampleFields = new[] { m_LoopStart.Root, m_LoopEnd.Root, rate, m_RateHelp };
             m_BarFields    = new VisualElement[] { FindField(root, LOOP_START_BAR), FindField(root, LOOP_END_BAR) };
+
+            Button read = new Button(() => ReadStems(false))
+                          {
+                              text    = "Read loop from stems",
+                              tooltip = "Read the loop from the stems' source files — two markers named LOOPSTART and LOOPEND, or a sampler loop, in a WAV; LOOPSTART with LOOPLENGTH or LOOPEND, or alone, in an OGG — as it is read when a stem is added. For a stem exported again"
+                          };
+
+            m_ReadHelp     = new HelpBox(string.Empty, HelpBoxMessageType.Info);
+            m_UseStemsLoop = new Button(() => Apply(m_Offered))
+                             {
+                                 text    = "Use the stems' loop",
+                                 tooltip = "Loop by the samples the stems' files mark, in place of the bars"
+                             };
+
+            PropertyField endBar = FindField(root, LOOP_END_BAR);
+            int           at     = endBar.parent.IndexOf(endBar) + 1;
+
+            endBar.parent.Insert(at, read);
+            endBar.parent.Insert(at + 1, m_ReadHelp);
+            endBar.parent.Insert(at + 2, m_UseStemsLoop);
+            m_ReadHelp.style.display     = DisplayStyle.None;
+            m_UseStemsLoop.style.display = DisplayStyle.None;
+        }
+
+        private AudioClip[] CurrentClips()
+        {
+            IReadOnlyList<IStem> tracks = Music.Tracks;
+            AudioClip[]          clips  = new AudioClip[tracks?.Count ?? 0];
+
+            for (int i = 0; i < clips.Length; i++)
+            {
+                clips[i] = tracks[i].Clip;
+            }
+
+            return clips;
+        }
+
+        /// <summary>The stems' loop read when a stem's clip has been set since the asset was last seen.</summary>
+        private void ReadIfAStemWasSet()
+        {
+            AudioClip[] clips = CurrentClips();
+            bool        set   = false;
+
+            for (int i = 0; i < clips.Length; i++)
+            {
+                set |= clips[i] != null && (i >= m_StemClips.Length || m_StemClips[i] != clips[i]);
+            }
+
+            m_StemClips = clips;
+
+            if (set)
+            {
+                ReadStems(true);
+            }
+        }
+
+        /// <summary>
+        /// Reads every stem's source file for the loop. Asked for, or as a stem is added to a song with no loop yet or one
+        /// looping by samples, it is written; added to a song looping by bars, it is offered.
+        /// </summary>
+        private void ReadStems(bool asAdded)
+        {
+            IReadOnlyList<IStem> tracks   = Music.Tracks;
+            int                  count    = tracks?.Count ?? 0;
+            string[]             names    = new string[count];
+            StemMarkers[]        markers  = new StemMarkers[count];
+            string[]             problems = new string[count];
+
+            for (int i = 0; i < count; i++)
+            {
+                AudioClip clip = tracks[i].Clip;
+
+                names[i] = clip != null ? clip.name : $"Stem {i + 1}";
+
+                if (clip != null)
+                {
+                    StemSourceFiles.TryReadMarkers(clip, out markers[i], out problems[i]);
+                }
+            }
+
+            StemLoopReading reading = StemLoopReading.Read(names, markers, problems);
+
+            m_Offered = null;
+
+            if (reading.Found)
+            {
+                serializedObject.Update();
+
+                bool     loops = serializedObject.FindProperty("m_Loop").boolValue;
+                LoopUnit unit  = (LoopUnit)serializedObject.FindProperty(LOOP_UNIT).intValue;
+
+                if (!asAdded || StemLoopReading.AppliesWhenAdded(loops, unit))
+                {
+                    Apply(reading);
+                }
+                else
+                {
+                    m_Offered = reading;
+                }
+            }
+
+            m_ReadHelp.text              = m_Offered != null ? $"{reading.Report} The song loops by bars, so its loop is offered rather than changed." : reading.Report;
+            m_ReadHelp.messageType       = reading.Refused ? HelpBoxMessageType.Warning : HelpBoxMessageType.Info;
+            m_ReadHelp.style.display     = DisplayStyle.Flex;
+            m_UseStemsLoop.style.display = m_Offered != null ? DisplayStyle.Flex : DisplayStyle.None;
+        }
+
+        private void Apply(StemLoopReading reading)
+        {
+            if (reading == null || !reading.Found)
+            {
+                return;
+            }
+
+            serializedObject.Update();
+            serializedObject.FindProperty("m_Loop").boolValue         = true;
+            serializedObject.FindProperty(LOOP_UNIT).intValue         = (int)LoopUnit.Samples;
+            serializedObject.FindProperty(LOOP_START_SAMPLE).intValue = reading.LoopStart;
+            serializedObject.FindProperty(LOOP_END_SAMPLE).intValue   = reading.LoopEnd;
+            serializedObject.FindProperty(LOOP_SAMPLE_RATE).intValue  = reading.SampleRate;
+            serializedObject.ApplyModifiedProperties();
+
+            m_Offered                    = null;
+            m_UseStemsLoop.style.display = DisplayStyle.None;
         }
 
         private static PropertyField FindField(VisualElement root, string propertyPath)
@@ -198,6 +327,7 @@ namespace RPGFramework.Audio.Editor
 
         private void Rebuild()
         {
+            ReadIfAStemWasSet();
             RefreshLoopFields();
 
             IReadOnlyList<IStem> tracks = Music.Tracks;
