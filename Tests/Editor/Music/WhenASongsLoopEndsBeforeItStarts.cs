@@ -28,7 +28,7 @@ namespace RPGFramework.Audio.Tests.Music
         [Test]
         public void ThenItPlaysThroughWithoutLooping()
         {
-            SongAuthoring.SetLoop(m_Song, 9, 5);
+            SongAuthoring.SetLoopInBars(m_Song, 9, 5);
 
             Assert.IsFalse(((IMusicAsset)m_Song).Loop);
         }
@@ -38,7 +38,7 @@ namespace RPGFramework.Audio.Tests.Music
         {
             LogAssert.Expect(LogType.Warning, new Regex(Regex.Escape("its loop runs from bar [9] to bar [5]")));
 
-            SongAuthoring.SetLoop(m_Song, 9, 5);
+            SongAuthoring.SetLoopInBars(m_Song, 9, 5);
         }
     }
 }

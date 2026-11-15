@@ -17,9 +17,13 @@ MonoBehaviour:
     m_BPM: 104
     m_BeatsPerBar: 4
     m_BeatUnit: 4
+  m_Loop: 1
+  m_LoopUnit: 0
+  m_LoopStartSample: 407077
+  m_LoopEndSample: 2035385
+  m_LoopSampleRate: 44100
   m_LoopStartBar: 5
   m_LoopEndBar: 21
-  m_Loop: 1
   m_Tracks:
   - m_AudioClip: {fileID: 8300000, guid: c93f6cb4f4df6214dbbda31b1f7d4671, type: 3}
     m_ReverbSendLevel: 0.3

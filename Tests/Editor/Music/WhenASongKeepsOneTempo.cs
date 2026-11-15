@@ -14,7 +14,7 @@ namespace RPGFramework.Audio.Tests.Music
             m_Song = SongAuthoring.New();
 
             SongAuthoring.SetSections(m_Song, new Section(1, 120f, 4, NoteValue.Quarter));
-            SongAuthoring.SetLoop(m_Song, 5, 9);
+            SongAuthoring.SetLoopInBars(m_Song, 5, 9);
         }
 
         [TearDown]

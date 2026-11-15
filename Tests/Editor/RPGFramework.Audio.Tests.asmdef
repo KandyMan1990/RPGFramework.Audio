@@ -3,6 +3,7 @@
     "rootNamespace": "RPGFramework.Audio.Tests",
     "references": [
         "RPGFramework.Audio",
+        "RPGFramework.Audio.Editor",
         "RPGFramework.Hashing",
         "UnityEngine.TestRunner"
     ],

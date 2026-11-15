@@ -41,13 +41,51 @@ namespace RPGFramework.Audio.Tests.Music
             asset.ApplyModifiedPropertiesWithoutUndo();
         }
 
-        internal static void SetLoop(MusicAsset song, int startBar, int endBar)
+        internal static void SetLoopInBars(MusicAsset song, int startBar, int endBar)
         {
             SerializedObject asset = new SerializedObject(song);
 
             asset.FindProperty("m_Loop").boolValue        = true;
+            asset.FindProperty("m_LoopUnit").intValue     = (int)LoopUnit.Bars;
             asset.FindProperty("m_LoopStartBar").intValue = startBar;
             asset.FindProperty("m_LoopEndBar").intValue   = endBar;
+            asset.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        internal static void SetLoopInSamples(MusicAsset song, int startSample, int endSample, int sampleRate)
+        {
+            SetUnit(song, LoopUnit.Samples);
+            SetSamplePoints(song, startSample, endSample, sampleRate);
+        }
+
+        /// <summary>The loop ticked and its samples set, its unit left as it is.</summary>
+        internal static void SetSamplePoints(MusicAsset song, int startSample, int endSample, int sampleRate)
+        {
+            SerializedObject asset = new SerializedObject(song);
+
+            asset.FindProperty("m_Loop").boolValue           = true;
+            asset.FindProperty("m_LoopStartSample").intValue = startSample;
+            asset.FindProperty("m_LoopEndSample").intValue   = endSample;
+            asset.FindProperty("m_LoopSampleRate").intValue  = sampleRate;
+            asset.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        internal static void SetUnit(MusicAsset song, LoopUnit unit)
+        {
+            SerializedObject asset = new SerializedObject(song);
+
+            asset.FindProperty("m_LoopUnit").intValue = (int)unit;
+            asset.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        /// <summary>One stem, playing <paramref name="clip" />.</summary>
+        internal static void SetStem(MusicAsset song, AudioClip clip)
+        {
+            SerializedObject   asset  = new SerializedObject(song);
+            SerializedProperty tracks = asset.FindProperty("m_Tracks");
+
+            tracks.arraySize = 1;
+            tracks.GetArrayElementAtIndex(0).FindPropertyRelative("m_AudioClip").objectReferenceValue = clip;
             asset.ApplyModifiedPropertiesWithoutUndo();
         }
 

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using RPGFramework.Audio.Music;
@@ -43,7 +43,7 @@ namespace RPGFramework.Audio
         /// <summary>The asset's name, whose hash is how the song is asked for.</summary>
         internal string Name { get; }
 
-        /// <summary>Where the loop starts, in seconds, from the loop's start bar and the tempo sections.</summary>
+        /// <summary>Where the loop starts, in seconds: its sample over its sample rate, or its bar through the tempo sections.</summary>
         internal double LoopStartTime { get; }
 
         /// <summary>Where the loop ends and jumps back to its start, in seconds.</summary>

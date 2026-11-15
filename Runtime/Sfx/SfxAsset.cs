@@ -31,5 +31,29 @@ namespace RPGFramework.Audio.Sfx
         bool ISfxAsset.                        Loop      => m_Loop;
         int ISfxAsset.                         LoopStart => m_LoopStart;
         int ISfxAsset.                         LoopEnd   => m_LoopEnd;
+
+#if UNITY_EDITOR
+        /// <summary>What stops the sound looping, as <see cref="LoopedStems.FindProblem" /> words it, or null.</summary>
+        internal string FindLoopProblem()
+        {
+            if (!m_Loop || m_Tracks.Length == 0 || m_Tracks[0] == null || ((IStem)m_Tracks[0]).Clip == null)
+            {
+                return null;
+            }
+
+            // The loop is counted in the first stem's samples, as the player reads its playhead.
+            return LoopedStems.FindProblem(m_Tracks, (double)m_LoopEnd / ((IStem)m_Tracks[0]).Clip.frequency);
+        }
+
+        private void OnValidate()
+        {
+            string problem = FindLoopProblem();
+
+            if (problem != null)
+            {
+                Debug.LogWarning($"{nameof(SfxAsset)} [{name}] loops, but {problem}");
+            }
+        }
+#endif
     }
 }

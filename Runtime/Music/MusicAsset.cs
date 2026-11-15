@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using RPGFramework.Hashing;
 using UnityEngine;
@@ -18,6 +18,16 @@ namespace RPGFramework.Audio.Music
         Sixteenth = 16
     }
 
+    /// <summary>
+    /// What a song's loop is counted in: samples of its stems' source files, exact whatever the tempo does, or bars,
+    /// through its tempo sections.
+    /// </summary>
+    internal enum LoopUnit
+    {
+        Samples = 0,
+        Bars    = 1
+    }
+
     [CreateAssetMenu(fileName = "Music Asset", menuName = "RPG Framework/Audio/Music Asset")]
     public sealed class MusicAsset : ScriptableObject, IMusicAsset
     {
@@ -27,11 +37,23 @@ namespace RPGFramework.Audio.Music
         [Tooltip("The song's tempo and time signature, in sections. The first starts at bar 1 and each runs until the next one starts, so a song that changes either loops by bar all the same")]
         private TempoSection[] m_Sections = Array.Empty<TempoSection>();
         [SerializeField]
+        private bool m_Loop;
+        [SerializeField]
+        [Tooltip("What the loop is counted in: samples of the stems' source files, exact whatever the tempo does, or bars, through the tempo sections")]
+        private LoopUnit m_LoopUnit;
+        [SerializeField]
+        [Tooltip("The sample the loop starts at, counted from 0 at the loop's sample rate")]
+        private int m_LoopStartSample;
+        [SerializeField]
+        [Tooltip("The sample the loop ends at, where it jumps back to its start")]
+        private int m_LoopEndSample;
+        [SerializeField]
+        [Tooltip("The rate the loop's samples are counted at: the stems' source files', read from the first stem's file. Never the clip's, which an import can resample")]
+        private int m_LoopSampleRate;
+        [SerializeField]
         private int m_LoopStartBar;
         [SerializeField]
         private int m_LoopEndBar;
-        [SerializeField]
-        private bool m_Loop;
         [SerializeField]
         private Stem[] m_Tracks;
         [SerializeField]
@@ -135,6 +157,23 @@ namespace RPGFramework.Audio.Music
             CalculateLoopPoints();
             EnsureStates();
             WarnAboutDuplicateStateNames();
+            WarnAboutUnloopableStems();
+        }
+
+        /// <summary>What stops the song looping, as <see cref="LoopedStems.FindProblem" /> words it, or null.</summary>
+        internal string FindLoopProblem()
+        {
+            return m_LoopPointsValid && m_Tracks != null ? LoopedStems.FindProblem(m_Tracks, m_LoopEndTime) : null;
+        }
+
+        private void WarnAboutUnloopableStems()
+        {
+            string problem = FindLoopProblem();
+
+            if (problem != null)
+            {
+                Debug.LogWarning($"{nameof(MusicAsset)} [{name}] loops, but {problem}");
+            }
         }
 
         private void WarnAboutDuplicateStateNames()
@@ -202,6 +241,13 @@ namespace RPGFramework.Audio.Music
                 return;
             }
 
+            if (m_LoopUnit == LoopUnit.Samples)
+            {
+                CalculateSampleLoopPoints();
+
+                return;
+            }
+
             string sectionProblem = FindSectionProblem();
 
             if (sectionProblem != null)
@@ -220,6 +266,27 @@ namespace RPGFramework.Audio.Music
 
             m_LoopStartTime   = BarToSeconds(m_LoopStartBar);
             m_LoopEndTime     = BarToSeconds(m_LoopEndBar);
+            m_LoopPointsValid = true;
+        }
+
+        private void CalculateSampleLoopPoints()
+        {
+            if (m_LoopSampleRate <= 0)
+            {
+                Debug.LogWarning($"{nameof(MusicAsset)} [{name}] is marked to loop by samples but has no sample rate to count them at. Read it from the first stem's file in the inspector. It will play through without looping");
+
+                return;
+            }
+
+            if (m_LoopStartSample < 0 || m_LoopEndSample <= m_LoopStartSample)
+            {
+                Debug.LogWarning($"{nameof(MusicAsset)} [{name}] is marked to loop but its loop runs from sample [{m_LoopStartSample}] to sample [{m_LoopEndSample}]. The end must come after the start and the first sample is 0. It will play through without looping");
+
+                return;
+            }
+
+            m_LoopStartTime   = (double)m_LoopStartSample / m_LoopSampleRate;
+            m_LoopEndTime     = (double)m_LoopEndSample / m_LoopSampleRate;
             m_LoopPointsValid = true;
         }
 

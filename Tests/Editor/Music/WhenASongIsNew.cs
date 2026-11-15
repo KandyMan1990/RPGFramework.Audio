@@ -27,6 +27,14 @@ namespace RPGFramework.Audio.Tests.Music
         }
 
         [Test]
+        public void ThenALoopTickedOnItIsCountedInSamples()
+        {
+            SongAuthoring.SetSamplePoints(m_Song, 44100, 88200, 44100);
+
+            Assert.AreEqual(1.0, ((IMusicAsset)m_Song).LoopStartTime);
+        }
+
+        [Test]
         public void ThenItLeavesTheEchoAsItWas()
         {
             Assert.AreEqual(EchoTiming.None, ((IMusicAsset)m_Song).Echo.Timing);
