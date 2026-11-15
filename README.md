@@ -1,7 +1,7 @@
 # RPGFramework.Audio
 Music in stems and sound effects for Unity: made for the RPG Framework, and usable in any Unity project on its own (see [Using it on its own](#using-it-on-its-own)).
 
-Requires Unity 6000.0 or newer. It references Unity, Unity.Mathematics and RPGFramework.Hashing, and nothing else — Hashing is a single static class with no dependencies of its own, so this package can still be dropped into a project that has none of the rest of the framework. It drives its own per frame update from a component on the GameObject each player creates for its audio sources, so there is no update manager to wire up.
+Requires Unity 6000.7 or newer. It references Unity, Unity.Mathematics and RPGFramework.Hashing, and nothing else — Hashing is a single static class with no dependencies of its own, so this package can still be dropped into a project that has none of the rest of the framework. It drives its own per frame update from a component on the GameObject each player creates for its audio sources, so there is no update manager to wire up.
 
 Audio is played using Unity's built in audio systems.  The samples contain a mixer asset that has 16 channels reserved for playing music and 16 channels for sound effects, however this is just an example, a mixer could have 2 channels, it could have 200 channels, 16 and 16 just seemed like a reasonable number that would cover the vast majority of use cases.
 

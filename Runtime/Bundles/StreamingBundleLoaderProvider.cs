@@ -1,5 +1,8 @@
+using Unity.Scripting.LifecycleManagement;
+
 namespace RPGFramework.Audio.Bundles
 {
+    [NoAutoStaticsCleanup]
     internal static class StreamingBundleLoaderProvider
     {
 #if (UNITY_ANDROID || UNITY_WEBGL) && !UNITY_EDITOR
