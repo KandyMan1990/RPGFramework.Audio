@@ -290,6 +290,12 @@ Preload audio data must be off for the player to manage residency at all, as des
 
 ## Editor tooling
 
+### Making songs and sounds from clips
+
+Select a song's or a sound's clips in the Project window and choose **Create › RPG Framework › Audio › Music Asset** or **SFX Asset**: the asset is made beside them with the clips as its stems, in name order, each sending in full to the reverb, its loop and sample rate read from their source files as **Read loop from stems** reads them (see [Looping](#looping)), and named for what the clips' names share — *Battle_Boss* for *Battle_Boss01* to *03*.  With no clips selected, the asset starts empty.
+
+To add stems to an asset already made, drag clips onto it in the Project window or onto its inspector: they join its stems the same way, and its loop is read again.  A stem added in the inspector with **+** sends in full to the reverb too, until you change it.
+
 ### Import preset applier
 
 An asset postprocessor ships with the package that applies an import preset to audio automatically.  When any audio file is imported, it looks for a preset in that file's folder and then in each folder above it, stopping short of the Assets root, and applies the first one it finds.  So dropping `MusicAudioImporter.preset` beside your music and `SfxAudioImporter.preset` beside your sfx is all the setup there is.  Keep one preset per folder, as the first one found wins.
@@ -391,7 +397,7 @@ Some suggestions for fitting it in:
 - **Field scripts play the music and sounds**: `PLAY_MUSIC`, `CROSSFADE_MUSIC`, `STOP_MUSIC`, `MUSIC_STEM_STATE`, `IS_MUSIC_PLAYING`, `PLAY_SOUND`, `STOP_SOUND`, `FADE_SOUND_VOLUME`, `FADE_SOUND_PAN`, `SET_ALL_SOUND_VOLUME` and `FADE_ALL_SOUND_VOLUME`; the song's volume with `SET_MUSIC_VOLUME`, `FADE_MUSIC_VOLUME`, `FADE_MUSIC_VOLUME_FROM` and `WAIT_FOR_MUSIC_VOLUME`, kept in Core's `SongVolume` variable so it carries across fields and saves; the battle music with `SET_BATTLE_MUSIC`; and with PSX Reverb, `SET_REVERB_PRESET` and `SET_REVERB_VOLUME`.  The block editor offers each provider's songs, sounds and stem states by name.
 - **The menus set the player's volume**: the Config menu as the player changes it, and the title screen from the saved settings at start-up.
 - **A battle pauses the field's music**: the module router pauses it and starts the battle music as the battle begins, and the field resumes it as it returns, over a second at its music volume.  Battle plays its victory music.
-- **The debug room lists what the providers hold**: with `ENABLE_RPG_FRAMEWORK_DEBUG` defined, a provider is also an `IDebugMusicAssetProvider` — its songs and each song's stem states — or an `IDebugSfxAssetProvider` — its sounds — which the game's installer binds for the room's Audio page.
+- **The debug room lists what the providers hold**: with `ENABLE_RPG_FRAMEWORK_DEBUG` defined, a provider is also an `IDebugMusicAssetProvider` — its songs and each song's stem states — or an `IDebugSfxAssetProvider` — its sounds — which the game's installer binds for the room's Audio page.  The music player is also an `IDebugMusicPlayer`, and a sound's reference an `IDebugSfxReference`, each giving what plays as a `DebugTrack`: its name, where it is, how long it is and how it loops.
 - **Menus and dialogue play the game's system sounds** — the cursor, confirm, cancel, error — which the game picks by name in Core's **System Sound Config**; the menus and the dialogue play them through the `ISfxPlayer`, so Core never names a sound and Audio never hears of Core.  The framework keeps every sound it names as data, picked by name in an inspector, and never uses the generated enums, which are for a game using Audio on its own: a sound added after release, in a content pack, could not be in one.
 
 ## Tests

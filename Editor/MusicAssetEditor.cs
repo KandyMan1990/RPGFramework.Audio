@@ -101,6 +101,8 @@ namespace RPGFramework.Audio.Editor
             m_StemClips = StemLoopFields.CurrentClips(Music.Tracks);
             Rebuild();
 
+            StemTracks.AcceptDrops(root, serializedObject);
+
             // A change to the asset can change its stems, states or loop, which a preview under way would not follow.
             root.TrackSerializedObjectValue(serializedObject, _ =>
                                                               {
@@ -162,6 +164,8 @@ namespace RPGFramework.Audio.Editor
         /// <summary>The stems' loop read when a stem's clip has been set since the asset was last seen.</summary>
         private void ReadIfAStemWasSet()
         {
+            StemTracks.DefaultNewStems(serializedObject, m_StemClips.Length);
+
             AudioClip[] clips = StemLoopFields.CurrentClips(Music.Tracks);
             bool        set   = StemLoopFields.AStemWasSet(m_StemClips, clips);
 
@@ -185,12 +189,7 @@ namespace RPGFramework.Audio.Editor
 
             if (reading.Found)
             {
-                serializedObject.Update();
-
-                bool     loops = serializedObject.FindProperty("m_Loop").boolValue;
-                LoopUnit unit  = (LoopUnit)serializedObject.FindProperty(LOOP_UNIT).intValue;
-
-                if (!asAdded || StemLoopReading.AppliesWhenAdded(loops, unit))
+                if (!asAdded || StemLoopFields.SongTakesLoopAsAdded(serializedObject))
                 {
                     Apply(reading);
                 }
@@ -213,13 +212,7 @@ namespace RPGFramework.Audio.Editor
                 return;
             }
 
-            serializedObject.Update();
-            serializedObject.FindProperty("m_Loop").boolValue         = true;
-            serializedObject.FindProperty(LOOP_UNIT).intValue         = (int)LoopUnit.Samples;
-            serializedObject.FindProperty(LOOP_START_SAMPLE).intValue = reading.LoopStart;
-            serializedObject.FindProperty(LOOP_END_SAMPLE).intValue   = reading.LoopEnd;
-            serializedObject.FindProperty(LOOP_SAMPLE_RATE).intValue  = reading.SampleRate;
-            serializedObject.ApplyModifiedProperties();
+            StemLoopFields.ApplyToSong(serializedObject, reading);
 
             m_Offered                    = null;
             m_UseStemsLoop.style.display = DisplayStyle.None;

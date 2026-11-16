@@ -6,6 +6,9 @@ using UnityEngine;
 namespace RPGFramework.Audio.Sfx
 {
     internal sealed class SfxReference : ISfxReference
+#if ENABLE_RPG_FRAMEWORK_DEBUG
+        , IDebugSfxReference
+#endif
     {
         event Action<string, ISfxReference> ISfxReference.OnEvent
         {
@@ -23,6 +26,24 @@ namespace RPGFramework.Audio.Sfx
         bool ISfxReference.Loops => m_SfxAsset.Loop;
 
         float ISfxReference.Position => m_Stems.Length > 0 ? (float)m_Stems[0].Position : 0f;
+
+#if ENABLE_RPG_FRAMEWORK_DEBUG
+        DebugTrack IDebugSfxReference.Track
+        {
+            get
+            {
+                bool   loops = m_SfxAsset.Loop;
+                double rate  = m_SampleRate;
+
+                return new DebugTrack(m_SfxAsset is UnityEngine.Object asset ? asset.name : string.Empty,
+                                      m_Stems.Length > 0 ? m_Stems[0].Position : 0.0,
+                                      (double)m_FirstClip.samples / m_FirstClip.frequency,
+                                      loops,
+                                      loops ? m_SfxAsset.LoopStart / rate : 0.0,
+                                      loops ? m_SfxAsset.LoopEnd / rate : 0.0);
+            }
+        }
+#endif
 
         private Action<string, ISfxReference> m_OnEvent;
 

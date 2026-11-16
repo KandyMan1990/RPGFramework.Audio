@@ -9,7 +9,8 @@ namespace RPGFramework.Audio
         private AudioClip m_AudioClip;
         [SerializeField]
         [Range(0f, 1f)]
-        private float m_ReverbSendLevel;
+        [Tooltip("How much of this stem goes to the reverb, full by default")]
+        private float m_ReverbSendLevel = 1f;
         [SerializeField]
         [Range(0f, 1f)]
         [Tooltip("How much of this stem goes to the echo the song sets. Music only")]

@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using RPGFramework.Audio.Music;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
@@ -87,6 +89,57 @@ namespace RPGFramework.Audio.Editor.Loops
             }
 
             return null;
+        }
+
+        /// <summary>
+        /// Whether a song takes a loop read as a stem is added: one with no loop yet or looping by samples does; one
+        /// looping by bars is offered it, its bars having been chosen.
+        /// </summary>
+        internal static bool SongTakesLoopAsAdded(SerializedObject song)
+        {
+            song.Update();
+
+            return StemLoopReading.AppliesWhenAdded(song.FindProperty("m_Loop").boolValue, (LoopUnit)song.FindProperty("m_LoopUnit").intValue);
+        }
+
+        /// <summary>A song loops by the samples <paramref name="reading" /> found, at their rate.</summary>
+        internal static void ApplyToSong(SerializedObject song, StemLoopReading reading)
+        {
+            song.Update();
+            song.FindProperty("m_Loop").boolValue            = true;
+            song.FindProperty("m_LoopUnit").intValue         = (int)LoopUnit.Samples;
+            song.FindProperty("m_LoopStartSample").intValue  = reading.LoopStart;
+            song.FindProperty("m_LoopEndSample").intValue    = reading.LoopEnd;
+            song.FindProperty("m_LoopSampleRate").intValue   = reading.SampleRate;
+            song.ApplyModifiedProperties();
+        }
+
+        /// <summary>
+        /// A sound loops by the samples <paramref name="reading" /> found, at their rate. Its events are counted at the
+        /// same rate as the loop, so a new rate moves their samples to keep their times.
+        /// </summary>
+        internal static void ApplyToSound(SerializedObject sound, StemLoopReading reading)
+        {
+            sound.Update();
+
+            SerializedProperty rate   = sound.FindProperty("m_SampleRate");
+            SerializedProperty events = sound.FindProperty("m_Events");
+
+            if (rate.intValue > 0 && rate.intValue != reading.SampleRate)
+            {
+                for (int i = 0; i < events.arraySize; i++)
+                {
+                    SerializedProperty time = events.GetArrayElementAtIndex(i).FindPropertyRelative("m_EventTriggerTime");
+
+                    time.intValue = (int)Math.Round((double)time.intValue * reading.SampleRate / rate.intValue);
+                }
+            }
+
+            sound.FindProperty("m_Loop").boolValue      = true;
+            sound.FindProperty("m_LoopStart").intValue  = reading.LoopStart;
+            sound.FindProperty("m_LoopEnd").intValue    = reading.LoopEnd;
+            rate.intValue                               = reading.SampleRate;
+            sound.ApplyModifiedProperties();
         }
 
         internal static PropertyField FindField(VisualElement root, string propertyPath)

@@ -18,7 +18,7 @@ namespace RPGFramework.Audio.Sfx
     /// A sound that varies: each time it plays, one of its sounds at a slightly different pitch. One sound with a pitch
     /// variation is a sound that only varies in pitch.
     /// </summary>
-    [CreateAssetMenu(fileName = "SFX Collection", menuName = "RPG Framework/Audio/SFX Collection")]
+    [CreateAssetMenu(fileName = "SFX Collection", menuName = "RPG Framework/Audio/SFX Collection", order = 5)]
     public sealed class SfxCollection : SfxPlayable
     {
         [SerializeField]

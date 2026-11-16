@@ -4,7 +4,6 @@ using UnityEngine;
 
 namespace RPGFramework.Audio.Sfx
 {
-    [CreateAssetMenu(fileName = "SFX Asset", menuName = "RPG Framework/Audio/SFX Asset")]
     public sealed class SfxAsset : SfxPlayable, ISfxAsset
     {
         [SerializeField]

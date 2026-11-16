@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using RPGFramework.Audio.Editor.Loops;
 using RPGFramework.Audio.Editor.Preview;
@@ -16,8 +15,6 @@ namespace RPGFramework.Audio.Editor
         private const string LOOP_START  = "m_LoopStart";
         private const string LOOP_END    = "m_LoopEnd";
         private const string SAMPLE_RATE = "m_SampleRate";
-        private const string EVENTS      = "m_Events";
-        private const string EVENT_TIME  = "m_EventTriggerTime";
 
         private readonly AudioStemPreview m_Preview = new AudioStemPreview();
 
@@ -93,6 +90,8 @@ namespace RPGFramework.Audio.Editor
             m_StemClips = StemLoopFields.CurrentClips(Sfx.Tracks);
             Rebuild();
 
+            StemTracks.AcceptDrops(root, serializedObject);
+
             // A change to the asset can change its stems, events or loop, which a preview under way would not follow.
             root.TrackSerializedObjectValue(serializedObject, _ =>
                                                               {
@@ -149,6 +148,8 @@ namespace RPGFramework.Audio.Editor
         /// <summary>The stems' loop read when a stem's clip has been set since the asset was last seen.</summary>
         private void ReadIfAStemWasSet()
         {
+            StemTracks.DefaultNewStems(serializedObject, m_StemClips.Length);
+
             AudioClip[] clips = StemLoopFields.CurrentClips(Sfx.Tracks);
             bool        set   = StemLoopFields.AStemWasSet(m_StemClips, clips);
 
@@ -167,37 +168,12 @@ namespace RPGFramework.Audio.Editor
 
             if (reading.Found)
             {
-                Apply(reading);
+                StemLoopFields.ApplyToSound(serializedObject, reading);
             }
 
             m_ReadHelp.text          = reading.Report;
             m_ReadHelp.messageType   = reading.Refused ? HelpBoxMessageType.Warning : HelpBoxMessageType.Info;
             m_ReadHelp.style.display = DisplayStyle.Flex;
-        }
-
-        // The events are counted at the same rate as the loop, so a new rate moves their samples to keep their times.
-        private void Apply(StemLoopReading reading)
-        {
-            serializedObject.Update();
-
-            SerializedProperty rate   = serializedObject.FindProperty(SAMPLE_RATE);
-            SerializedProperty events = serializedObject.FindProperty(EVENTS);
-
-            if (rate.intValue > 0 && rate.intValue != reading.SampleRate)
-            {
-                for (int i = 0; i < events.arraySize; i++)
-                {
-                    SerializedProperty time = events.GetArrayElementAtIndex(i).FindPropertyRelative(EVENT_TIME);
-
-                    time.intValue = (int)Math.Round((double)time.intValue * reading.SampleRate / rate.intValue);
-                }
-            }
-
-            serializedObject.FindProperty("m_Loop").boolValue  = true;
-            serializedObject.FindProperty(LOOP_START).intValue = reading.LoopStart;
-            serializedObject.FindProperty(LOOP_END).intValue   = reading.LoopEnd;
-            rate.intValue                                      = reading.SampleRate;
-            serializedObject.ApplyModifiedProperties();
         }
 
         /// <summary>The rate, filled from the first stem's source file while it is unset, its help box, and the seconds.</summary>

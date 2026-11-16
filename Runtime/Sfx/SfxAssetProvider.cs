@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace RPGFramework.Audio.Sfx
 {
-    [CreateAssetMenu(fileName = "SFX Asset Provider", menuName = "RPG Framework/Audio/SFX Asset Provider")]
+    [CreateAssetMenu(fileName = "SFX Asset Provider", menuName = "RPG Framework/Audio/SFX Asset Provider", order = 4)]
     public sealed class SfxAssetProvider : ScriptableObject, ISfxAssetProvider
 #if ENABLE_RPG_FRAMEWORK_DEBUG
         , IDebugSfxAssetProvider

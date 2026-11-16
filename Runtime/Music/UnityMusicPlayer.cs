@@ -8,6 +8,9 @@ using UnityEngine.Audio;
 namespace RPGFramework.Audio.Music
 {
     public sealed class UnityMusicPlayer : IMusicPlayer, IAudioUpdatable
+#if ENABLE_RPG_FRAMEWORK_DEBUG
+        , IDebugMusicPlayer
+#endif
     {
         private const string MUSIC_BUS_NAME          = "Music";
         private const string MUSIC_REVERB_SEND       = "MusicReverbSend";
@@ -327,6 +330,26 @@ namespace RPGFramework.Audio.Music
         {
             Dispose();
         }
+
+#if ENABLE_RPG_FRAMEWORK_DEBUG
+        bool IDebugMusicPlayer.TryGetPlaying(out DebugTrack track)
+        {
+            if (m_Playing == null || !m_Playing.Scheduled)
+            {
+                track = default;
+
+                return false;
+            }
+
+            IMusicAsset asset = m_Playing.Asset;
+            AudioClip   clip  = asset.Tracks[0].Clip;
+            bool        loops = asset.Loop;
+
+            track = new DebugTrack(asset.Name, m_Playbacks[m_Playing.Channels[0]].Position, (double)clip.samples / clip.frequency, loops, loops ? asset.LoopStartTime : 0.0, loops ? asset.LoopEndTime : 0.0);
+
+            return true;
+        }
+#endif
 
         // A song still loading has not moved from where it was asked to start. The stems are copied, so the snapshot
         // stays as it was whatever the asset does next.

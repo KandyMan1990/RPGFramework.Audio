@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace RPGFramework.Audio.Music
 {
-    [CreateAssetMenu(fileName = "Music Asset Provider", menuName = "RPG Framework/Audio/Music Asset Provider")]
+    [CreateAssetMenu(fileName = "Music Asset Provider", menuName = "RPG Framework/Audio/Music Asset Provider", order = 2)]
     public sealed class MusicAssetProvider : ScriptableObject, IMusicAssetProvider
 #if ENABLE_RPG_FRAMEWORK_DEBUG
         , IDebugMusicAssetProvider
