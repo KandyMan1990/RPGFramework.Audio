@@ -55,7 +55,7 @@ sfxPlayer.SetSfxAssetProvider(m_SfxAssetProvider);
 sfxPlayer.SetStemMixerGroups(m_SfxMixerGroups);
 ```
 
-`SetStemMixerGroups` is what builds the player: it creates a `MusicPlayer` or `SfxPlayer` GameObject marked `DontDestroyOnLoad`, one child per mixer group named after that group, holding its AudioSource and the generator its stems play through, and the component that ticks the player each frame.  Nothing works before it is called, and calling it again rebuilds everything.
+`SetStemMixerGroups` is what builds the player: it creates a `MusicPlayer` or `SfxPlayer` GameObject marked `DontDestroyOnLoad`, one child per mixer group named after that group, holding its AudioSource and the generator its stems play through, and the component that ticks the player each frame.  A source playing a generator holds no clip of its own, so to see what one plays — in a test, or a tool of your own — read its generator: `source.generator is IStemGenerator stem ? stem.Clip : source.clip` (the web plays the clip on the source itself).  Nothing works before it is called, and calling it again rebuilds everything.
 
 `IMusicPlayer` and `ISfxPlayer` are both `IDisposable`: `musicPlayer.Dispose()` stops everything playing and destroys the player GameObject.
 

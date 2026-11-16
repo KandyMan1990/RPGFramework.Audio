@@ -11,7 +11,7 @@ namespace RPGFramework.Audio
     /// the stem's place (<see cref="Report" />). A component, as a source's generator must be a Unity object: its setter
     /// casts to one.
     /// </summary>
-    internal sealed class StemGenerator : MonoBehaviour, IAudioGenerator
+    internal sealed class StemGenerator : MonoBehaviour, IStemGenerator
     {
         private AudioSource m_Source;
         private AudioClip   m_Clip;
@@ -56,6 +56,8 @@ namespace RPGFramework.Audio
                 return report;
             }
         }
+
+        AudioClip IStemGenerator.Clip => m_Clip;
 
         bool GeneratorInstance.ICapabilities.isFinite => !m_Loops;
 
