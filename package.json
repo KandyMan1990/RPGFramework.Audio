@@ -1,6 +1,6 @@
 {
   "name": "com.rpgframework.audio",
-  "version": "7.0.0",
+  "version": "8.0.0",
   "displayName": "RPG Framework Audio",
   "description": "Audio functionality for the RPG Framework",
   "dependencies": {
@@ -20,12 +20,12 @@
   "samples": [
     {
       "displayName": "Music Sample",
-      "description": "A four stem track with per stem reverb sends, bar based looping, and three stem states to transition between. The buttons enable and disable each other to keep the sample's own flow readable; the player itself takes any call at any time.",
+      "description": "A four stem track with per stem reverb sends, a loop in samples, and three stem states to transition between. The buttons enable and disable each other to keep the sample's own flow readable; the player itself takes any call at any time.",
       "path": "Samples~/Music Sample"
     },
     {
       "displayName": "Sfx Sample",
-      "description": "Contains an example of how to set up a sfx asset with a looping stem and an event.  Looping is set via start/end values measured in audio samples.",
+      "description": "Contains an example of how to set up a sfx asset with a looping stem and an event.  Looping is set via start/end values measured in the stems' samples.",
       "path": "Samples~/Sfx Sample"
     }
   ]
