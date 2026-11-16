@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using RPGFramework.Hashing;
 using UnityEngine;
 
 namespace RPGFramework.Audio.Sfx
@@ -15,7 +14,7 @@ namespace RPGFramework.Audio.Sfx
         [SerializeField]
         private SfxPlayable[] m_SfxAssets = Array.Empty<SfxPlayable>();
 
-        private Dictionary<ulong, SfxPlayable> m_ByNameHash;
+        private AudioAssetDatabase<SfxPlayable> m_Database;
 
 #if UNITY_EDITOR
         public IEnumerable<string> AssetNames
@@ -40,12 +39,7 @@ namespace RPGFramework.Audio.Sfx
         // Every sound is in the build already, so there is nothing to load or unload.
         Task<SfxPlayable> ISfxAssetProvider.AcquireAsync(ulong nameHash)
         {
-            if (!m_ByNameHash.TryGetValue(nameHash, out SfxPlayable sfxAsset))
-            {
-                throw new KeyNotFoundException($"{nameof(SfxAssetProvider)}::{nameof(ISfxAssetProvider.AcquireAsync)} [{name}] has no sound whose name hashes to [{nameHash}]");
-            }
-
-            return Task.FromResult(sfxAsset);
+            return Task.FromResult(m_Database.Get(nameHash));
         }
 
         void ISfxAssetProvider.Release(ulong nameHash)
@@ -71,31 +65,19 @@ namespace RPGFramework.Audio.Sfx
 
         private void OnEnable()
         {
-            BuildLookup();
+            BuildDatabase();
         }
 
 #if UNITY_EDITOR
         private void OnValidate()
         {
-            BuildLookup();
+            BuildDatabase();
         }
 #endif
 
-        private void BuildLookup()
+        private void BuildDatabase()
         {
-            m_ByNameHash = new Dictionary<ulong, SfxPlayable>(m_SfxAssets.Length);
-
-            for (int i = 0; i < m_SfxAssets.Length; i++)
-            {
-                SfxPlayable sfxAsset = m_SfxAssets[i];
-
-                if (sfxAsset == null)
-                {
-                    continue;
-                }
-
-                m_ByNameHash[Fnv1a64.Hash(sfxAsset.name)] = sfxAsset;
-            }
+            m_Database = new AudioAssetDatabase<SfxPlayable>(m_SfxAssets, $"{nameof(SfxAssetProvider)} [{name}]", "sound");
         }
     }
 }

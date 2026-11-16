@@ -3,6 +3,7 @@
     "rootNamespace": "RPGFramework.Audio",
     "references": [
         "RPGFramework.Hashing",
+        "Unity.Burst",
         "Unity.Mathematics"
     ],
     "includePlatforms": [],

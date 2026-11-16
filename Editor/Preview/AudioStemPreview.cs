@@ -7,68 +7,68 @@ using Object = UnityEngine.Object;
 namespace RPGFramework.Audio.Editor.Preview
 {
     /// <summary>
-    /// Plays an asset's stems in the editor as the game's players do: every stem scheduled to start on the same sample,
-    /// and a loop taken by moving every stem back by the loop's length once the first passes its end. The players need
-    /// play mode and the game's mixer, so the inspectors have this instead. Its sources skip the mixer, so a song's
-    /// reverb is not heard.
+    /// Plays an asset's stems in the editor as the game's players do: each on an <see cref="IStemPlayback" />, every stem
+    /// started together once its clip has loaded, a loop taken on the sample by a generator or, on the web, by moving the
+    /// stem back once past the loop's end. The players need play mode and the game's mixer, so the inspectors have this
+    /// instead. Its sources skip the mixer, so a song's reverb is not heard.
     /// </summary>
     internal sealed class AudioStemPreview
     {
         private const double START_DELAY_SECONDS = 0.1;
 
         private GameObject      m_Object;
-        private AudioSource[]   m_Sources;
+        private IStemPlayback[] m_Stems;
+        private AudioClip[]     m_Clips;
         private List<AudioClip> m_LoadedHere;
-        private int             m_StartSample;
-        private int             m_LoopStart;
-        private int             m_LoopEnd;
-        private bool            m_Scheduled;
-        private double          m_StartDspTime;
+        private bool            m_Loops;
+        private double          m_Start;
+        private double          m_LoopStart;
+        private double          m_LoopEnd;
+        private bool            m_Started;
+        private double          m_LastPosition;
 
         /// <summary>
-        /// Raised on every editor update while the stems play, with the first stem's position, before any loop is taken:
-        /// the order the players check a sound's events in.
+        /// Raised on every editor update while the stems play, with the first stem's position in seconds — after the end
+        /// of the pass, should it have gone back round its loop since the last — before the web's loop is taken: the order
+        /// the players check a sound's events in.
         /// </summary>
-        internal event Action<int> Advanced;
+        internal event Action<double> Advanced;
 
-        /// <summary>Raised each time the preview jumps back from the loop's end to its start.</summary>
+        /// <summary>Raised each time the preview has gone back from the loop's end to its start.</summary>
         internal event Action Looped;
 
         /// <summary>Raised when the preview reaches the end of a stem that does not loop.</summary>
         internal event Action Ended;
 
-        internal bool IsPlaying => m_Sources != null;
+        internal bool IsPlaying => m_Stems != null;
 
-        /// <summary>Where the first stem is, in its samples: where it will start until it has.</summary>
-        internal int Position
-        {
-            get
-            {
-                int position = m_Scheduled && AudioSettings.dspTime >= m_StartDspTime ? m_Sources[0].timeSamples : m_StartSample;
+        /// <summary>Where the first stem is, in seconds: where it will start until it has.</summary>
+        internal double Position => m_Started ? m_Stems[0].Position : m_Start;
 
-                return position;
-            }
-        }
-
+        /// <param name="stems">The asset's stems, in order.</param>
         /// <param name="active">Which stems sound; the rest play silently, so they can be switched on in step.</param>
-        /// <param name="loopEnd">In the first stem's samples, as <paramref name="loopStart" />; no later than the start for no loop.</param>
-        internal void Play(IReadOnlyList<IStem> stems, bool[] active, int startSample, int loopStart, int loopEnd)
+        /// <param name="start">Where to start, in seconds.</param>
+        /// <param name="loopStart">Where the loop starts, in seconds.</param>
+        /// <param name="loopEnd">Where it ends, in seconds; no later than the start for no loop.</param>
+        internal void Play(IReadOnlyList<IStem> stems, bool[] active, double start, double loopStart, double loopEnd)
         {
             Stop();
 
             m_Object     = EditorUtility.CreateGameObjectWithHideFlags("Audio preview", HideFlags.HideAndDontSave);
-            m_Sources    = new AudioSource[stems.Count];
+            m_Stems      = new IStemPlayback[stems.Count];
+            m_Clips      = new AudioClip[stems.Count];
             m_LoadedHere = new List<AudioClip>();
 
             for (int i = 0; i < stems.Count; i++)
             {
-                AudioClip clip = stems[i].Clip;
+                AudioClip   clip   = stems[i].Clip;
+                AudioSource source = m_Object.AddComponent<AudioSource>();
 
-                m_Sources[i]             = m_Object.AddComponent<AudioSource>();
-                m_Sources[i].playOnAwake = false;
-                m_Sources[i].loop        = false;
-                m_Sources[i].clip        = clip;
-                m_Sources[i].volume      = active[i] ? 1f : 0f;
+                source.playOnAwake = false;
+                source.volume      = active[i] ? 1f : 0f;
+
+                m_Stems[i] = StemPlaybacks.Create(source);
+                m_Clips[i] = clip;
 
                 if (clip.loadState != AudioDataLoadState.Loaded && !m_LoadedHere.Contains(clip))
                 {
@@ -78,22 +78,23 @@ namespace RPGFramework.Audio.Editor.Preview
                 }
             }
 
-            m_StartSample = startSample;
-            m_LoopStart   = loopStart;
-            m_LoopEnd     = loopEnd;
-            m_Scheduled   = false;
+            m_Loops     = loopEnd > loopStart;
+            m_Start     = start;
+            m_LoopStart = loopStart;
+            m_LoopEnd   = loopEnd;
+            m_Started   = false;
 
             EditorApplication.update += Update;
         }
 
         internal void SetStemActive(int stem, bool active)
         {
-            if (m_Sources == null || stem >= m_Sources.Length)
+            if (m_Stems == null || stem >= m_Stems.Length)
             {
                 return;
             }
 
-            m_Sources[stem].volume = active ? 1f : 0f;
+            m_Stems[stem].Source.volume = active ? 1f : 0f;
         }
 
         internal void Stop()
@@ -115,27 +116,23 @@ namespace RPGFramework.Audio.Editor.Preview
             }
 
             m_Object     = null;
-            m_Sources    = null;
+            m_Stems      = null;
+            m_Clips      = null;
             m_LoadedHere = null;
         }
 
         private void Update()
         {
-            if (!m_Scheduled)
+            if (!m_Started)
             {
-                ScheduleOnceLoaded();
+                StartOnceLoaded();
 
                 return;
             }
 
-            if (AudioSettings.dspTime < m_StartDspTime)
-            {
-                return;
-            }
+            IStemPlayback first = m_Stems[0];
 
-            AudioSource first = m_Sources[0];
-
-            if (!first.isPlaying)
+            if (first.Ended)
             {
                 Stop();
                 Ended?.Invoke();
@@ -143,35 +140,33 @@ namespace RPGFramework.Audio.Editor.Preview
                 return;
             }
 
-            Advanced?.Invoke(first.timeSamples);
+            double position = first.Position;
 
-            if (m_LoopEnd <= m_LoopStart || first.timeSamples < m_LoopEnd)
+            if (m_Loops && position < m_LastPosition)
             {
-                return;
+                Advanced?.Invoke(m_LoopEnd);
+                Looped?.Invoke();
             }
 
-            int position = first.timeSamples - (m_LoopEnd - m_LoopStart);
+            m_LastPosition = position;
 
-            for (int i = 0; i < m_Sources.Length; i++)
+            Advanced?.Invoke(position);
+
+            for (int i = 0; i < m_Stems.Length; i++)
             {
-                if (m_Sources[i].isPlaying)
-                {
-                    m_Sources[i].timeSamples = ToStemSamples(position, m_Sources[i].clip);
-                }
+                m_Stems[i].Tick();
             }
-
-            Looped?.Invoke();
         }
 
-        private void ScheduleOnceLoaded()
+        private void StartOnceLoaded()
         {
-            for (int i = 0; i < m_Sources.Length; i++)
+            for (int i = 0; i < m_Clips.Length; i++)
             {
-                AudioClip clip = m_Sources[i].clip;
+                AudioClip clip = m_Clips[i];
 
                 if (clip.loadState == AudioDataLoadState.Failed)
                 {
-                    Debug.LogError($"{nameof(AudioStemPreview)}::{nameof(ScheduleOnceLoaded)} Clip [{clip.name}] failed to load, so the preview cannot play");
+                    Debug.LogError($"{nameof(AudioStemPreview)}::{nameof(StartOnceLoaded)} Clip [{clip.name}] failed to load, so the preview cannot play");
 
                     Stop();
                     Ended?.Invoke();
@@ -185,26 +180,15 @@ namespace RPGFramework.Audio.Editor.Preview
                 }
             }
 
-            m_StartDspTime = AudioSettings.dspTime + START_DELAY_SECONDS;
+            double startDspTime = AudioSettings.dspTime + START_DELAY_SECONDS;
 
-            for (int i = 0; i < m_Sources.Length; i++)
+            for (int i = 0; i < m_Stems.Length; i++)
             {
-                AudioSource source = m_Sources[i];
-
-                source.timeSamples = Mathf.Clamp(ToStemSamples(m_StartSample, source.clip), 0, source.clip.samples - 1);
-                source.PlayScheduled(m_StartDspTime);
+                m_Stems[i].Play(m_Clips[i], m_Start, m_Loops, m_LoopStart, m_LoopEnd, startDspTime);
             }
 
-            m_Scheduled = true;
-        }
-
-        /// <summary>A position in the first stem's samples, in another stem's, should their sample rates differ.</summary>
-        private int ToStemSamples(int firstStemSamples, AudioClip clip)
-        {
-            int frequency = m_Sources[0].clip.frequency;
-            int samples   = clip.frequency == frequency ? firstStemSamples : (int)((long)firstStemSamples * clip.frequency / frequency);
-
-            return samples;
+            m_LastPosition = m_Start;
+            m_Started      = true;
         }
     }
 }

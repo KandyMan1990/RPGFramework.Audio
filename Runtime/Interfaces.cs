@@ -211,7 +211,7 @@ namespace RPGFramework.Audio
         /// <summary>How far into the sound the event is raised, in seconds.</summary>
         float EventTriggerTime { get; }
 
-        /// <summary>How far into the sound the event is raised, in samples, which is what the player checks.</summary>
+        /// <summary>How far into the sound the event is raised, in samples at its sound's sample rate, which is what the player checks.</summary>
         internal int EventTriggerTimeInSamples { get; }
 
         /// <summary>Whether a looping sound raises the event once only, rather than on every pass of the loop.</summary>
@@ -227,11 +227,17 @@ namespace RPGFramework.Audio
         /// <summary>Whether it loops, between <see cref="LoopStart" /> and <see cref="LoopEnd" />, until stopped.</summary>
         internal bool Loop { get; }
 
-        /// <summary>Where the loop starts, in samples.</summary>
+        /// <summary>Where the loop starts, in samples at <see cref="SampleRate" />.</summary>
         internal int LoopStart { get; }
 
-        /// <summary>Where the loop ends and jumps back to its start, in samples.</summary>
+        /// <summary>Where the loop ends and goes back to its start, in samples at <see cref="SampleRate" />.</summary>
         internal int LoopEnd { get; }
+
+        /// <summary>
+        /// The rate its loop's and events' samples are counted at: the first stem's source file's, never the clip's, which
+        /// an import can resample.
+        /// </summary>
+        internal int SampleRate { get; }
     }
 
     /// <summary>
@@ -273,13 +279,14 @@ namespace RPGFramework.Audio
         internal ulong NameHash { get; }
 
         /// <summary>
-        /// Once the sound passes its loop's end, moves every stem back by the loop's length and re-arms the events that
-        /// repeat.
+        /// Takes a loop each stem has passed the end of, where the playhead is watched (<see cref="IStemPlayback.Tick" />);
+        /// a stem on a generator loops itself.
         /// </summary>
         internal void CheckForLoop();
 
         /// <summary>
-        /// Raises each event the sound has reached; once a sound that does not loop ends, raises any left and then
+        /// Raises each event the sound has reached — once it has gone back round its loop, those left in the pass, then
+        /// re-arming the ones that repeat — and once a sound that does not loop ends, any left and then
         /// <see cref="SFX_COMPLETE" />.
         /// </summary>
         internal void CheckForEventToRaise();

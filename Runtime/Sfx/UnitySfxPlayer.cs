@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Unity.Mathematics;
@@ -15,25 +15,20 @@ namespace RPGFramework.Audio.Sfx
 
         private static readonly string[] VOLUME_BUS_NAMES = { SFX_BUS_NAME, SFX_REVERB_SEND };
 
-        private readonly ISfxPlayer                     m_This;
-        private readonly List<ISfxReference>            m_SfxReferences;
-        private readonly List<ISfxReference>            m_UpdateBuffer;
-        private readonly List<ISfxAsset>                m_Loading;
-        private readonly Dictionary<ulong, int>         m_Preloads;
-        private readonly Dictionary<ulong, SfxPlayable> m_Preloaded;
-        private readonly Dictionary<ulong, int>         m_LastPicked;
+        private readonly ISfxPlayer                 m_This;
+        private readonly List<ISfxReference>        m_SfxReferences;
+        private readonly List<ISfxReference>        m_UpdateBuffer;
+        private readonly List<ISfxAsset>            m_Loading;
+        private readonly AudioPreloads<SfxPlayable> m_Preloads;
+        private readonly Dictionary<ulong, int>     m_LastPicked;
 
         private ISfxAssetProvider m_SfxAssetProvider;
-        private AudioSource[]     m_CurrentSources;
-        private AudioMixerGroup[] m_StemMixerGroups;
+        private AudioChannels     m_Channels;
+        private IStemPlayback[]   m_Playbacks;
         private AudioMixer        m_AudioMixer;
         private bool              m_Disposed;
-        private string[]          m_SendParameterNames;
         private ISfxReference[]   m_VoiceOwners;
-        private GameObject        m_PlayerObject;
-        private AudioUpdateDriver m_UpdateDriver;
         private int               m_Stops;
-        private int               m_PreloadRequests;
         private SfxLevel          m_AllVolume;
 
         public UnitySfxPlayer()
@@ -41,8 +36,7 @@ namespace RPGFramework.Audio.Sfx
             m_SfxReferences = new List<ISfxReference>();
             m_UpdateBuffer  = new List<ISfxReference>();
             m_Loading       = new List<ISfxAsset>();
-            m_Preloads      = new Dictionary<ulong, int>();
-            m_Preloaded     = new Dictionary<ulong, SfxPlayable>();
+            m_Preloads      = new AudioPreloads<SfxPlayable>();
             m_LastPicked    = new Dictionary<ulong, int>();
             m_This          = this;
             m_AllVolume     = new SfxLevel(1f);
@@ -69,7 +63,7 @@ namespace RPGFramework.Audio.Sfx
 
             try
             {
-                await LoadClipsAsync(sfxAsset);
+                await StemClips.LoadAsync(sfxAsset, () => stops != m_Stops || m_Disposed);
             }
             finally
             {
@@ -78,7 +72,7 @@ namespace RPGFramework.Audio.Sfx
 
             if (stops != m_Stops || m_Disposed)
             {
-                UnloadUnusedClips(sfxAsset);
+                StemClips.UnloadUnused(sfxAsset, IsClipInUse);
                 m_SfxAssetProvider.Release(nameHash);
 
                 ISfxReference stopped = StoppedReference(nameHash, sfxAsset);
@@ -107,25 +101,17 @@ namespace RPGFramework.Audio.Sfx
         {
             for (int i = 0; i < nameHashes.Count; i++)
             {
-                ulong nameHash = nameHashes[i];
-
-                if (!m_Preloads.Remove(nameHash))
-                {
-                    continue;
-                }
-
-                // Still loading, it lets go itself when it finishes.
-                if (!m_Preloaded.Remove(nameHash, out SfxPlayable playable))
+                if (!m_Preloads.TryEnd(nameHashes[i], out SfxPlayable playable))
                 {
                     continue;
                 }
 
                 for (int j = 0; j < playable.Recordings.Count; j++)
                 {
-                    UnloadUnusedClips(playable.Recordings[j]);
+                    StemClips.UnloadUnused(playable.Recordings[j], IsClipInUse);
                 }
 
-                m_SfxAssetProvider.Release(nameHash);
+                m_SfxAssetProvider.Release(nameHashes[i]);
             }
         }
 
@@ -208,29 +194,12 @@ namespace RPGFramework.Audio.Sfx
 
         void ISfxPlayer.SetStemMixerGroups(AudioMixerGroup[] groups)
         {
-            m_StemMixerGroups = groups;
-            m_AudioMixer      = m_StemMixerGroups[0].audioMixer;
+            DestroyChannels();
 
-            m_CurrentSources     = new AudioSource[m_StemMixerGroups.Length];
-            m_SendParameterNames = new string[m_StemMixerGroups.Length];
-            m_VoiceOwners        = new ISfxReference[m_StemMixerGroups.Length];
-
-            DestroyPlayerObject();
-
-            m_PlayerObject = new GameObject(SFX_GAME_OBJECT_NAME);
-            UnityEngine.Object.DontDestroyOnLoad(m_PlayerObject);
-
-            m_UpdateDriver = AudioUpdateDriver.Attach(m_PlayerObject, this);
-
-            for (int i = 0; i < m_CurrentSources.Length; i++)
-            {
-                GameObject go = new GameObject(m_StemMixerGroups[i].name);
-                go.transform.parent                       = m_PlayerObject.transform;
-                m_CurrentSources[i]                       = go.AddComponent<AudioSource>();
-                m_CurrentSources[i].outputAudioMixerGroup = m_StemMixerGroups[i];
-
-                m_SendParameterNames[i] = $"{m_StemMixerGroups[i].name}_Send";
-            }
+            m_Channels    = new AudioChannels(SFX_GAME_OBJECT_NAME, groups, this);
+            m_Playbacks   = m_Channels.Playbacks;
+            m_AudioMixer  = m_Channels.Mixer;
+            m_VoiceOwners = new ISfxReference[groups.Length];
         }
 
         float ISfxPlayer.GetVolume()
@@ -278,29 +247,24 @@ namespace RPGFramework.Audio.Sfx
 
         private async Task PreloadAsync(ulong nameHash)
         {
-            if (m_Preloads.ContainsKey(nameHash))
+            if (!m_Preloads.TryBegin(nameHash, out int request))
             {
                 return;
             }
 
-            int request = ++m_PreloadRequests;
-            m_Preloads.Add(nameHash, request);
-
             SfxPlayable playable = await m_SfxAssetProvider.AcquireAsync(nameHash);
 
-            // Unloaded while it loaded, and perhaps preloaded again since, by a request that keeps it instead.
-            if (!m_Preloads.TryGetValue(nameHash, out int current) || current != request)
+            // Unloaded while it loaded, and perhaps preloaded again since, by a request that holds it instead.
+            if (!m_Preloads.TryHold(nameHash, request, playable))
             {
                 m_SfxAssetProvider.Release(nameHash);
 
                 return;
             }
 
-            m_Preloaded.Add(nameHash, playable);
-
             for (int i = 0; i < playable.Recordings.Count; i++)
             {
-                await LoadClipsAsync(playable.Recordings[i]);
+                await StemClips.LoadAsync(playable.Recordings[i], () => !m_Preloads.Holds(nameHash));
             }
         }
 
@@ -323,32 +287,9 @@ namespace RPGFramework.Audio.Sfx
             return recordings[index];
         }
 
-        private static async Task LoadClipsAsync(ISfxAsset sfxAsset)
-        {
-            for (int i = 0; i < sfxAsset.Tracks.Count; i++)
-            {
-                EnsureLoaded(sfxAsset.Tracks[i].Clip);
-            }
-
-            for (int i = 0; i < sfxAsset.Tracks.Count; i++)
-            {
-                AudioClip clip = sfxAsset.Tracks[i].Clip;
-
-                while (clip.loadState == AudioDataLoadState.Loading)
-                {
-                    await Awaitable.NextFrameAsync();
-                }
-
-                if (clip.loadState == AudioDataLoadState.Failed)
-                {
-                    Debug.LogError($"{nameof(UnitySfxPlayer)}::{nameof(LoadClipsAsync)} Clip [{clip.name}] failed to load. That stem will be silent");
-                }
-            }
-        }
-
         private static ISfxReference StoppedReference(ulong nameHash, ISfxAsset sfxAsset)
         {
-            ISfxReference stopped = new SfxReference(nameHash, Array.Empty<AudioSource>(), sfxAsset, AudioSettings.dspTime, 0f, 1f, 0f, 1f, _ => { });
+            ISfxReference stopped = new SfxReference(nameHash, Array.Empty<IStemPlayback>(), sfxAsset, 0f, 1f, 0f, _ => { });
 
             stopped.Stop();
 
@@ -359,9 +300,9 @@ namespace RPGFramework.Audio.Sfx
         {
             int stemCount = sfxAsset.Tracks.Count;
 
-            if (stemCount > m_CurrentSources.Length)
+            if (stemCount > m_Playbacks.Length)
             {
-                stemCount = m_CurrentSources.Length;
+                stemCount = m_Playbacks.Length;
             }
 
             while (CountFreeVoices() < stemCount)
@@ -369,8 +310,10 @@ namespace RPGFramework.Audio.Sfx
                 EvictOldestSfx();
             }
 
-            double        scheduledStartTime    = AudioSettings.dspTime + Time.deltaTime;
-            AudioSource[] audioSourceReferences = new AudioSource[stemCount];
+            // Every stem is played in this frame, so they start together.
+            double          startDspTime = AudioSettings.dspTime + Time.deltaTime;
+            double          rate         = sfxAsset.SampleRate;
+            IStemPlayback[] stems        = new IStemPlayback[stemCount];
 
             int voiceIndex = 0;
 
@@ -381,30 +324,25 @@ namespace RPGFramework.Audio.Sfx
                     voiceIndex++;
                 }
 
-                int         voice  = voiceIndex;
-                AudioSource source = m_CurrentSources[voice];
+                int           voice    = voiceIndex;
+                IStemPlayback playback = m_Playbacks[voice];
+                AudioSource   source   = playback.Source;
 
-                audioSourceReferences[i] = source;
+                stems[i] = playback;
                 voiceIndex++;
 
-                source.clip                  = sfxAsset.Tracks[i].Clip;
-                source.playOnAwake           = false;
-                source.loop                  = false;
-                source.volume                = volume * m_AllVolume.Current;
-                source.panStereo             = pan;
-                source.pitch                 = pitch;
-                source.time                  = startTime;
-                source.outputAudioMixerGroup = m_StemMixerGroups[voice];
+                source.volume    = volume * m_AllVolume.Current;
+                source.panStereo = pan;
+                source.pitch     = pitch;
 
-                float sendLevel = AudioUtils.PercentToDb(sfxAsset.Tracks[i].ReverbSendLevel);
-                m_AudioMixer.SetFloat(m_SendParameterNames[voice], sendLevel);
+                m_Channels.SetReverbSend(voice, sfxAsset.Tracks[i].ReverbSendLevel);
 
-                source.PlayScheduled(scheduledStartTime);
+                playback.Play(sfxAsset.Tracks[i].Clip, startTime, sfxAsset.Loop, sfxAsset.LoopStart / rate, sfxAsset.LoopEnd / rate, startDspTime);
             }
 
-            SfxReference sfxRef = new SfxReference(nameHash, audioSourceReferences, sfxAsset, scheduledStartTime, startTime, volume, pan, pitch, RemoveSfxReference);
+            SfxReference sfxRef = new SfxReference(nameHash, stems, sfxAsset, startTime, volume, pan, RemoveSfxReference);
 
-            TakeOwnership(audioSourceReferences, sfxRef);
+            TakeOwnership(stems, sfxRef);
 
             m_SfxReferences.Add(sfxRef);
 
@@ -434,13 +372,13 @@ namespace RPGFramework.Audio.Sfx
             RemoveSfxReference(oldest);
         }
 
-        private void TakeOwnership(AudioSource[] sources, ISfxReference owner)
+        private void TakeOwnership(IStemPlayback[] stems, ISfxReference owner)
         {
-            for (int i = 0; i < m_CurrentSources.Length; i++)
+            for (int i = 0; i < m_Playbacks.Length; i++)
             {
-                for (int j = 0; j < sources.Length; j++)
+                for (int j = 0; j < stems.Length; j++)
                 {
-                    if (!ReferenceEquals(m_CurrentSources[i], sources[j]))
+                    if (!ReferenceEquals(m_Playbacks[i], stems[j]))
                     {
                         continue;
                     }
@@ -461,9 +399,8 @@ namespace RPGFramework.Audio.Sfx
                     continue;
                 }
 
-                m_CurrentSources[i].Stop();
-                m_CurrentSources[i].clip = null;
-                m_VoiceOwners[i]         = null;
+                m_Playbacks[i].Stop();
+                m_VoiceOwners[i] = null;
             }
         }
 
@@ -477,24 +414,15 @@ namespace RPGFramework.Audio.Sfx
             m_Disposed = true;
 
             m_This.StopAll();
-            m_This.Unload(new List<ulong>(m_Preloads.Keys));
+            m_This.Unload(m_Preloads.GetNames());
 
-            DestroyPlayerObject();
+            DestroyChannels();
         }
 
-        private void DestroyPlayerObject()
+        private void DestroyChannels()
         {
-            if (m_PlayerObject == null)
-            {
-                return;
-            }
-
-            m_UpdateDriver.enabled = false;
-
-            UnityEngine.Object.Destroy(m_PlayerObject);
-
-            m_PlayerObject = null;
-            m_UpdateDriver = null;
+            m_Channels?.Destroy();
+            m_Channels = null;
         }
 
         private void RemoveSfxReference(ISfxReference sfxReference)
@@ -510,33 +438,8 @@ namespace RPGFramework.Audio.Sfx
         private void ReleaseReference(ISfxReference sfxReference)
         {
             ReleaseVoices(sfxReference);
-            UnloadUnusedClips(sfxReference.Asset);
+            StemClips.UnloadUnused(sfxReference.Asset, IsClipInUse);
             m_SfxAssetProvider.Release(sfxReference.NameHash);
-        }
-
-        private static void EnsureLoaded(AudioClip clip)
-        {
-            if (clip.preloadAudioData || clip.loadState == AudioDataLoadState.Loaded)
-            {
-                return;
-            }
-
-            clip.LoadAudioData();
-        }
-
-        private void UnloadUnusedClips(ISfxAsset asset)
-        {
-            for (int i = 0; i < asset.Tracks.Count; i++)
-            {
-                IStem stem = asset.Tracks[i];
-
-                if (stem.Clip.preloadAudioData || IsClipInUse(stem.Clip))
-                {
-                    continue;
-                }
-
-                stem.Clip.UnloadAudioData();
-            }
         }
 
         private bool IsClipInUse(AudioClip clip)
@@ -557,7 +460,7 @@ namespace RPGFramework.Audio.Sfx
                 }
             }
 
-            foreach (SfxPlayable preloaded in m_Preloaded.Values)
+            foreach (SfxPlayable preloaded in m_Preloads.Held)
             {
                 for (int i = 0; i < preloaded.Recordings.Count; i++)
                 {

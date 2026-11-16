@@ -1,7 +1,6 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using RPGFramework.Hashing;
 using UnityEngine;
 
 namespace RPGFramework.Audio.Music
@@ -15,7 +14,7 @@ namespace RPGFramework.Audio.Music
         [SerializeField]
         private MusicAsset[] m_MusicAssets = Array.Empty<MusicAsset>();
 
-        private Dictionary<ulong, MusicAsset> m_ByNameHash;
+        private AudioAssetDatabase<MusicAsset> m_Database;
 
 #if UNITY_EDITOR
         public IEnumerable<string> AssetNames
@@ -78,14 +77,7 @@ namespace RPGFramework.Audio.Music
         // Every song is in the build already, so there is nothing to load or unload.
         Task<MusicAsset> IMusicAssetProvider.AcquireAsync(ulong nameHash)
         {
-            if (!m_ByNameHash.TryGetValue(nameHash, out MusicAsset musicAsset))
-            {
-                throw new KeyNotFoundException($"{nameof(MusicAssetProvider)}::{nameof(IMusicAssetProvider.AcquireAsync)} [{name}] has no song whose name hashes to [{nameHash}]");
-            }
-
-            Task<MusicAsset> acquired = Task.FromResult(musicAsset);
-
-            return acquired;
+            return Task.FromResult(m_Database.Get(nameHash));
         }
 
         void IMusicAssetProvider.Release(ulong nameHash)
@@ -110,7 +102,7 @@ namespace RPGFramework.Audio.Music
 
         Task<IReadOnlyList<string>> IDebugMusicAssetProvider.LoadStemStateNamesAsync(ulong nameHash)
         {
-            IReadOnlyList<string> names = new List<string>(m_ByNameHash[nameHash].StemStateNames);
+            IReadOnlyList<string> names = new List<string>(m_Database.Get(nameHash).StemStateNames);
 
             return Task.FromResult(names);
         }
@@ -118,31 +110,19 @@ namespace RPGFramework.Audio.Music
 
         private void OnEnable()
         {
-            BuildLookup();
+            BuildDatabase();
         }
 
 #if UNITY_EDITOR
         private void OnValidate()
         {
-            BuildLookup();
+            BuildDatabase();
         }
 #endif
 
-        private void BuildLookup()
+        private void BuildDatabase()
         {
-            m_ByNameHash = new Dictionary<ulong, MusicAsset>(m_MusicAssets.Length);
-
-            for (int i = 0; i < m_MusicAssets.Length; i++)
-            {
-                MusicAsset musicAsset = m_MusicAssets[i];
-
-                if (musicAsset == null)
-                {
-                    continue;
-                }
-
-                m_ByNameHash[Fnv1a64.Hash(musicAsset.name)] = musicAsset;
-            }
+            m_Database = new AudioAssetDatabase<MusicAsset>(m_MusicAssets, $"{nameof(MusicAssetProvider)} [{name}]", "song");
         }
     }
 }

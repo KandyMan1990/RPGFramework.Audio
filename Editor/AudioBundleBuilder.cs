@@ -22,8 +22,9 @@ namespace RPGFramework.Audio.Editor
         {
             string output = $"{Application.streamingAssetsPath}/{folder}";
 
-            // A content pack's bundles never pass the player build, so the check that build makes is made here.
-            List<string> loopProblems = AudioBuildCheck.FindProblems(assets);
+            // A content pack's bundles never pass the player build, so the check that build makes is made here, for the
+            // platform they are built for.
+            List<string> loopProblems = AudioBuildCheck.FindProblems(assets, LoopedStems.TargetsWeb);
 
             if (loopProblems.Count > 0)
             {

@@ -13,7 +13,7 @@ namespace RPGFramework.Audio.Tests.Sfx
         private GameObject    m_Player;
         private AudioClip     m_Clip;
         private SfxAsset      m_Sound;
-        private AudioSource[] m_Stems;
+        private AudioSource[] m_Sources;
         private ISfxReference m_Reference;
 
         [SetUp]
@@ -30,9 +30,11 @@ namespace RPGFramework.Audio.Tests.Sfx
             tracks.GetArrayElementAtIndex(0).FindPropertyRelative("m_AudioClip").objectReferenceValue = m_Clip;
             asset.ApplyModifiedPropertiesWithoutUndo();
 
-            m_Stems = new[] { m_Player.AddComponent<AudioSource>(), m_Player.AddComponent<AudioSource>() };
+            m_Sources = new[] { m_Player.AddComponent<AudioSource>(), m_Player.AddComponent<AudioSource>() };
 
-            m_Reference = new SfxReference(1UL, m_Stems, m_Sound, AudioSettings.dspTime, 0f, 0.5f, 0.25f, 1f, _ => { });
+            IStemPlayback[] stems = { StemPlaybacks.Create(m_Sources[0]), StemPlaybacks.Create(m_Sources[1]) };
+
+            m_Reference = new SfxReference(1UL, stems, m_Sound, 0f, 0.5f, 0.25f, _ => { });
         }
 
         [TearDown]
@@ -49,8 +51,8 @@ namespace RPGFramework.Audio.Tests.Sfx
             m_Reference.SetVolume(0.75f, 0f);
             m_Reference.UpdateLevels(0.1f, 1f, false);
 
-            Assert.AreEqual(0.75f, m_Stems[0].volume, TOLERANCE);
-            Assert.AreEqual(0.75f, m_Stems[1].volume, TOLERANCE);
+            Assert.AreEqual(0.75f, m_Sources[0].volume, TOLERANCE);
+            Assert.AreEqual(0.75f, m_Sources[1].volume, TOLERANCE);
         }
 
         [Test]
@@ -59,8 +61,8 @@ namespace RPGFramework.Audio.Tests.Sfx
             m_Reference.SetPan(-1f, 0f);
             m_Reference.UpdateLevels(0.1f, 1f, false);
 
-            Assert.AreEqual(-1f, m_Stems[0].panStereo, TOLERANCE);
-            Assert.AreEqual(-1f, m_Stems[1].panStereo, TOLERANCE);
+            Assert.AreEqual(-1f, m_Sources[0].panStereo, TOLERANCE);
+            Assert.AreEqual(-1f, m_Sources[1].panStereo, TOLERANCE);
         }
 
         [Test]
@@ -69,7 +71,7 @@ namespace RPGFramework.Audio.Tests.Sfx
             m_Reference.SetVolume(1f, 1f);
             m_Reference.UpdateLevels(0.5f, 1f, false);
 
-            Assert.AreEqual(0.75f, m_Stems[0].volume, TOLERANCE);
+            Assert.AreEqual(0.75f, m_Sources[0].volume, TOLERANCE);
         }
 
         [Test]
@@ -77,19 +79,19 @@ namespace RPGFramework.Audio.Tests.Sfx
         {
             m_Reference.UpdateLevels(0.1f, 0.5f, true);
 
-            Assert.AreEqual(0.25f, m_Stems[0].volume, TOLERANCE);
+            Assert.AreEqual(0.25f, m_Sources[0].volume, TOLERANCE);
         }
 
         [Test]
         public void ThenASoundThatHasEndedLeavesItsVoicesAlone()
         {
-            m_Stems[0].volume = 0.1f;
+            m_Sources[0].volume = 0.1f;
 
             m_Reference.Stop();
             m_Reference.SetVolume(1f, 0f);
             m_Reference.UpdateLevels(0.1f, 1f, true);
 
-            Assert.AreEqual(0.1f, m_Stems[0].volume, TOLERANCE);
+            Assert.AreEqual(0.1f, m_Sources[0].volume, TOLERANCE);
         }
 
         [Test]

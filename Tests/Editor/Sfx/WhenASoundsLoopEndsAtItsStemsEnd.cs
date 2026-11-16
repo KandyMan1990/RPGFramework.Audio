@@ -1,9 +1,7 @@
-using System.Text.RegularExpressions;
 using NUnit.Framework;
 using RPGFramework.Audio.Sfx;
 using UnityEditor;
 using UnityEngine;
-using UnityEngine.TestTools;
 
 namespace RPGFramework.Audio.Tests.Sfx
 {
@@ -20,6 +18,16 @@ namespace RPGFramework.Audio.Tests.Sfx
             m_Clip  = AudioClip.Create("Stem", 132300, 1, 44100, false);
 
             m_Sound.name = "Sound";
+
+            SerializedObject   asset  = new SerializedObject(m_Sound);
+            SerializedProperty tracks = asset.FindProperty("m_Tracks");
+
+            tracks.arraySize = 1;
+            tracks.GetArrayElementAtIndex(0).FindPropertyRelative("m_AudioClip").objectReferenceValue = m_Clip;
+            asset.FindProperty("m_Loop").boolValue      = true;
+            asset.FindProperty("m_LoopEnd").intValue    = 132300;
+            asset.FindProperty("m_SampleRate").intValue = 44100;
+            asset.ApplyModifiedPropertiesWithoutUndo();
         }
 
         [TearDown]
@@ -30,18 +38,21 @@ namespace RPGFramework.Audio.Tests.Sfx
         }
 
         [Test]
-        public void ThenItWarnsThatThePlayerNeedsAudioAfterTheLoop()
+        public void ThenItLoops()
         {
-            LogAssert.Expect(LogType.Warning, new Regex(Regex.Escape("SfxAsset [Sound] loops, but its loop ends [0.000] seconds before the end of stem [1]")));
+            Assert.IsTrue(((ISfxAsset)m_Sound).Loop);
+        }
 
-            SerializedObject   asset  = new SerializedObject(m_Sound);
-            SerializedProperty tracks = asset.FindProperty("m_Tracks");
+        [Test]
+        public void ThenOffTheWebNothingStopsIt()
+        {
+            Assert.IsNull(m_Sound.FindLoopProblem(false));
+        }
 
-            tracks.arraySize = 1;
-            tracks.GetArrayElementAtIndex(0).FindPropertyRelative("m_AudioClip").objectReferenceValue = m_Clip;
-            asset.FindProperty("m_Loop").boolValue    = true;
-            asset.FindProperty("m_LoopEnd").intValue  = 132300;
-            asset.ApplyModifiedPropertiesWithoutUndo();
+        [Test]
+        public void ThenForTheWebItNeedsAudioAfterTheLoop()
+        {
+            StringAssert.Contains("its loop ends [0.000] seconds before the end of stem [1]", m_Sound.FindLoopProblem(true));
         }
     }
 }

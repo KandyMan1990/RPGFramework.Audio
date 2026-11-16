@@ -1,15 +1,10 @@
-using System.Text.RegularExpressions;
 using NUnit.Framework;
 using RPGFramework.Audio.Music;
 using UnityEngine;
-using UnityEngine.TestTools;
 
 namespace RPGFramework.Audio.Tests.Music
 {
-    /// <summary>
-    /// A song of one four-second stem, on an in-memory clip. Each test sets the loop itself: a test cannot expect what
-    /// its set-up logs.
-    /// </summary>
+    /// <summary>A song of one four-second stem, on an in-memory clip, looping to the stem's very end.</summary>
     internal sealed class WhenASongsLoopEndsAtItsStemsEnd
     {
         private MusicAsset m_Song;
@@ -22,6 +17,7 @@ namespace RPGFramework.Audio.Tests.Music
             m_Clip = AudioClip.Create("Stem", 176400, 1, 44100, false);
 
             SongAuthoring.SetStem(m_Song, m_Clip);
+            SongAuthoring.SetLoopInSamples(m_Song, 0, 176400, 44100);
         }
 
         [TearDown]
@@ -32,27 +28,21 @@ namespace RPGFramework.Audio.Tests.Music
         }
 
         [Test]
-        public void ThenItWarnsThatThePlayerNeedsAudioAfterTheLoop()
+        public void ThenItLoops()
         {
-            LogAssert.Expect(LogType.Warning, new Regex(Regex.Escape("its loop ends [0.000] seconds before the end of stem [1], [Stem]")));
-
-            SongAuthoring.SetLoopInSamples(m_Song, 0, 176400, 44100);
-        }
-
-        [Test]
-        public void ThenItStillLoops()
-        {
-            SongAuthoring.SetLoopInSamples(m_Song, 0, 176400, 44100);
-
             Assert.IsTrue(((IMusicAsset)m_Song).Loop);
         }
 
         [Test]
-        public void ThenATenthOfASecondAfterTheLoopIsEnough()
+        public void ThenOffTheWebNothingStopsIt()
         {
-            SongAuthoring.SetLoopInSamples(m_Song, 0, 176400 - 4410, 44100);
+            Assert.IsNull(m_Song.FindLoopProblem(false));
+        }
 
-            LogAssert.NoUnexpectedReceived();
+        [Test]
+        public void ThenForTheWebItNeedsAudioAfterTheLoop()
+        {
+            StringAssert.Contains("its loop ends [0.000] seconds before the end of stem [1], [Stem]", m_Song.FindLoopProblem(true));
         }
     }
 }

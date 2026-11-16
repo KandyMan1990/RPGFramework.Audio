@@ -1,11 +1,13 @@
 # RPGFramework.Audio
 Music in stems and sound effects for Unity: made for the RPG Framework, and usable in any Unity project on its own (see [Using it on its own](#using-it-on-its-own)).
 
-Requires Unity 6000.7 or newer. It references Unity, Unity.Mathematics and RPGFramework.Hashing, and nothing else — Hashing is a single static class with no dependencies of its own, so this package can still be dropped into a project that has none of the rest of the framework. It drives its own per frame update from a component on the GameObject each player creates for its audio sources, so there is no update manager to wire up.
+Requires Unity 6000.7 or newer, on the Enhanced Audio Foundation (Project Settings › Audio), which is what it is built and heard on. It references Unity, Unity.Mathematics, Burst and RPGFramework.Hashing, and nothing else — Hashing is a single static class with no dependencies of its own, so this package can still be dropped into a project that has none of the rest of the framework. It drives its own per frame update from a component on the GameObject each player creates for its audio sources, so there is no update manager to wire up.
 
 Audio is played using Unity's built in audio systems.  The samples contain a mixer asset that has 16 channels reserved for playing music and 16 channels for sound effects, however this is just an example, a mixer could have 2 channels, it could have 200 channels, 16 and 16 just seemed like a reasonable number that would cover the vast majority of use cases.
 
-When it comes to looping, be it music or sfx, there should be trailing sound after the loop point in case Unity's audio system overruns the buffer size when processing, e.g. if Unity processes audio in say 64 byte chunks but your audio clip isn't divisible by 64, it could cause noise/pops/clicks or it could cause Unity to think the audio has finished playing and stop looping.  For music, I've found an additional bar of music generally covers the overflow, and for sfx, at least 1 second past the loop point has stopped any errors occurring.  Neither player sets `AudioSource.loop`; both watch the playhead and seek it back, and that detection only happens once per mixer buffer, so the tail in the audio is what covers the overshoot.  So a loop can't end at the very end of its file yet, as some loop files do — an OGG tagged with `LOOPSTART` alone, or a WAV whose sampler loop runs to its last sample: a looping song or sound with less than a tenth of a second of audio after its loop's end is warned of in the editor, and refuses a player build and the bundle builder.  Unity 6.7's seek, scheduled at a sample, will lift that.
+**Music and sound effects loop on the exact sample.** Each stem plays through a generator of the package's own, on Unity 6.7's scriptable audio, which has the clip seek back at the loop's end as it plays, so every stem jumps on the same sample and a loop may end anywhere — its file's very end included, as some loop files do: an OGG tagged with `LOOPSTART` alone, or a WAV whose sampler loop runs to its last sample.  The inspectors' previews loop the same way.
+
+**On the web**, which has no scriptable audio, songs and sounds loop by watching the playhead and seeking it back, which happens once per mixer buffer, so they need audio after the loop's end to cover the overshoot.  In a build for the web, a looping song or sound with less than a tenth of a second of audio after its loop's end is warned of in the editor, and refuses a player build and the bundle builder.  An extra bar of music, or a second of sound, covers it comfortably.
 
 ## Assets are addressed by name, not by list position
 
@@ -165,15 +167,15 @@ The loop can come from the stems' source files, which Unity's import ignores, so
 
 Every stem must be the same length, and every stem carrying a loop the same loop — compared as moments in time, so stems at different sample rates can agree.  A stem with no loop is skipped and named.  When the stems agree, a song with no loop yet, or one looping by samples, takes their loop at once; a song looping by bars is offered it instead, with **Use the stems' loop**, as its bars were chosen.  A box under the button says what was read and from which stems, or why nothing was: files that can't be read, stems that disagree, or none carrying a loop, which leaves the numbers to type.  Nothing is written to the files.
 
-**In FL Studio**, add two playlist time markers named `LOOPSTART` and `LOOPEND`, and export the WAV with *Save playlist markers* ticked.  Leave *Save loop markers* off: it writes a sampler loop over the whole render, which the named markers win over but which would otherwise loop the whole file.  A DAW without named markers can still loop a WAV through its sampler loop, as sample editors such as Edison write one.  Either way, render a tail past the loop's end (above) — a loop ending at the very end of its file, as `LOOPSTART` alone does, is warned of until Unity 6.7's seek.
+**In FL Studio**, add two playlist time markers named `LOOPSTART` and `LOOPEND`, and export the WAV with *Save playlist markers* ticked.  Leave *Save loop markers* off: it writes a sampler loop over the whole render, which the named markers win over but which would otherwise loop the whole file.  A DAW without named markers can still loop a WAV through its sampler loop, as sample editors such as Edison write one.  A song's loop may end at the very end of its file, as `LOOPSTART` alone does; for the web, render a tail past it (above).
 
 The tempo is a list of **sections**, each a start bar with its BPM and time signature.  The first starts at bar 1 and each runs until the next one starts, so a song that changes tempo or time signature part way through still loops on its bars; most songs need just the one.  The inspector heads each section with what it says, such as *From bar 9: 90 BPM, 6/8*.  The time signature is beats per bar plus the note that gets the beat, so compound signatures such as 6/8 or 12/8 give the correct bar length rather than being approximated in 4/4. BPM is read as quarter notes per minute, which is what a DAW reports, so a 6/8 bar at 120 BPM is 1.5 seconds.  A bar's time adds up every section before it, then its place in its own, so changing a section moves where every later bar lands in the audio — but not a loop counted in samples.  The sections stay useful for a loop in samples too: the inspector's bar readout, and an echo whose delay is a note length.
 
 The first bar is bar 1 and the first sample 0; the end must come after the start, a loop in samples needs a sample rate, and each section must start after the one before it.  An asset marked to loop that can't produce one logs a warning naming the asset and the problem, and plays through without looping.
 
-Only **WAV and OGG** stems can loop: MP3 pads the start of its audio, which moves the loop points, and other formats aren't supported.  A looping song or sound with a stem from any other file is warned of in the editor, and refuses a player build and the bundle builder, as does one with too little audio after its loop's end (above).
+Only **WAV and OGG** stems can loop: MP3 pads the start of its audio, which moves the loop points, and other formats aren't supported.  A looping song or sound with a stem from any other file is warned of in the editor, and refuses a player build and the bundle builder, as does, where the player watches the playhead, one with too little audio after its loop's end (above).
 
-A track that doesn't loop costs nothing per frame — the update component is only enabled while there is a loop point to watch, or an echo following the song's tempo (below).  `IsPlaying()` says whether a track is playing: from when it is asked for, while it loads included, until it is stopped, paused, or reaches its end without looping.
+A track costs nothing per frame, looping or not — the update component is only enabled while an echo follows the song's tempo (below), or, on the web, while there is a loop point to watch.  `IsPlaying()` says whether a track is playing: from when it is asked for, while it loads included, until it is stopped, paused, or reaches its end without looping.
 
 ### Pause and resume
 
@@ -238,7 +240,7 @@ The player loads a stem's sample data before scheduling it and releases it when 
 
 ## Sfx
 
-Sound effects behave similarly to music, however since a sfx won't have a tempo/bpm, they can be looped by specifying start/end time in audio samples.  As with music, a looping sound's stems must be WAV or OGG, with audio after the loop's end.
+Sound effects behave similarly to music, however since a sfx won't have a tempo/bpm, they loop by start and end samples alone, laid out as a song's: each with a box beside it in seconds, typing in either moving the other.  The **Sample Rate** is the rate the loop and the events are counted at: the stems' source files', filled from the first stem's file, never the clip's, so a platform that resamples a sound on import moves neither its loop nor its events.  If the first stem's file turns out to be at another rate, the inspector says so and leaves the numbers as they are.  **Read loop from stems** reads the loop from the stems' source files just as a song's is read (above), and setting a stem's clip reads it at once; a sound always takes what is read, and its events keep their times when the rate changes with it.  As with music, a looping sound's stems must be WAV or OGG, its loop needs a sample rate and an end after its start, and for the web it needs audio after the loop's end.
 
 `PlayAsync` returns an `ISfxReference` for that one playing sound once it has loaded and started, which is what `Pause`, `Resume` and `Stop` take; a preloaded sound starts on the frame it's asked for.  `PauseAll`, `ResumeAll` and `StopAll` act on everything currently playing, and a sound still loading when `PauseAll` or `StopAll` comes never starts: its reference comes back already stopped, so there's no null to check for.
 
@@ -262,7 +264,7 @@ ISfxReference sfxReference = await sfxPlayer.PlayAsync(Fnv1a64.Hash("Enemy_Death
 sfxReference.OnEvent += (eventName, source) => Debug.Log($"{eventName} fired");
 ```
 
-Event times are authored in samples, the same as loop points.  `ISfxReference.Events` lists what that sound will raise with each trigger time converted to seconds, which is usually more useful for lining animation up against.
+Event times are authored in samples at the sound's sample rate, the same as loop points.  `ISfxReference.Events` lists what that sound will raise with each trigger time converted to seconds, which is usually more useful for lining animation up against.
 
 A few behaviours worth knowing:
 
@@ -316,7 +318,7 @@ A music asset and an sfx asset can each be played from their inspector, below th
 * **Music** — *Play*, *Stop*, and *Play into the loop*, which starts four seconds before the loop's end to hear the jump back to its start without waiting for it.  A stem state dropdown and a toggle per stem switch what is audible while it plays, and the playhead shows the time and the bar, counted from 1 through the tempo sections as the loop's bars are, with where the loop runs — its bars, or its times for a loop in samples.
 * **Sfx** — *Play* and *Stop*, and the asset's events listed with their times, each lit once the playhead passes it.  As the player does, a looping sound re-arms its events each time round unless they fire once, and a sound that doesn't loop raises any it never reached, then `SfxComplete`, as it ends.
 
-The preview plays the stems together and loops them as the players do, but on its own, not through the mixer, so a song's reverb sends and PSX Reverb aren't heard, and it plays at the clips' own volume.  Changing the asset, or selecting something else, stops it.
+The preview plays the stems together on its own, not through the mixer, so a song's reverb sends and PSX Reverb aren't heard, and it plays at the clips' own volume.  It loops as the players do, on the sample.  Changing the asset, or selecting something else, stops it.
 
 ## Using it on its own
 
@@ -409,4 +411,4 @@ then open **Window › General › Test Runner** and run the **EditMode** tests.
 Two samples ship with the package and both include the mixer asset described above, already wired up with its exposed parameters.
 
 * **Music Sample** — a four stem track with per stem reverb sends (its mixer has the echo bus too, though the sample's stems send nothing to it), a loop in samples, and three stem states to transition between.  The buttons enable and disable each other to keep the sample's own flow readable; the player takes any call at any time — playing the track already playing does nothing, and playing another cuts it.
-* **Sfx Sample** — a looping sound with events, a one shot, and a looping ambience, with looping set by start/end values measured in audio samples.
+* **Sfx Sample** — a looping sound with events, a one shot, and a looping ambience, with looping set by start/end values measured in the stems' samples.

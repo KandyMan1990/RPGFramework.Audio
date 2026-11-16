@@ -10,8 +10,10 @@ namespace RPGFramework.Audio.Editor
 {
     /// <summary>
     /// Refuses to build a player while a looping song or sound in the project cannot loop — a stem neither a WAV nor an
-    /// OGG, or too little audio after the loop's end — since in play it would stop where it should loop, and nothing at
-    /// run time can tell. <see cref="AudioBundleBuilder" /> refuses the same for the songs and sounds it bundles.
+    /// OGG, a loop ending past a stem's end or not after its start, or, for the web, where the player watches the
+    /// playhead, too little audio after the loop's end — since in play it would not loop as authored, and nothing at run
+    /// time can tell.
+    /// <see cref="AudioBundleBuilder" /> refuses the same for the songs and sounds it bundles.
     /// </summary>
     internal sealed class AudioBuildCheck : IPreprocessBuildWithReport
     {
@@ -27,7 +29,7 @@ namespace RPGFramework.Audio.Editor
                 assets.Add(AssetDatabase.LoadAssetAtPath<ScriptableObject>(AssetDatabase.GUIDToAssetPath(guids[i])));
             }
 
-            List<string> problems = FindProblems(assets);
+            List<string> problems = FindProblems(assets, report.summary.platform == BuildTarget.WebGL);
 
             if (problems.Count > 0)
             {
@@ -35,8 +37,11 @@ namespace RPGFramework.Audio.Editor
             }
         }
 
-        /// <returns>Every song and sound among <paramref name="assets" />, a collection's sounds included, that cannot loop, a line each.</returns>
-        internal static List<string> FindProblems(IReadOnlyList<ScriptableObject> assets)
+        /// <returns>
+        /// Every song and sound among <paramref name="assets" />, a collection's sounds included, that cannot loop in a
+        /// build for the web or not (<paramref name="forWeb" />), a line each.
+        /// </returns>
+        internal static List<string> FindProblems(IReadOnlyList<ScriptableObject> assets, bool forWeb)
         {
             List<string> problems = new List<string>();
 
@@ -44,7 +49,7 @@ namespace RPGFramework.Audio.Editor
             {
                 if (assets[i] is MusicAsset song)
                 {
-                    Add(problems, song, song.FindLoopProblem());
+                    Add(problems, song, song.FindLoopProblem(forWeb));
 
                     continue;
                 }
@@ -60,7 +65,7 @@ namespace RPGFramework.Audio.Editor
                 {
                     if (recordings[j] is SfxAsset sound)
                     {
-                        Add(problems, sound, sound.FindLoopProblem());
+                        Add(problems, sound, sound.FindLoopProblem(forWeb));
                     }
                 }
             }

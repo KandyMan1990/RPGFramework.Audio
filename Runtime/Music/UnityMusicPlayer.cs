@@ -22,33 +22,28 @@ namespace RPGFramework.Audio.Music
 
         private static readonly string[] VOLUME_BUS_NAMES = { MUSIC_BUS_NAME, MUSIC_REVERB_SEND, MUSIC_ECHO };
 
-        private readonly IMusicPlayer                   m_This;
-        private readonly List<Song>                     m_Sounding;
-        private readonly Dictionary<ulong, int>         m_Preloads;
-        private readonly Dictionary<ulong, IMusicAsset> m_Preloaded;
+        private readonly IMusicPlayer               m_This;
+        private readonly List<Song>                 m_Sounding;
+        private readonly AudioPreloads<IMusicAsset> m_Preloads;
 
-        private int                     m_Requests;
-        private int                     m_PreloadRequests;
-        private IMusicAssetProvider     m_MusicAssetProvider;
-        private Song                    m_Playing;
-        private AskedSong               m_Asked;
-        private MusicChannelPool        m_ChannelPool;
-        private AudioSource[]           m_Sources;
-        private AudioMixer              m_AudioMixer;
-        private int                     m_StemFadeId;
-        private string[]                m_SendParameterNames;
-        private string[]                m_EchoSendParameterNames;
-        private bool                    m_RegisteredForUpdate;
-        private bool                    m_Disposed;
-        private GameObject              m_PlayerObject;
-        private AudioUpdateDriver       m_UpdateDriver;
+        private int                 m_Requests;
+        private IMusicAssetProvider m_MusicAssetProvider;
+        private Song                m_Playing;
+        private AskedSong           m_Asked;
+        private AudioChannels       m_Channels;
+        private MusicChannelPool    m_ChannelPool;
+        private IStemPlayback[]     m_Playbacks;
+        private AudioMixer          m_AudioMixer;
+        private int                 m_StemFadeId;
+        private string[]            m_EchoSendParameterNames;
+        private bool                m_RegisteredForUpdate;
+        private bool                m_Disposed;
 
         public UnityMusicPlayer()
         {
-            m_Sounding  = new List<Song>(2);
-            m_Preloads  = new Dictionary<ulong, int>();
-            m_Preloaded = new Dictionary<ulong, IMusicAsset>();
-            m_This      = this;
+            m_Sounding = new List<Song>(2);
+            m_Preloads = new AudioPreloads<IMusicAsset>();
+            m_This     = this;
         }
 
         async Task IMusicPlayer.PlayAsync(ulong nameHash, ulong initialStemStateHash, float fadeInTime, float volume)
@@ -143,21 +138,13 @@ namespace RPGFramework.Audio.Music
         {
             for (int i = 0; i < nameHashes.Count; i++)
             {
-                ulong nameHash = nameHashes[i];
-
-                if (!m_Preloads.Remove(nameHash))
+                if (!m_Preloads.TryEnd(nameHashes[i], out IMusicAsset musicAsset))
                 {
                     continue;
                 }
 
-                // Still loading, it lets go itself when it finishes.
-                if (!m_Preloaded.Remove(nameHash, out IMusicAsset musicAsset))
-                {
-                    continue;
-                }
-
-                UnloadUnusedClips(musicAsset);
-                m_MusicAssetProvider.Release(nameHash);
+                StemClips.UnloadUnused(musicAsset, IsClipSounding);
+                m_MusicAssetProvider.Release(nameHashes[i]);
             }
         }
 
@@ -226,7 +213,7 @@ namespace RPGFramework.Audio.Music
 
         bool IMusicPlayer.IsPlaying()
         {
-            bool playing = m_Asked != null || (m_Playing != null && (!m_Playing.Scheduled || m_Sources[m_Playing.Channels[0]].isPlaying));
+            bool playing = m_Asked != null || (m_Playing != null && (!m_Playing.Scheduled || !m_Playbacks[m_Playing.Channels[0]].Ended));
 
             return playing;
         }
@@ -240,29 +227,17 @@ namespace RPGFramework.Audio.Music
         {
             CancelStemFade();
             StopAllSongs();
+            DestroyChannels();
 
-            m_AudioMixer             = groups[0].audioMixer;
-            m_ChannelPool            = new MusicChannelPool(groups.Length);
-            m_Sources                = new AudioSource[groups.Length];
-            m_SendParameterNames     = new string[groups.Length];
-            m_EchoSendParameterNames = new string[groups.Length];
+            m_Channels                      = new AudioChannels(MUSIC_GAME_OBJECT_NAME, groups, this);
+            m_Channels.UpdateDriver.enabled = m_RegisteredForUpdate;
+            m_Playbacks                     = m_Channels.Playbacks;
+            m_AudioMixer                    = m_Channels.Mixer;
+            m_ChannelPool                   = new MusicChannelPool(groups.Length);
+            m_EchoSendParameterNames        = new string[groups.Length];
 
-            DestroyPlayerObject();
-
-            m_PlayerObject = new GameObject(MUSIC_GAME_OBJECT_NAME);
-            UnityEngine.Object.DontDestroyOnLoad(m_PlayerObject);
-
-            m_UpdateDriver         = AudioUpdateDriver.Attach(m_PlayerObject, this);
-            m_UpdateDriver.enabled = m_RegisteredForUpdate;
-
-            for (int i = 0; i < m_Sources.Length; i++)
+            for (int i = 0; i < groups.Length; i++)
             {
-                GameObject go = new GameObject(groups[i].name);
-                go.transform.parent                = m_PlayerObject.transform;
-                m_Sources[i]                       = go.AddComponent<AudioSource>();
-                m_Sources[i].outputAudioMixerGroup = groups[i];
-
-                m_SendParameterNames[i]     = $"{groups[i].name}_Send";
                 m_EchoSendParameterNames[i] = $"{groups[i].name}_EchoSend";
             }
         }
@@ -331,15 +306,20 @@ namespace RPGFramework.Audio.Music
             {
                 Song song = m_Sounding[i];
 
-                if (ChecksLoop(song))
+                if (!ChecksLoop(song))
                 {
-                    LoopIfPastEnd(song);
+                    continue;
+                }
+
+                for (int j = 0; j < song.Channels.Length; j++)
+                {
+                    m_Playbacks[song.Channels[j]].Tick();
                 }
             }
 
             if (FollowsTempo(m_Playing))
             {
-                ApplyEchoDelay(m_Playing, m_Sources[m_Playing.Channels[0]].time);
+                ApplyEchoDelay(m_Playing, m_Playbacks[m_Playing.Channels[0]].Position);
             }
         }
 
@@ -352,7 +332,7 @@ namespace RPGFramework.Audio.Music
         // stays as it was whatever the asset does next.
         private MusicSnapshot TakeSnapshot(Song song)
         {
-            float position = song.Scheduled ? m_Sources[song.Channels[0]].time : song.StartTime;
+            float position = song.Scheduled ? (float)m_Playbacks[song.Channels[0]].Position : song.StartTime;
 
             MusicSnapshot snapshot = new MusicSnapshot(EffectsInForce(), song.NameHash, position, (bool[])song.Stems.Clone(), MusicAsset.NO_STATE_NAMED);
 
@@ -436,30 +416,6 @@ namespace RPGFramework.Audio.Music
             return fade.Done.Task;
         }
 
-        private void LoopIfPastEnd(Song song)
-        {
-            double currentTime = m_Sources[song.Channels[0]].time;
-
-            if (currentTime < song.Asset.LoopEndTime)
-            {
-                return;
-            }
-
-            double newTime = currentTime - (song.Asset.LoopEndTime - song.Asset.LoopStartTime);
-
-            for (int i = 0; i < song.Channels.Length; i++)
-            {
-                int channel = song.Channels[i];
-
-                AudioSource source = m_Sources[channel];
-
-                if (source.isPlaying)
-                {
-                    source.time = (float)newTime;
-                }
-            }
-        }
-
         private Task SetStemStateFadeAsync(Song song, bool[] state, float transitionLength)
         {
             song.Stems = state;
@@ -496,7 +452,7 @@ namespace RPGFramework.Audio.Music
         {
             for (int i = 0; i < song.Channels.Length; i++)
             {
-                m_Sources[song.Channels[i]].volume = song.StemLevels[i] * song.MasterFade;
+                m_Playbacks[song.Channels[i]].Source.volume = song.StemLevels[i] * song.MasterFade;
             }
         }
 
@@ -581,34 +537,6 @@ namespace RPGFramework.Audio.Music
             return true;
         }
 
-        private static async Task EnsureAudioClipLoaded(AudioClip audioClip, Func<bool> abandoned)
-        {
-            if (audioClip.preloadAudioData || audioClip.loadState == AudioDataLoadState.Loaded)
-            {
-                return;
-            }
-
-            audioClip.LoadAudioData();
-
-            while (audioClip.loadState != AudioDataLoadState.Loaded)
-            {
-                if (audioClip.loadState == AudioDataLoadState.Failed)
-                {
-                    Debug.LogError($"{nameof(UnityMusicPlayer)}::{nameof(EnsureAudioClipLoaded)} Clip [{audioClip.name}] failed to load. That stem will be silent");
-
-                    return;
-                }
-
-                // Stopping the song unloads the clip, so it would never finish loading.
-                if (abandoned())
-                {
-                    return;
-                }
-
-                await Awaitable.NextFrameAsync();
-            }
-        }
-
         private Task StartSong(AskedSong asked, IMusicAsset musicAsset, float fadeSeconds, Song outgoing)
         {
             m_Asked = null;
@@ -671,14 +599,9 @@ namespace RPGFramework.Audio.Music
         private async Task<bool> ScheduleSongAsync(Song song, bool fadesIn)
         {
             IReadOnlyList<IStem> tracks = song.Asset.Tracks;
-            Task[]               loads  = new Task[tracks.Count];
 
-            for (int i = 0; i < tracks.Count; i++)
-            {
-                loads[i] = EnsureAudioClipLoaded(tracks[i].Clip, () => song.Stopped);
-            }
-
-            await Task.WhenAll(loads);
+            // Stopping the song unloads its clips, so they would never finish loading.
+            await StemClips.LoadAsync(song.Asset, () => song.Stopped);
 
             if (song != m_Playing)
             {
@@ -687,31 +610,27 @@ namespace RPGFramework.Audio.Music
                 return false;
             }
 
-            double scheduledStartTime = AudioSettings.dspTime + Time.deltaTime;
+            song.MasterFade = fadesIn ? 0f : song.Volume;
+
+            ApplyStemVolumes(song);
+
+            // Every stem is played in this frame, so they start together.
+            double      startDspTime = AudioSettings.dspTime + Time.deltaTime;
+            IMusicAsset asset        = song.Asset;
 
             for (int i = 0; i < tracks.Count; i++)
             {
-                int         channel = song.Channels[i];
-                AudioSource source  = m_Sources[channel];
+                int channel = song.Channels[i];
 
-                source.clip        = tracks[i].Clip;
-                source.playOnAwake = false;
-                source.loop        = false;
-                source.time        = song.StartTime;
-
-                float sendLevel = AudioUtils.PercentToDb(tracks[i].ReverbSendLevel);
-                m_AudioMixer.SetFloat(m_SendParameterNames[channel], sendLevel);
+                m_Channels.SetReverbSend(channel, tracks[i].ReverbSendLevel);
 
                 float echoSendLevel = AudioUtils.PercentToDb(tracks[i].EchoSendLevel);
                 m_AudioMixer.SetFloat(m_EchoSendParameterNames[channel], echoSendLevel);
 
-                source.PlayScheduled(scheduledStartTime);
+                m_Playbacks[channel].Play(tracks[i].Clip, song.StartTime, asset.Loop, asset.LoopStartTime, asset.LoopEndTime, startDspTime);
             }
 
-            song.Scheduled  = true;
-            song.MasterFade = fadesIn ? 0f : song.Volume;
-
-            ApplyStemVolumes(song);
+            song.Scheduled = true;
 
             if (song.Effects.Taken)
             {
@@ -844,15 +763,12 @@ namespace RPGFramework.Audio.Music
 
             for (int i = 0; i < song.Channels.Length; i++)
             {
-                int channel = song.Channels[i];
-
-                m_Sources[channel].Stop();
-                m_Sources[channel].clip = null;
+                m_Playbacks[song.Channels[i]].Stop();
             }
 
             m_ChannelPool.Free(song.Channels);
 
-            UnloadUnusedClips(song.Asset);
+            StemClips.UnloadUnused(song.Asset, IsClipSounding);
             m_MusicAssetProvider.Release(song.NameHash);
 
             UpdateTickRegistration();
@@ -870,7 +786,7 @@ namespace RPGFramework.Audio.Music
                 }
             }
 
-            foreach (IMusicAsset preloaded in m_Preloaded.Values)
+            foreach (IMusicAsset preloaded in m_Preloads.Held)
             {
                 if (AudioUtils.UsesClip(preloaded, clip))
                 {
@@ -898,55 +814,27 @@ namespace RPGFramework.Audio.Music
 
         private async Task PreloadAsync(ulong nameHash)
         {
-            if (m_Preloads.ContainsKey(nameHash))
+            if (!m_Preloads.TryBegin(nameHash, out int request))
             {
                 return;
             }
 
-            int request = ++m_PreloadRequests;
-            m_Preloads.Add(nameHash, request);
-
             IMusicAsset musicAsset = await m_MusicAssetProvider.AcquireAsync(nameHash);
 
-            // Unloaded while it loaded, and perhaps preloaded again since, by a request that keeps it instead.
-            if (!m_Preloads.TryGetValue(nameHash, out int current) || current != request)
+            // Unloaded while it loaded, and perhaps preloaded again since, by a request that holds it instead.
+            if (!m_Preloads.TryHold(nameHash, request, musicAsset))
             {
                 m_MusicAssetProvider.Release(nameHash);
 
                 return;
             }
 
-            m_Preloaded.Add(nameHash, musicAsset);
-
-            IReadOnlyList<IStem> tracks = musicAsset.Tracks;
-            Task[]               loads  = new Task[tracks.Count];
-
-            for (int i = 0; i < tracks.Count; i++)
-            {
-                loads[i] = EnsureAudioClipLoaded(tracks[i].Clip, () => !m_Preloaded.ContainsKey(nameHash));
-            }
-
-            await Task.WhenAll(loads);
+            await StemClips.LoadAsync(musicAsset, () => !m_Preloads.Holds(nameHash));
         }
 
-        private void UnloadUnusedClips(IMusicAsset musicAsset)
+        private bool ChecksLoop(Song song)
         {
-            for (int i = 0; i < musicAsset.Tracks.Count; i++)
-            {
-                IStem stem = musicAsset.Tracks[i];
-
-                if (stem.Clip.preloadAudioData || IsClipSounding(stem.Clip))
-                {
-                    continue;
-                }
-
-                stem.Clip.UnloadAudioData();
-            }
-        }
-
-        private static bool ChecksLoop(Song song)
-        {
-            return song.Scheduled && song.Asset.Loop;
+            return song.Scheduled && song.Asset.Loop && m_Playbacks[song.Channels[0]].LoopsOnTick;
         }
 
         // The song playing owns the echo; one fading out under it no longer moves it.
@@ -976,8 +864,8 @@ namespace RPGFramework.Audio.Music
                 return;
             }
 
-            m_RegisteredForUpdate  = registered;
-            m_UpdateDriver.enabled = registered;
+            m_RegisteredForUpdate           = registered;
+            m_Channels.UpdateDriver.enabled = registered;
         }
 
         private void Dispose()
@@ -992,23 +880,14 @@ namespace RPGFramework.Audio.Music
             DropAsked();
             CancelStemFade();
             StopAllSongs();
-            m_This.Unload(new List<ulong>(m_Preloads.Keys));
-            DestroyPlayerObject();
+            m_This.Unload(m_Preloads.GetNames());
+            DestroyChannels();
         }
 
-        private void DestroyPlayerObject()
+        private void DestroyChannels()
         {
-            if (m_PlayerObject == null)
-            {
-                return;
-            }
-
-            m_UpdateDriver.enabled = false;
-
-            UnityEngine.Object.Destroy(m_PlayerObject);
-
-            m_PlayerObject = null;
-            m_UpdateDriver = null;
+            m_Channels?.Destroy();
+            m_Channels = null;
         }
 
         private void CancelStemFade()

@@ -8,15 +8,17 @@ using UnityEngine;
 namespace RPGFramework.Audio.Tests.Loops
 {
     /// <summary>
-    /// Two songs on one four-second in-memory stem: one looping to its very end, which the player cannot catch, and one
-    /// leaving a second after its loop.
+    /// Two songs on one four-second in-memory stem: one looping to its very end and one leaving a second after its loop,
+    /// checked for a build off the web, where a generator loops at the sample, and for the web, where the player watches
+    /// the playhead and cannot catch a loop with nothing after it.
     /// </summary>
     internal sealed class WhenABuildIsCheckedForLoops
     {
         private AudioClip    m_Clip;
         private MusicAsset   m_EndsAtTheEnd;
         private MusicAsset   m_LeavesASecond;
-        private List<string> m_Problems;
+        private List<string> m_OffTheWeb;
+        private List<string> m_ForTheWeb;
 
         [SetUp]
         public void SetUp()
@@ -30,7 +32,10 @@ namespace RPGFramework.Audio.Tests.Loops
             SongAuthoring.SetLoopInSamples(m_EndsAtTheEnd, 0, 176400, 44100);
             SongAuthoring.SetLoopInSamples(m_LeavesASecond, 0, 132300, 44100);
 
-            m_Problems = AudioBuildCheck.FindProblems(new ScriptableObject[] { m_EndsAtTheEnd, m_LeavesASecond });
+            ScriptableObject[] songs = { m_EndsAtTheEnd, m_LeavesASecond };
+
+            m_OffTheWeb = AudioBuildCheck.FindProblems(songs, false);
+            m_ForTheWeb = AudioBuildCheck.FindProblems(songs, true);
         }
 
         [TearDown]
@@ -42,15 +47,21 @@ namespace RPGFramework.Audio.Tests.Loops
         }
 
         [Test]
-        public void ThenOnlyTheSongLoopingToItsEndIsRefused()
+        public void ThenOffTheWebBothCanLoop()
         {
-            Assert.AreEqual(1, m_Problems.Count);
+            Assert.AreEqual(0, m_OffTheWeb.Count);
+        }
+
+        [Test]
+        public void ThenForTheWebOnlyTheSongLoopingToItsEndIsRefused()
+        {
+            Assert.AreEqual(1, m_ForTheWeb.Count);
         }
 
         [Test]
         public void ThenItsProblemSaysWhy()
         {
-            StringAssert.Contains("before the end of stem [1]", m_Problems[0]);
+            StringAssert.Contains("before the end of stem [1]", m_ForTheWeb[0]);
         }
     }
 }

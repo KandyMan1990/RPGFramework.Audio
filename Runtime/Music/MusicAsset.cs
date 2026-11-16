@@ -160,15 +160,18 @@ namespace RPGFramework.Audio.Music
             WarnAboutUnloopableStems();
         }
 
-        /// <summary>What stops the song looping, as <see cref="LoopedStems.FindProblem" /> words it, or null.</summary>
-        internal string FindLoopProblem()
+        /// <summary>
+        /// What stops the song looping, as <see cref="LoopedStems.FindProblem" /> words it, or null; the tail after its loop
+        /// checked only <paramref name="forWeb" />, where the player watches the playhead.
+        /// </summary>
+        internal string FindLoopProblem(bool forWeb)
         {
-            return m_LoopPointsValid && m_Tracks != null ? LoopedStems.FindProblem(m_Tracks, m_LoopEndTime) : null;
+            return m_LoopPointsValid && m_Tracks != null ? LoopedStems.FindProblem(m_Tracks, m_LoopEndTime, forWeb) : null;
         }
 
         private void WarnAboutUnloopableStems()
         {
-            string problem = FindLoopProblem();
+            string problem = FindLoopProblem(LoopedStems.TargetsWeb);
 
             if (problem != null)
             {

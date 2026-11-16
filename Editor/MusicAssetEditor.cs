@@ -23,8 +23,6 @@ namespace RPGFramework.Audio.Editor
         private const string LOOP_SAMPLE_RATE  = "m_LoopSampleRate";
         private const string LOOP_START_BAR    = "m_LoopStartBar";
         private const string LOOP_END_BAR      = "m_LoopEndBar";
-        private const float  SECONDS_WIDTH     = 80f;
-        private const float  BAR_WIDTH         = 56f;
 
         private readonly AudioStemPreview m_Preview = new AudioStemPreview();
 
@@ -72,7 +70,7 @@ namespace RPGFramework.Audio.Editor
                                         }
                                     };
 
-            m_Play = new Button(() => Play(0f))
+            m_Play = new Button(() => Play(0.0))
                      {
                          text = "Play"
                      };
@@ -100,7 +98,7 @@ namespace RPGFramework.Audio.Editor
             m_Stems = new VisualElement();
             root.Add(m_Stems);
 
-            m_StemClips = CurrentClips();
+            m_StemClips = StemLoopFields.CurrentClips(Music.Tracks);
             Rebuild();
 
             // A change to the asset can change its stems, states or loop, which a preview under way would not follow.
@@ -125,18 +123,18 @@ namespace RPGFramework.Audio.Editor
         /// </summary>
         private void BuildLoopFields(VisualElement root)
         {
-            m_LoopStart = new SamplePointRow(serializedObject.FindProperty(LOOP_START_SAMPLE), "Loop Start Sample");
-            m_LoopEnd   = new SamplePointRow(serializedObject.FindProperty(LOOP_END_SAMPLE), "Loop End Sample");
+            m_LoopStart = new SamplePointRow(serializedObject.FindProperty(LOOP_START_SAMPLE), "Loop Start Sample", LOOP_SAMPLE_RATE, true);
+            m_LoopEnd   = new SamplePointRow(serializedObject.FindProperty(LOOP_END_SAMPLE), "Loop End Sample", LOOP_SAMPLE_RATE, true);
             m_RateHelp  = new HelpBox(string.Empty, HelpBoxMessageType.Warning);
 
-            Replace(root, LOOP_START_SAMPLE, m_LoopStart.Root);
-            Replace(root, LOOP_END_SAMPLE, m_LoopEnd.Root);
+            StemLoopFields.Replace(root, LOOP_START_SAMPLE, m_LoopStart.Root);
+            StemLoopFields.Replace(root, LOOP_END_SAMPLE, m_LoopEnd.Root);
 
-            PropertyField rate = FindField(root, LOOP_SAMPLE_RATE);
+            PropertyField rate = StemLoopFields.FindField(root, LOOP_SAMPLE_RATE);
             rate.parent.Insert(rate.parent.IndexOf(rate) + 1, m_RateHelp);
 
             m_SampleFields = new[] { m_LoopStart.Root, m_LoopEnd.Root, rate, m_RateHelp };
-            m_BarFields    = new VisualElement[] { FindField(root, LOOP_START_BAR), FindField(root, LOOP_END_BAR) };
+            m_BarFields    = new VisualElement[] { StemLoopFields.FindField(root, LOOP_START_BAR), StemLoopFields.FindField(root, LOOP_END_BAR) };
 
             Button read = new Button(() => ReadStems(false))
                           {
@@ -151,7 +149,7 @@ namespace RPGFramework.Audio.Editor
                                  tooltip = "Loop by the samples the stems' files mark, in place of the bars"
                              };
 
-            PropertyField endBar = FindField(root, LOOP_END_BAR);
+            PropertyField endBar = StemLoopFields.FindField(root, LOOP_END_BAR);
             int           at     = endBar.parent.IndexOf(endBar) + 1;
 
             endBar.parent.Insert(at, read);
@@ -161,29 +159,11 @@ namespace RPGFramework.Audio.Editor
             m_UseStemsLoop.style.display = DisplayStyle.None;
         }
 
-        private AudioClip[] CurrentClips()
-        {
-            IReadOnlyList<IStem> tracks = Music.Tracks;
-            AudioClip[]          clips  = new AudioClip[tracks?.Count ?? 0];
-
-            for (int i = 0; i < clips.Length; i++)
-            {
-                clips[i] = tracks[i].Clip;
-            }
-
-            return clips;
-        }
-
         /// <summary>The stems' loop read when a stem's clip has been set since the asset was last seen.</summary>
         private void ReadIfAStemWasSet()
         {
-            AudioClip[] clips = CurrentClips();
-            bool        set   = false;
-
-            for (int i = 0; i < clips.Length; i++)
-            {
-                set |= clips[i] != null && (i >= m_StemClips.Length || m_StemClips[i] != clips[i]);
-            }
+            AudioClip[] clips = StemLoopFields.CurrentClips(Music.Tracks);
+            bool        set   = StemLoopFields.AStemWasSet(m_StemClips, clips);
 
             m_StemClips = clips;
 
@@ -199,25 +179,7 @@ namespace RPGFramework.Audio.Editor
         /// </summary>
         private void ReadStems(bool asAdded)
         {
-            IReadOnlyList<IStem> tracks   = Music.Tracks;
-            int                  count    = tracks?.Count ?? 0;
-            string[]             names    = new string[count];
-            StemMarkers[]        markers  = new StemMarkers[count];
-            string[]             problems = new string[count];
-
-            for (int i = 0; i < count; i++)
-            {
-                AudioClip clip = tracks[i].Clip;
-
-                names[i] = clip != null ? clip.name : $"Stem {i + 1}";
-
-                if (clip != null)
-                {
-                    StemSourceFiles.TryReadMarkers(clip, out markers[i], out problems[i]);
-                }
-            }
-
-            StemLoopReading reading = StemLoopReading.Read(names, markers, problems);
+            StemLoopReading reading = StemLoopFields.ReadStems(Music.Tracks);
 
             m_Offered = null;
 
@@ -263,20 +225,6 @@ namespace RPGFramework.Audio.Editor
             m_UseStemsLoop.style.display = DisplayStyle.None;
         }
 
-        private static PropertyField FindField(VisualElement root, string propertyPath)
-        {
-            return root.Query<PropertyField>().Where(field => field.bindingPath == propertyPath).First();
-        }
-
-        /// <summary>Puts <paramref name="row" /> where the default field for the property was, and hides that.</summary>
-        private static void Replace(VisualElement root, string propertyPath, VisualElement row)
-        {
-            PropertyField field = FindField(root, propertyPath);
-
-            field.parent.Insert(field.parent.IndexOf(field), row);
-            field.style.display = DisplayStyle.None;
-        }
-
         /// <summary>
         /// The unit's fields, the seconds and bars beside the samples, and the rate: filled from the first stem's source
         /// file while it is unset, and a help box when it differs from that file's, as the numbers are never changed
@@ -286,16 +234,9 @@ namespace RPGFramework.Audio.Editor
         {
             serializedObject.Update();
 
-            IReadOnlyList<IStem> tracks  = Music.Tracks;
-            SerializedProperty   rate    = serializedObject.FindProperty(LOOP_SAMPLE_RATE);
-            bool                 samples = serializedObject.FindProperty(LOOP_UNIT).intValue == (int)LoopUnit.Samples;
-            bool                 read    = StemSourceFiles.TryReadRate(tracks != null && tracks.Count > 0 ? tracks[0].Clip : null, out int fileRate, out string problem);
-
-            if (samples && rate.intValue <= 0 && read)
-            {
-                rate.intValue = fileRate;
-                serializedObject.ApplyModifiedProperties();
-            }
+            SerializedProperty rate    = serializedObject.FindProperty(LOOP_SAMPLE_RATE);
+            bool               samples = serializedObject.FindProperty(LOOP_UNIT).intValue == (int)LoopUnit.Samples;
+            string             help    = StemLoopFields.CheckRate(rate, Music.Tracks, samples);
 
             for (int i = 0; i < m_SampleFields.Length; i++)
             {
@@ -307,22 +248,11 @@ namespace RPGFramework.Audio.Editor
                 m_BarFields[i].style.display = samples ? DisplayStyle.None : DisplayStyle.Flex;
             }
 
-            string help = null;
-
-            if (!read)
-            {
-                help = $"The loop's sample rate is read from the first stem's source file, but {problem}";
-            }
-            else if (rate.intValue > 0 && rate.intValue != fileRate)
-            {
-                help = $"The loop counts samples at [{rate.intValue}] Hz, but the first stem's source file is at [{fileRate}] Hz. Its numbers are kept as they are: type them again, or the rate, if the stem was exported anew";
-            }
-
             m_RateHelp.text          = help ?? string.Empty;
             m_RateHelp.style.display = samples && help != null ? DisplayStyle.Flex : DisplayStyle.None;
 
-            m_LoopStart.Refresh((MusicAsset)target, rate.intValue);
-            m_LoopEnd.Refresh((MusicAsset)target, rate.intValue);
+            m_LoopStart.SetBar(BarOf(m_LoopStart.Refresh(rate.intValue), rate.intValue));
+            m_LoopEnd.SetBar(BarOf(m_LoopEnd.Refresh(rate.intValue), rate.intValue));
         }
 
         private void Rebuild()
@@ -385,10 +315,10 @@ namespace RPGFramework.Audio.Editor
 
         private void PlayIntoLoop()
         {
-            Play(Mathf.Max(0f, (float)Music.LoopEndTime - LEAD_IN_SECONDS));
+            Play(Math.Max(0.0, Music.LoopEndTime - LEAD_IN_SECONDS));
         }
 
-        private void Play(float startSeconds)
+        private void Play(double startSeconds)
         {
             IReadOnlyList<IStem> tracks = Music.Tracks;
 
@@ -402,11 +332,7 @@ namespace RPGFramework.Audio.Editor
                 }
             }
 
-            int frequency = tracks[0].Clip.frequency;
-            int loopStart = Music.Loop ? (int)(Music.LoopStartTime * frequency) : 0;
-            int loopEnd   = Music.Loop ? (int)(Music.LoopEndTime   * frequency) : 0;
-
-            m_Preview.Play(tracks, m_Active, (int)(startSeconds * frequency), loopStart, loopEnd);
+            m_Preview.Play(tracks, m_Active, startSeconds, Music.Loop ? Music.LoopStartTime : 0.0, Music.Loop ? Music.LoopEndTime : 0.0);
         }
 
         private void RefreshPosition()
@@ -422,7 +348,7 @@ namespace RPGFramework.Audio.Editor
             }
 
             AudioClip clip    = tracks[0].Clip;
-            float     seconds = (float)m_Preview.Position / clip.frequency;
+            float     seconds = (float)m_Preview.Position;
 
             m_Position.text = $"{FormatTime(seconds)} of {FormatTime(clip.length)}{FormatBar(seconds)}, {loop}";
         }
@@ -450,6 +376,11 @@ namespace RPGFramework.Audio.Editor
             return bar;
         }
 
+        private string BarOf(double seconds, int rate)
+        {
+            return rate > 0 && ((MusicAsset)target).TryGetBar(seconds, out int bar) ? $"bar {bar}" : string.Empty;
+        }
+
         private static string FormatTime(float seconds)
         {
             string time = $"{(int)(seconds / 60f)}:{seconds % 60f:00.0}";
@@ -462,72 +393,6 @@ namespace RPGFramework.Audio.Editor
             button.style.flexGrow = 1;
 
             return button;
-        }
-
-        /// <summary>
-        /// A loop point in samples, its field labelled as an inspector field is, then the same point in seconds at the
-        /// loop's sample rate, typing in either moving the other, and the bar it falls in.
-        /// </summary>
-        private sealed class SamplePointRow
-        {
-            private readonly SerializedProperty m_Samples;
-            private readonly DoubleField        m_Seconds;
-            private readonly Label              m_Bar;
-
-            internal SamplePointRow(SerializedProperty samples, string label)
-            {
-                m_Samples = samples;
-
-                IntegerField field = new IntegerField(label) { tooltip = samples.tooltip };
-                field.BindProperty(samples);
-                field.AddToClassList(BaseField<int>.alignedFieldUssClassName);
-                field.style.flexGrow = 1f;
-
-                m_Seconds = new DoubleField
-                            {
-                                isDelayed = true,
-                                tooltip   = "The same point in seconds, at the loop's sample rate"
-                            };
-                m_Seconds.style.width = SECONDS_WIDTH;
-                m_Seconds.RegisterValueChangedCallback(changed => SetSeconds(changed.newValue));
-
-                m_Bar = new Label
-                        {
-                            tooltip = "The bar it falls in, through the tempo sections"
-                        };
-                m_Bar.style.width          = BAR_WIDTH;
-                m_Bar.style.unityTextAlign = TextAnchor.MiddleLeft;
-
-                Root = new VisualElement();
-                Root.style.flexDirection = FlexDirection.Row;
-                Root.Add(field);
-                Root.Add(m_Seconds);
-                Root.Add(m_Bar);
-            }
-
-            internal VisualElement Root { get; }
-
-            internal void Refresh(MusicAsset song, int rate)
-            {
-                double seconds = rate > 0 ? (double)m_Samples.intValue / rate : 0.0;
-
-                m_Seconds.SetValueWithoutNotify(seconds);
-                m_Seconds.SetEnabled(rate > 0);
-                m_Bar.text = rate > 0 && song.TryGetBar(seconds, out int bar) ? $"bar {bar}" : string.Empty;
-            }
-
-            private void SetSeconds(double seconds)
-            {
-                int rate = m_Samples.serializedObject.FindProperty(LOOP_SAMPLE_RATE).intValue;
-
-                if (rate <= 0)
-                {
-                    return;
-                }
-
-                m_Samples.intValue = (int)Math.Round(seconds * rate);
-                m_Samples.serializedObject.ApplyModifiedProperties();
-            }
         }
     }
 }
