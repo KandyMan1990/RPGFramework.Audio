@@ -55,7 +55,7 @@ sfxPlayer.SetSfxAssetProvider(m_SfxAssetProvider);
 sfxPlayer.SetStemMixerGroups(m_SfxMixerGroups);
 ```
 
-`SetStemMixerGroups` is what builds the player: it creates a `MusicPlayer` or `SfxPlayer` GameObject marked `DontDestroyOnLoad`, one child AudioSource per mixer group named after that group, and the component that ticks the player each frame.  Nothing works before it is called, and calling it again rebuilds everything.
+`SetStemMixerGroups` is what builds the player: it creates a `MusicPlayer` or `SfxPlayer` GameObject marked `DontDestroyOnLoad`, one child per mixer group named after that group, holding its AudioSource and the generator its stems play through, and the component that ticks the player each frame.  Nothing works before it is called, and calling it again rebuilds everything.
 
 `IMusicPlayer` and `ISfxPlayer` are both `IDisposable`: `musicPlayer.Dispose()` stops everything playing and destroys the player GameObject.
 
@@ -81,7 +81,7 @@ musicPlayer.SetMusicAssetProvider(new BundledMusicAssetProvider());
 sfxPlayer.SetSfxAssetProvider(new BundledSfxAssetProvider());
 ```
 
-**Build bundles** builds a bundle per song or sound the provider lists, for the editor's active platform, with LZ4 compression; it rebuilds only what changed, and removes the bundles of songs and sounds no longer listed.  Play mode reads the bundles too, so build them again after changing a song or sound.  A clip two songs or sounds share is copied into each bundle, so the build warns naming it.  On Android and the web, where StreamingAssets can't be read from the file system, the bundles are fetched by web request.
+**Build bundles** builds a bundle per song or sound the provider lists, for the editor's active platform, with LZ4 compression; it rebuilds only what changed, and removes the bundles of songs and sounds no longer listed.  Play mode reads the bundles too, so build them again after changing a song or sound, and after updating this package: a bundle built before a song or a sound gained a field reads it as its default.  A clip two songs or sounds share is copied into each bundle, so the build warns naming it.  On Android and the web, where StreamingAssets can't be read from the file system, the bundles are fetched by web request.
 
 **Preloading** is optional, on both players and with either provider:
 
@@ -236,7 +236,7 @@ Ideally, music stems should be imported with the following settings:
 
 An existing preset exists to copy/paste into the folder where music is stored to automatically apply these settings when music is imported
 
-The player loads a stem's sample data before scheduling it and releases it when the track stops, unless a track still sounding, or one preloaded, uses the same clip, and only for clips that were imported with Preload Audio Data off.  A stem imported without its preset gets Unity's default of preload on, and the player then leaves it alone entirely — it stays resident rather than silently failing to reload.
+The player loads a stem's sample data before playing it and releases it when the track stops, unless a track still sounding, or one preloaded, uses the same clip, and only for clips that were imported with Preload Audio Data off.  A stem imported without its preset gets Unity's default of preload on, and the player then leaves it alone entirely — it stays resident rather than silently failing to reload.
 
 ## Sfx
 
@@ -328,7 +328,7 @@ The preview plays the stems together on its own, not through the mixer, so a son
 
 ## Using it on its own
 
-Nothing here needs the rest of the RPG Framework: the package depends only on RPGFramework.Hashing, and the players are plain C# objects your game creates and keeps.
+Nothing here needs the rest of the RPG Framework: of the framework the package depends only on RPGFramework.Hashing, and the players are plain C# objects your game creates and keeps.
 
 **Make one music player and one sfx player for the game's life**, before anything plays.  A small first scene that builds them and then loads the next is the simplest way to be sure of that:
 
